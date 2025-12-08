@@ -18,3 +18,7 @@ thiserror.workspace = true
 
 # Internal workspace dependency
 lib-core = { path = "../../libs/lib-core" }
+
+# Utilities
+base64.workspace = true
+uuid.workspace = true

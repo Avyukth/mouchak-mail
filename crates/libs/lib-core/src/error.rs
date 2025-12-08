@@ -36,6 +36,15 @@ pub enum Error {
 
     #[error("FileReservation not found: {0}")]
     FileReservationNotFound(String),
+
+    #[error("Product not found: {0}")]
+    ProductNotFound(String),
+
+    #[error("Macro not found: {0}")]
+    MacroNotFound(String),
+
+    #[error("Build slot not found: {0}")]
+    BuildSlotNotFound(i64),
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

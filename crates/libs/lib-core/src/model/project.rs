@@ -104,7 +104,7 @@ impl ProjectBmc {
     pub async fn ensure_archive(mm: &ModelManager, slug: &str) -> Result<()> {
         let repo_root = &mm.repo_root;
         let project_root = repo_root.join("projects").join(slug);
-        
+
         if !project_root.exists() {
             std::fs::create_dir_all(&project_root)?;
         }
@@ -113,9 +113,9 @@ impl ProjectBmc {
         // Wait, python code says "single global archive repo" at settings.storage.root
         // and "Project-specific root inside the single global archive repo".
         // So we init the repo at mm.repo_root once.
-        
+
         let repo = git_store::init_or_open_repo(repo_root)?;
-        
+
         // Check if .gitattributes exists, if not create and commit
         let attributes_path = ".gitattributes";
         if git_store::read_file_content(&repo, attributes_path).is_err() {
@@ -130,5 +130,37 @@ impl ProjectBmc {
         }
 
         Ok(())
+    }
+
+    pub async fn count_messages(_ctx: &crate::Ctx, mm: &ModelManager, project_id: i64) -> Result<i64> {
+        let db = mm.db();
+        let stmt = db.prepare("SELECT COUNT(*) FROM messages WHERE project_id = ?").await?;
+        let mut rows = stmt.query([project_id]).await?;
+        if let Some(row) = rows.next().await? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub async fn get(_ctx: &crate::Ctx, mm: &ModelManager, id: i64) -> Result<Project> {
+        let db = mm.db();
+        let stmt = db.prepare("SELECT id, slug, human_key, created_at FROM projects WHERE id = ?").await?;
+        let mut rows = stmt.query([id]).await?;
+
+        if let Some(row) = rows.next().await? {
+            let created_at_str: String = row.get(3)?;
+            let created_at = NaiveDateTime::parse_from_str(&created_at_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            Ok(Project {
+                id: row.get(0)?,
+                slug: row.get(1)?,
+                human_key: row.get(2)?,
+                created_at,
+            })
+        } else {
+            Err(crate::Error::ProjectNotFound(format!("ID: {}", id)))
+        }
     }
 }

@@ -205,4 +205,60 @@ impl AgentBmc {
         }
         Ok(agents)
     }
+
+    pub async fn count_messages_sent(_ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<i64> {
+        let db = mm.db();
+        let stmt = db.prepare("SELECT COUNT(*) FROM messages WHERE sender_id = ?").await?;
+        let mut rows = stmt.query([agent_id]).await?;
+        if let Some(row) = rows.next().await? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub async fn count_messages_received(_ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<i64> {
+        let db = mm.db();
+        let stmt = db.prepare("SELECT COUNT(*) FROM message_recipients WHERE agent_id = ?").await?;
+        let mut rows = stmt.query([agent_id]).await?;
+        if let Some(row) = rows.next().await? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub async fn update_profile(_ctx: &Ctx, mm: &ModelManager, agent_id: i64, update: AgentProfileUpdate) -> Result<()> {
+        let db = mm.db();
+
+        if let Some(task_description) = update.task_description {
+            let stmt = db.prepare("UPDATE agents SET task_description = ? WHERE id = ?").await?;
+            stmt.execute((task_description, agent_id)).await?;
+        }
+
+        if let Some(attachments_policy) = update.attachments_policy {
+            let stmt = db.prepare("UPDATE agents SET attachments_policy = ? WHERE id = ?").await?;
+            stmt.execute((attachments_policy, agent_id)).await?;
+        }
+
+        if let Some(contact_policy) = update.contact_policy {
+            let stmt = db.prepare("UPDATE agents SET contact_policy = ? WHERE id = ?").await?;
+            stmt.execute((contact_policy, agent_id)).await?;
+        }
+
+        // Update last_active_ts
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+        let stmt = db.prepare("UPDATE agents SET last_active_ts = ? WHERE id = ?").await?;
+        stmt.execute((now_str, agent_id)).await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct AgentProfileUpdate {
+    pub task_description: Option<String>,
+    pub attachments_policy: Option<String>,
+    pub contact_policy: Option<String>,
 }

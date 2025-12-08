@@ -286,4 +286,245 @@ impl MessageBmc {
             Err(crate::Error::MessageNotFound(message_id))
         }
     }
+
+    pub async fn list_by_thread(_ctx: &Ctx, mm: &ModelManager, project_id: i64, thread_id: &str) -> Result<Vec<Message>> {
+        let db = mm.db();
+        let stmt = db.prepare(
+            r#"
+            SELECT
+                m.id, m.project_id, m.sender_id, ag.name as sender_name, m.thread_id, m.subject, m.body_md,
+                m.importance, m.ack_required, m.created_ts, m.attachments
+            FROM messages AS m
+            JOIN agents AS ag ON m.sender_id = ag.id
+            WHERE m.project_id = ? AND m.thread_id = ?
+            ORDER BY m.created_ts ASC
+            "#
+        ).await?;
+
+        let mut rows = stmt.query((project_id, thread_id)).await?;
+        let mut messages = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let id: i64 = row.get(0)?;
+            let project_id: i64 = row.get(1)?;
+            let sender_id: i64 = row.get(2)?;
+            let sender_name: String = row.get(3)?;
+            let thread_id: Option<String> = row.get(4)?;
+            let subject: String = row.get(5)?;
+            let body_md: String = row.get(6)?;
+            let importance: String = row.get(7)?;
+            let ack_required: bool = row.get(8)?;
+            let created_ts_str: String = row.get(9)?;
+            let created_ts = NaiveDateTime::parse_from_str(&created_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            let attachments_str: String = row.get(10)?;
+            let attachments: Vec<Value> = serde_json::from_str(&attachments_str)?;
+
+            messages.push(Message {
+                id,
+                project_id,
+                sender_id,
+                sender_name,
+                thread_id,
+                subject,
+                body_md,
+                importance,
+                ack_required,
+                created_ts,
+                attachments,
+            });
+        }
+        Ok(messages)
+    }
+
+    /// Full-text search messages using FTS5
+    pub async fn search(_ctx: &Ctx, mm: &ModelManager, project_id: i64, query: &str, limit: i64) -> Result<Vec<Message>> {
+        let db = mm.db();
+
+        // Use FTS5 MATCH for full-text search, joining back to messages table
+        let stmt = db.prepare(
+            r#"
+            SELECT
+                m.id, m.project_id, m.sender_id, ag.name as sender_name, m.thread_id, m.subject, m.body_md,
+                m.importance, m.ack_required, m.created_ts, m.attachments
+            FROM messages AS m
+            JOIN agents AS ag ON m.sender_id = ag.id
+            JOIN messages_fts ON messages_fts.rowid = m.id
+            WHERE m.project_id = ? AND messages_fts MATCH ?
+            ORDER BY rank
+            LIMIT ?
+            "#
+        ).await?;
+
+        let mut rows = stmt.query((project_id, query, limit)).await?;
+        let mut messages = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let id: i64 = row.get(0)?;
+            let project_id: i64 = row.get(1)?;
+            let sender_id: i64 = row.get(2)?;
+            let sender_name: String = row.get(3)?;
+            let thread_id: Option<String> = row.get(4)?;
+            let subject: String = row.get(5)?;
+            let body_md: String = row.get(6)?;
+            let importance: String = row.get(7)?;
+            let ack_required: bool = row.get(8)?;
+            let created_ts_str: String = row.get(9)?;
+            let created_ts = NaiveDateTime::parse_from_str(&created_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            let attachments_str: String = row.get(10)?;
+            let attachments: Vec<Value> = serde_json::from_str(&attachments_str)?;
+
+            messages.push(Message {
+                id,
+                project_id,
+                sender_id,
+                sender_name,
+                thread_id,
+                subject,
+                body_md,
+                importance,
+                ack_required,
+                created_ts,
+                attachments,
+            });
+        }
+        Ok(messages)
+    }
+
+    /// Mark a message as read by a recipient
+    pub async fn mark_read(_ctx: &Ctx, mm: &ModelManager, message_id: i64, agent_id: i64) -> Result<()> {
+        let db = mm.db();
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let stmt = db.prepare(
+            r#"
+            UPDATE message_recipients SET read_ts = ? WHERE message_id = ? AND agent_id = ? AND read_ts IS NULL
+            "#
+        ).await?;
+        stmt.execute((now_str, message_id, agent_id)).await?;
+        Ok(())
+    }
+
+    /// Acknowledge a message by a recipient
+    pub async fn acknowledge(_ctx: &Ctx, mm: &ModelManager, message_id: i64, agent_id: i64) -> Result<()> {
+        let db = mm.db();
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        // Also mark as read if not already
+        let stmt = db.prepare(
+            r#"
+            UPDATE message_recipients
+            SET ack_ts = ?, read_ts = COALESCE(read_ts, ?)
+            WHERE message_id = ? AND agent_id = ?
+            "#
+        ).await?;
+        stmt.execute((now_str.as_str(), now_str.as_str(), message_id, agent_id)).await?;
+        Ok(())
+    }
+
+    /// List distinct threads for a project
+    pub async fn list_threads(_ctx: &Ctx, mm: &ModelManager, project_id: i64, limit: i64) -> Result<Vec<ThreadSummary>> {
+        let db = mm.db();
+
+        let stmt = db.prepare(
+            r#"
+            SELECT
+                m.thread_id,
+                MIN(m.subject) as subject,
+                COUNT(*) as message_count,
+                MAX(m.created_ts) as last_message_ts
+            FROM messages AS m
+            WHERE m.project_id = ? AND m.thread_id IS NOT NULL
+            GROUP BY m.thread_id
+            ORDER BY last_message_ts DESC
+            LIMIT ?
+            "#
+        ).await?;
+
+        let mut rows = stmt.query((project_id, limit)).await?;
+        let mut threads = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let thread_id: String = row.get(0)?;
+            let subject: String = row.get(1)?;
+            let message_count: i64 = row.get(2)?;
+            let last_message_ts_str: String = row.get(3)?;
+            let last_message_ts = NaiveDateTime::parse_from_str(&last_message_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            threads.push(ThreadSummary {
+                thread_id,
+                subject,
+                message_count: message_count as usize,
+                last_message_ts,
+            });
+        }
+        Ok(threads)
+    }
+
+    /// List recent messages for a project
+    pub async fn list_recent(_ctx: &Ctx, mm: &ModelManager, project_id: i64, limit: i64) -> Result<Vec<Message>> {
+        let db = mm.db();
+        let stmt = db.prepare(
+            r#"
+            SELECT
+                m.id, m.project_id, m.sender_id, ag.name as sender_name, m.thread_id, m.subject, m.body_md,
+                m.importance, m.ack_required, m.created_ts, m.attachments
+            FROM messages AS m
+            JOIN agents AS ag ON m.sender_id = ag.id
+            WHERE m.project_id = ?
+            ORDER BY m.created_ts DESC
+            LIMIT ?
+            "#
+        ).await?;
+
+        let mut rows = stmt.query((project_id, limit)).await?;
+        let mut messages = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let id: i64 = row.get(0)?;
+            let project_id: i64 = row.get(1)?;
+            let sender_id: i64 = row.get(2)?;
+            let sender_name: String = row.get(3)?;
+            let thread_id: Option<String> = row.get(4)?;
+            let subject: String = row.get(5)?;
+            let body_md: String = row.get(6)?;
+            let importance: String = row.get(7)?;
+            let ack_required: bool = row.get(8)?;
+            let created_ts_str: String = row.get(9)?;
+            let created_ts = NaiveDateTime::parse_from_str(&created_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            let attachments_str: String = row.get(10)?;
+            let attachments: Vec<Value> = serde_json::from_str(&attachments_str)?;
+
+            messages.push(Message {
+                id,
+                project_id,
+                sender_id,
+                sender_name,
+                thread_id,
+                subject,
+                body_md,
+                importance,
+                ack_required,
+                created_ts,
+                attachments,
+            });
+        }
+        Ok(messages)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThreadSummary {
+    pub thread_id: String,
+    pub subject: String,
+    pub message_count: usize,
+    pub last_message_ts: NaiveDateTime,
 }

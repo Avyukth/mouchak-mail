@@ -4,6 +4,7 @@ members = [
     "crates/libs/lib-core",
     "crates/services/mcp-server",
     "crates/services/mcp-cli",
+    "crates/services/mcp-stdio",
 ]
 
 [workspace.dependencies]
@@ -22,8 +23,9 @@ git2 = "0.20"
 minijinja = "2.13"
 pulldown-cmark = "0.13"
 
-# MCP Protocol SDK
-mcp-protocol-sdk = "0.5.1"
+# MCP Protocol SDK (Official)
+rmcp = { version = "0.11", features = ["server", "macros", "transport-io"] }
+schemars = "1.1"
 
 # Error Handling
 anyhow = "1.0"
@@ -42,3 +44,4 @@ clap = { version = "4.5", features = ["derive"] }
 
 # Utilities
 uuid = { version = "1.19", features = ["v4", "serde"] }
+base64 = "0.22"
