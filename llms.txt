@@ -1,12 +1,19 @@
 # MCP Agent Mail (Rust)
 
-> A high-performance Rust implementation of "Gmail for coding agents" - an MCP-compliant mail server enabling async communication between AI coding agents. Translating the Python `mcp_agent_mail` using Depyler transpilation + manual refinement, with a SvelteKit frontend. Built on Axum, libsql, and git2.
+> A high-performance Rust implementation of "Gmail for coding agents" - an MCP-compliant mail server enabling async communication between AI coding agents. Built on Axum, libsql, and git2 with a SvelteKit frontend.
 
-This project implements the Model Context Protocol (MCP) to provide agent-to-agent messaging, file reservation leases, contact management, and searchable message archives. The Rust rewrite prioritizes memory safety, performance, and idiomatic patterns while maintaining full feature parity with the Python original (46 MCP tools).
+This project implements the Model Context Protocol (MCP) to provide:
+- **Agent-to-Agent Messaging**: Markdown messages with threading and attachments
+- **File Reservation Leases**: Advisory locks to prevent edit conflicts
+- **Contact Management**: Explicit approval for cross-project messaging
+- **Searchable Archives**: FTS5 full-text search across message bodies
+- **Git-Backed Audit Trail**: All messages persisted for human review
 
-**Current Status**: Backend Core & API stable. Phase 2 (SvelteKit frontend) is the immediate next step.
+The Rust rewrite prioritizes memory safety, performance, and idiomatic patterns while maintaining full feature parity with the Python original ([28 MCP tools](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail)).
 
-**Tech Stack**: Rust (Axum 0.6, libsql, git2, tokio, thiserror) + SvelteKit + TailwindCSS + Bun
+**Current Status**: Phases 1-2 COMPLETE. Phase 3 (28 MCP tools, 39 beads tasks remaining) IN PROGRESS.
+
+**Tech Stack**: Rust (Axum 0.8, libsql, git2, tokio, thiserror) + SvelteKit 2 + Svelte 5 + TailwindCSS + Bun
 
 ## Architecture
 
@@ -38,7 +45,8 @@ This project implements the Model Context Protocol (MCP) to provide agent-to-age
 ## Reference Materials
 
 - [Python Original](https://github.com/Dicklesworthstone/mcp_agent_mail): Source implementation being translated
-- [Depyler Transpiler](https://github.com/paiml/depyler): Python-to-Rust transpilation tool used for acceleration
+- [MCP Tools Reference](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail): Authoritative list of 28 MCP tools
+- [Beads Issue Tracker](https://github.com/steveyegge/beads): Issue tracking via `bd` CLI
 
 ## Optional
 

@@ -1,303 +1,246 @@
-# MCP Agent Mail (Rust) - Comprehensive Project Plan
+# MCP Agent Mail (Rust) - Project Plan
 
-> Complete task breakdown for translating Python mcp_agent_mail to idiomatic Rust with SvelteKit frontend, using Depyler-assisted transpilation.
+## Overview
 
-## Executive Summary
+Rust-native rewrite of [mcp_agent_mail](https://github.com/Dicklesworthstone/mcp_agent_mail) - "Gmail for coding agents". This system enables multiple AI coding agents to coordinate work on shared codebases through messaging, file reservations, and searchable archives.
 
-| Metric | Value |
-|--------|-------|
-| **Total MCP Tools** | 46 |
-| **Implemented** | 8 (via REST API) |
-| **Remaining** | 38 |
-| **Phases** | 5 |
-| **Strategy** | Depyler transpile → manual refinement → SvelteKit UI |
+**Source**: The Python original provides [28 MCP tools](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail). Our Rust implementation tracks **39 remaining tasks** (41 total, 2 closed) organized into finer-grained work items for systematic implementation.
 
----
+## Phase Summary
 
-## Phase Overview
-
-```
-Phase 1   [████████████████████] 100% - Core Architecture (COMPLETE)
-Phase 1.5 [████████████████░░░░]  80% - Accelerated Logic Porting (CURRENT)
-Phase 2   [░░░░░░░░░░░░░░░░░░░░]   0% - SvelteKit Frontend
-Phase 3   [░░░░░░░░░░░░░░░░░░░░]   0% - Full Feature Parity (46 Tools)
-Phase 4   [░░░░░░░░░░░░░░░░░░░░]   0% - MCP Protocol & Search
-Phase 5   [░░░░░░░░░░░░░░░░░░░░]   0% - Production Hardening
-```
+| Phase | Description | Status | Beads Epic |
+|-------|-------------|--------|------------|
+| 1 | Core Architecture | COMPLETE | `mcp-agent-mail-rs-1yw` |
+| 1.5 | API Layer (Axum REST) | COMPLETE | `mcp-agent-mail-rs-cgm` |
+| 2 | SvelteKit Frontend | COMPLETE | `mcp-agent-mail-rs-k43` |
+| 3 | Full Feature Parity (28 MCP tools) | IN PROGRESS | `mcp-agent-mail-rs-geo` |
+| 4 | MCP Protocol Integration | PLANNED | `mcp-agent-mail-rs-2m0` |
+| 5 | Production Hardening | PLANNED | `mcp-agent-mail-rs-pw4` |
 
 ---
 
-## Beads-Style Issue Tracker
+## Phase 1: Core Architecture (COMPLETE)
 
-### Epic: bd-a1b2 [COMPLETE] Phase 1 - Core Architecture
+**Commit**: `39503c1`
 
-| ID | Type | Status | Title | Blockers |
-|----|------|--------|-------|----------|
-| bd-a1b2.1 | task | done | Initialize Rust workspace with Cargo.toml | - |
-| bd-a1b2.2 | task | done | Create lib-core crate structure | bd-a1b2.1 |
-| bd-a1b2.3 | task | done | Implement libsql database pool | bd-a1b2.2 |
-| bd-a1b2.4 | task | done | Create schema migration (001_initial_schema.sql) | bd-a1b2.3 |
-| bd-a1b2.5 | task | done | Implement git2 git_store module | bd-a1b2.2 |
-| bd-a1b2.6 | task | done | Define domain models (Project, Agent, Message) | bd-a1b2.2 |
-| bd-a1b2.7 | task | done | Implement BMC pattern for Project | bd-a1b2.6 |
-| bd-a1b2.8 | task | done | Implement BMC pattern for Agent | bd-a1b2.6 |
-| bd-a1b2.9 | task | done | Implement BMC pattern for Message | bd-a1b2.6 |
-| bd-a1b2.10 | task | done | Create thiserror-based Error type | bd-a1b2.2 |
+### Deliverables
+- Workspace structure: `lib-core`, `mcp-server`, `mcp-cli`
+- Storage layer: libsql (SQLite) + git2 (Git mailbox)
+- BMC pattern for Project, Agent, Message entities
+- thiserror-based error handling
 
-### Epic: bd-c3d4 [IN_PROGRESS] Phase 1.5 - API Layer
-
-| ID | Type | Status | Title | Blockers |
-|----|------|--------|-------|----------|
-| bd-c3d4.1 | task | done | Set up Axum 0.6 server scaffold | bd-a1b2 |
-| bd-c3d4.2 | task | done | Implement POST /api/project/ensure | bd-c3d4.1 |
-| bd-c3d4.3 | task | done | Implement POST /api/agent/register | bd-c3d4.1 |
-| bd-c3d4.4 | task | done | Implement POST /api/message/send | bd-c3d4.1 |
-| bd-c3d4.5 | task | done | Implement POST /api/inbox | bd-c3d4.1 |
-| bd-c3d4.6 | task | done | Implement GET /api/projects | bd-c3d4.1 |
-| bd-c3d4.7 | task | done | Implement GET /api/projects/:slug/agents | bd-c3d4.1 |
-| bd-c3d4.8 | task | done | Implement GET /api/messages/:id | bd-c3d4.1 |
-| bd-c3d4.9 | task | done | Implement GET /api/health | bd-c3d4.1 |
-| bd-c3d4.10 | task | todo | Add request validation with validator crate | bd-c3d4.1 |
-| bd-c3d4.11 | task | todo | Add structured JSON error responses | bd-c3d4.1 |
-| bd-c3d4.12 | task | todo | Write integration tests for all endpoints | bd-c3d4.2-9 |
-
-### Epic: bd-e5f6 [TODO] Phase 2 - SvelteKit Frontend
-
-| ID | Type | Status | Title | Blockers |
-|----|------|--------|-------|----------|
-| bd-e5f6.1 | task | todo | Initialize SvelteKit project in crates/services/web-ui | bd-c3d4 |
-| bd-e5f6.2 | task | todo | Configure Bun as package manager | bd-e5f6.1 |
-| bd-e5f6.3 | task | todo | Set up TailwindCSS with MD3 theme | bd-e5f6.1 |
-| bd-e5f6.4 | task | todo | Configure adapter-static for Rust embedding | bd-e5f6.1 |
-| bd-e5f6.5 | task | todo | Create API client service (fetch wrapper) | bd-e5f6.1 |
-| bd-e5f6.6 | task | todo | Implement layout with navigation | bd-e5f6.3 |
-| bd-e5f6.7 | task | todo | Create Projects list page | bd-e5f6.5, bd-e5f6.6 |
-| bd-e5f6.8 | task | todo | Create Agents list page | bd-e5f6.5, bd-e5f6.6 |
-| bd-e5f6.9 | task | todo | Create Inbox view page | bd-e5f6.5, bd-e5f6.6 |
-| bd-e5f6.10 | task | todo | Create Message compose modal | bd-e5f6.5, bd-e5f6.6 |
-| bd-e5f6.11 | task | todo | Create Message thread view | bd-e5f6.5, bd-e5f6.6 |
-| bd-e5f6.12 | task | todo | Integrate static build into mcp-server | bd-e5f6.4 |
-| bd-e5f6.13 | task | todo | Add CORS middleware for dev mode | bd-e5f6.12 |
-
-### Epic: bd-g7h8 [TODO] Phase 3 - Full Feature Parity (46 Tools)
-
-#### Cluster: SETUP (3 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.1 | task | done | health_check | `health_check` |
-| bd-g7h8.2 | task | done | ensure_project | `ensure_project` |
-| bd-g7h8.3 | task | todo | whois | `whois` |
-
-#### Cluster: IDENTITY (3 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.4 | task | done | register_agent | `register_agent` |
-| bd-g7h8.5 | task | todo | create_agent_identity | `create_agent_identity` |
-| bd-g7h8.6 | task | done | list_contacts | `list_contacts` (via /agents) |
-
-#### Cluster: MESSAGING (8 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.7 | task | done | send_message | `send_message` |
-| bd-g7h8.8 | task | todo | reply_message | `reply_message` |
-| bd-g7h8.9 | task | done | fetch_inbox | `fetch_inbox` |
-| bd-g7h8.10 | task | todo | mark_message_read | `mark_message_read` |
-| bd-g7h8.11 | task | todo | acknowledge_message | `acknowledge_message` |
-| bd-g7h8.12 | task | todo | search_messages | `search_messages` |
-| bd-g7h8.13 | task | todo | summarize_thread | `summarize_thread` |
-| bd-g7h8.14 | task | todo | summarize_threads | `summarize_threads` |
-
-#### Cluster: CONTACT (4 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.15 | task | todo | request_contact | `request_contact` |
-| bd-g7h8.16 | task | todo | respond_contact | `respond_contact` |
-| bd-g7h8.17 | task | todo | set_contact_policy | `set_contact_policy` |
-| bd-g7h8.18 | task | todo | Implement AgentLink BMC | Supporting logic |
-
-#### Cluster: FILE_RESERVATIONS (7 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.19 | task | todo | file_reservation_paths | `file_reservation_paths` |
-| bd-g7h8.20 | task | todo | file_reservation_paths_status | `file_reservation_paths_status` |
-| bd-g7h8.21 | task | todo | release_file_reservations | `release_file_reservations` |
-| bd-g7h8.22 | task | todo | force_release_file_reservation | `force_release_file_reservation` |
-| bd-g7h8.23 | task | todo | renew_file_reservations | `renew_file_reservations` |
-| bd-g7h8.24 | task | todo | install_precommit_guard | `install_precommit_guard` |
-| bd-g7h8.25 | task | todo | uninstall_precommit_guard | `uninstall_precommit_guard` |
-| bd-g7h8.26 | task | todo | Implement FileReservation BMC | Supporting logic |
-| bd-g7h8.27 | task | todo | Implement stale detection logic | Activity heuristics |
-| bd-g7h8.28 | task | todo | Implement glob pattern matching | fnmatch semantics |
-
-#### Cluster: BUILD_SLOTS (3 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.29 | task | todo | acquire_build_slot | `acquire_build_slot` |
-| bd-g7h8.30 | task | todo | renew_build_slot | `renew_build_slot` |
-| bd-g7h8.31 | task | todo | release_build_slot | `release_build_slot` |
-
-#### Cluster: WORKFLOW_MACROS (4 tools)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.32 | task | todo | macro_start_session | `macro_start_session` |
-| bd-g7h8.33 | task | todo | macro_prepare_thread | `macro_prepare_thread` |
-| bd-g7h8.34 | task | todo | macro_file_reservation_cycle | `macro_file_reservation_cycle` |
-| bd-g7h8.35 | task | todo | macro_contact_handshake | `macro_contact_handshake` |
-
-#### Cluster: PRODUCT_BUS (5 tools, conditional)
-
-| ID | Type | Status | Title | Python Equivalent |
-|----|------|--------|-------|-------------------|
-| bd-g7h8.36 | task | todo | ensure_product | `ensure_product` |
-| bd-g7h8.37 | task | todo | products_link | `products_link` |
-| bd-g7h8.38 | task | todo | search_messages_product | `search_messages_product` |
-| bd-g7h8.39 | task | todo | fetch_inbox_product | `fetch_inbox_product` |
-| bd-g7h8.40 | task | todo | summarize_thread_product | `summarize_thread_product` |
-
-### Epic: bd-i9j0 [TODO] Phase 4 - MCP Protocol Integration
-
-| ID | Type | Status | Title | Blockers |
-|----|------|--------|-------|----------|
-| bd-i9j0.1 | task | todo | Add mcp-protocol-sdk dependency | bd-g7h8 |
-| bd-i9j0.2 | task | todo | Define MCP tool schemas | bd-i9j0.1 |
-| bd-i9j0.3 | task | todo | Implement MCP resource handlers | bd-i9j0.1 |
-| bd-i9j0.4 | task | todo | Wire MCP tools to BMC logic | bd-i9j0.2, bd-g7h8 |
-| bd-i9j0.5 | task | todo | Enable FTS5 search queries | bd-g7h8.12 |
-| bd-i9j0.6 | task | todo | Implement MCP transport (stdio/http) | bd-i9j0.4 |
-| bd-i9j0.7 | task | todo | Add MCP capability negotiation | bd-i9j0.6 |
-
-### Epic: bd-k1l2 [TODO] Phase 5 - Production Hardening
-
-| ID | Type | Status | Title | Blockers |
-|----|------|--------|-------|----------|
-| bd-k1l2.1 | task | todo | Add JWT/bearer token authentication | bd-i9j0 |
-| bd-k1l2.2 | task | todo | Implement rate limiting | bd-k1l2.1 |
-| bd-k1l2.3 | task | todo | Add structured logging (tracing) | - |
-| bd-k1l2.4 | task | todo | Add OpenTelemetry metrics | bd-k1l2.3 |
-| bd-k1l2.5 | task | todo | Write comprehensive unit tests | - |
-| bd-k1l2.6 | task | todo | Write integration test suite | bd-k1l2.5 |
-| bd-k1l2.7 | task | todo | Add input validation/sanitization | - |
-| bd-k1l2.8 | task | todo | Implement graceful shutdown | - |
-| bd-k1l2.9 | task | todo | Create Docker deployment config | bd-k1l2.8 |
-| bd-k1l2.10 | task | todo | Write CLAUDE.md development protocol | - |
-| bd-k1l2.11 | task | todo | Performance benchmarking | bd-k1l2.6 |
+### Key Files
+- `crates/libs/lib-core/src/model/` - Domain entities
+- `crates/libs/lib-core/src/store/git_store.rs` - Git operations
+- `crates/libs/lib-core/src/store/db.rs` - Database setup
 
 ---
 
-## Dependency Graph (Mermaid)
+## Phase 1.5: API Layer (COMPLETE)
 
-```mermaid
-graph TD
-    subgraph "Phase 1 (COMPLETE)"
-        A1[bd-a1b2 Core Architecture]
-    end
+**Commits**: `892610d`, `1e293e0`, `3c2af28`, `f84973c`
 
-    subgraph "Phase 1.5 (IN PROGRESS)"
-        C1[bd-c3d4 API Layer]
-    end
+### Deliverables
+- Axum 0.8 web server with JSON API
+- REST endpoints for all core operations
+- FileReservation model and BMC
+- Bug fixes: column indices, datetime parsing, Path extractors
 
-    subgraph "Phase 2"
-        E1[bd-e5f6 SvelteKit Frontend]
-    end
-
-    subgraph "Phase 3"
-        G1[bd-g7h8 46 MCP Tools]
-    end
-
-    subgraph "Phase 4"
-        I1[bd-i9j0 MCP Protocol]
-    end
-
-    subgraph "Phase 5"
-        K1[bd-k1l2 Production]
-    end
-
-    A1 --> C1
-    C1 --> E1
-    C1 --> G1
-    G1 --> I1
-    E1 --> I1
-    I1 --> K1
-```
+### API Endpoints
+| Method | Path | Handler |
+|--------|------|---------|
+| GET | `/api/health` | `health_check` |
+| POST | `/api/project/ensure` | `ensure_project` |
+| POST | `/api/agent/register` | `register_agent` |
+| POST | `/api/message/send` | `send_message` |
+| POST | `/api/inbox` | `list_inbox` |
+| GET | `/api/projects` | `list_all_projects` |
+| GET | `/api/projects/:slug/agents` | `list_all_agents_for_project` |
+| GET | `/api/messages/:id` | `get_message` |
+| POST | `/api/file_reservations/paths` | `file_reservation_paths` |
 
 ---
 
-## Depyler Transpilation Strategy
+## Phase 2: SvelteKit Frontend (COMPLETE)
 
-### Files to Transpile (Priority Order)
+**Commits**: `76a8c00`, `049e133`
 
-| Python Module | Target Rust Module | Complexity | Notes |
-|---------------|-------------------|------------|-------|
-| `models.py` | lib-core/model/ | Low | Data classes → structs (DONE) |
-| `file_reservations.py` | lib-core/model/file_reservation.rs | High | Complex TTL/stale logic |
-| `agent_links.py` | lib-core/model/agent_link.rs | Medium | Contact policy logic |
-| `search.py` | lib-core/search.rs | Medium | FTS5 query building |
-| `tools/*.py` | mcp-server/tools/ | High | 46 tool implementations |
+### Deliverables
+- SvelteKit 2 + Svelte 5 + TailwindCSS + Bun
+- Material Design 3 theming
+- Static adapter for Rust binary embedding
 
-### Transpilation Workflow
+### Pages
+- `/` - Projects list with search
+- `/agents` - Agents list with project filter
+- `/inbox` - Inbox with project/agent selector
+- `/inbox/[id]` - Message thread view
+- `ComposeMessage.svelte` - Compose modal
+
+---
+
+## Phase 3: Full Feature Parity (IN PROGRESS)
+
+**Epic**: `mcp-agent-mail-rs-geo` (41 child tasks, 2 closed, 39 open)
+
+Implement all 28 MCP tools from the [Python original](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail) organized by cluster:
+
+### Python MCP Tools (28 total)
+
+| Category | Tools | Count |
+|----------|-------|-------|
+| **Messaging** | send_message, fetch_inbox, acknowledge_message, reply_message, search_messages, summarize_thread | 6 |
+| **Identity** | register_agent, whois, list_agents, set_contact_policy | 4 |
+| **File Reservations** | file_reservation_paths, release_file_reservations, force_release_file_reservation | 3 |
+| **Contacts** | request_contact, respond_contact, list_contacts, macro_contact_handshake | 4 |
+| **Project/Product** | ensure_project, ensure_product, products_link, search_messages_product | 4 |
+| **Build Slots** | acquire_build_slot, renew_build_slot, release_build_slot | 3 |
+| **Macros** | macro_start_session, macro_prepare_thread, macro_file_reservation_cycle | 3 |
+| **Utility** | health_check | 1 |
+
+### Beads Task Breakdown
+
+#### Already Implemented (Phase 1.5)
+- `geo.1` ✅ FileReservation model and BMC
+- `geo.2` ✅ file_reservation_paths tool
+
+#### P1 - Critical Path (11 open)
+
+| ID | Tool | Python Equivalent |
+|----|------|-------------------|
+| geo.3 | `whois` | whois |
+| geo.4 | `create_agent_identity` | register_agent (name generation) |
+| geo.5 | `reply_message` | reply_message |
+| geo.12 | `release_file_reservation` | release_file_reservations |
+| geo.13 | `force_release_reservation` | force_release_file_reservation |
+| geo.14 | `renew_file_reservation` | (TTL extension) |
+| geo.18 | `search_messages` | search_messages |
+| geo.34 | `list_file_reservations` | (list active) |
+| geo.35 | `get_project_info` | ensure_project (read) |
+| geo.36 | `get_agent_profile` | whois (extended) |
+| geo.39 | `get_thread` | (thread messages) |
+
+#### P2 - Standard Priority (22 open)
+
+| ID | Tool | Python Equivalent |
+|----|------|-------------------|
+| geo.6 | `mark_message_read` | (read tracking) |
+| geo.7 | `acknowledge_message` | acknowledge_message |
+| geo.8 | `request_contact` | request_contact |
+| geo.9 | `respond_contact` | respond_contact |
+| geo.10 | `list_contacts` | list_contacts |
+| geo.11 | `set_contact_policy` | set_contact_policy |
+| geo.15 | `acquire_build_slot` | acquire_build_slot |
+| geo.16 | `renew_build_slot` | renew_build_slot |
+| geo.17 | `release_build_slot` | release_build_slot |
+| geo.19 | `summarize_thread` | summarize_thread |
+| geo.20 | `summarize_threads` | (batch variant) |
+| geo.21 | `invoke_macro` | macro_* |
+| geo.22 | `list_macros` | (macro registry) |
+| geo.23 | `register_macro` | (macro creation) |
+| geo.24 | `unregister_macro` | (macro deletion) |
+| geo.25 | `install_precommit_guard` | (guard.py) |
+| geo.26 | `uninstall_precommit_guard` | (guard.py) |
+| geo.32 | `add_attachment` | send_message (attachments) |
+| geo.33 | `get_attachment` | (attachment retrieval) |
+| geo.37 | `update_agent_profile` | (profile update) |
+| geo.38 | `send_overseer_message` | (human operator) |
+| geo.40 | `list_threads` | (thread listing) |
+
+#### P3 - Product Bus & Export (6 open)
+
+| ID | Tool | Python Equivalent |
+|----|------|-------------------|
+| geo.27 | `ensure_product` | ensure_product |
+| geo.28 | `link_project_to_product` | products_link |
+| geo.29 | `unlink_project_from_product` | (unlink) |
+| geo.30 | `list_products` | (product listing) |
+| geo.31 | `product_inbox` | search_messages_product |
+| geo.41 | `export_mailbox` | share.py (static export)
+
+---
+
+## Phase 4: MCP Protocol Integration (PLANNED)
+
+**Epic**: `mcp-agent-mail-rs-2m0`
+
+### Planned Work
+- Integrate `mcp-protocol-sdk` crate
+- Expose API as MCP-compliant server
+- Tool registration and discovery
+- JSON-RPC 2.0 transport layer
+
+---
+
+## Phase 5: Production Hardening (PLANNED)
+
+**Epic**: `mcp-agent-mail-rs-pw4`
+
+### Planned Work
+- JWT/bearer token authentication
+- Rate limiting and abuse prevention
+- Structured logging with tracing
+- Prometheus metrics endpoint
+- Docker multi-stage build
+- CI/CD pipeline (GitHub Actions)
+- Load testing and benchmarks
+
+---
+
+## Development Workflow
 
 ```bash
-# 1. Prepare Python file with type annotations
-# 2. Run depyler transpile
-depyler transpile temp_mcp_mail/src/file_reservations.py -o transpiled_reference/
+# View all issues
+bd list --all
 
-# 3. Review pseudo-code output
-# 4. Manually integrate into lib-core with Rust idioms
-# 5. Write tests
-# 6. Verify with CLI/API
+# View Phase 3 progress
+bd show geo
+
+# Start work on a task
+bd update geo.18 --status in_progress
+
+# Complete a task
+bd close geo.18
+
+# Build and test
+cargo build --release
+cargo test
 ```
 
 ---
 
-## Immediate Next Actions (Ready Work)
+## Key Design Decisions
 
-These tasks have **no open blockers** and can be started now:
+### 1. Git-Backed Storage
+All messages stored in both SQLite (fast queries) and Git (audit trail):
+```
+projects/{slug}/messages/YYYY/MM/{timestamp}__{subject}__{id}.md
+```
 
-1. **bd-e5f6.1**: Initialize SvelteKit project
-2. **bd-c3d4.10**: Add request validation
-3. **bd-c3d4.11**: Add structured error responses
-4. **bd-g7h8.26**: Implement FileReservation BMC (empty file exists)
-5. **bd-k1l2.3**: Add structured logging
+### 2. BMC Pattern
+Backend Model Controller separates:
+- `{Entity}` - Database row struct
+- `{Entity}ForCreate` - Creation input
+- `{Entity}Bmc` - Business logic
 
----
+### 3. Advisory File Reservations
+Reservations are advisory (not enforced by kernel):
+- Agents signal intent via reservations
+- Pre-commit hook checks for conflicts
+- Emergency bypass via `AGENT_MAIL_BYPASS=1`
 
-## Quality Gates
-
-Before marking any epic as COMPLETE:
-
-- [ ] All tasks in epic are done
-- [ ] Zero clippy warnings
-- [ ] All tests pass
-- [ ] Code coverage > 70%
-- [ ] No `unwrap()` in production code (only tests)
-- [ ] Documentation updated
-- [ ] SUMMARY.md reflects current state
-
----
-
-## Session Protocol
-
-At the end of each coding session:
-
-1. Update this plan with completed tasks
-2. File new issues for discovered bugs/TODOs
-3. Run `cargo build && cargo clippy`
-4. Commit with descriptive message
-5. Update SUMMARY.md if phase status changed
+### 4. Memorable Agent Names
+Adjective+Noun pattern (BlueMountain, GreenCastle) aids:
+- Human readability in logs
+- Agent identification across sessions
+- Audit trail comprehension
 
 ---
 
-## References
+## Reference Materials
 
-- [Python Source](https://github.com/Dicklesworthstone/mcp_agent_mail)
-- [Depyler Transpiler](https://github.com/paiml/depyler)
-- [MCP Protocol Spec](https://modelcontextprotocol.io)
+- [Python Original](https://github.com/Dicklesworthstone/mcp_agent_mail)
+- [MCP Tools Reference](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail) - Authoritative list of 28 MCP tools
+- [Sharing Plan](https://github.com/Dicklesworthstone/mcp_agent_mail/blob/main/PLAN_TO_ENABLE_EASY_AND_SECURE_SHARING_OF_AGENT_MAILBOX.md)
+- [Worktree Integration](https://github.com/Dicklesworthstone/mcp_agent_mail/blob/main/PLAN_TO_NON_DISRUPTIVELY_INTEGRATE_WITH_THE_GIT_WORKTREE_APPROACH.md)
 - [Beads Issue Tracker](https://github.com/steveyegge/beads)
-- [llms.txt Standard](https://llmstxt.org)
