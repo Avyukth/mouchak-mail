@@ -17,10 +17,14 @@ serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+clap.workspace = true
 
 # MCP SDK
 rmcp.workspace = true
 schemars.workspace = true
+
+# Web Framework (for HTTP/SSE transport)
+axum.workspace = true
 
 # Internal
 lib-core = { path = "../../libs/lib-core" }
