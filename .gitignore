@@ -10,4 +10,10 @@ node_modules/
 build/
 .vercel/
 .output/
-.claude/memory/
+
+# Claude Code (user-specific)
+.claude/
+
+# Playwright test artifacts (regenerated each run)
+playwright-report/
+test-results/

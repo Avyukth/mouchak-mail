@@ -769,7 +769,7 @@ impl AgentMailService {
         let p = params.0;
 
         // Check if project exists
-        match ProjectBmc::get_by_slug(&ctx, &self.mm, &p.slug).await {
+        match ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.slug).await {
             Ok(project) => {
                 let msg = format!(
                     "Project '{}' already exists (id: {}, human_key: {})",
@@ -804,7 +804,7 @@ impl AgentMailService {
         let p = params.0;
 
         // Get project
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         // Check if agent exists
@@ -848,7 +848,7 @@ impl AgentMailService {
         let p = params.0;
 
         // Get project and sender
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let sender = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.sender_name).await
@@ -897,7 +897,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -957,7 +957,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -989,7 +989,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let messages = MessageBmc::search(&ctx, &self.mm, project.id, &p.query, p.limit.unwrap_or(20)).await
@@ -1018,7 +1018,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let messages = MessageBmc::list_by_thread(&ctx, &self.mm, project.id, &p.thread_id).await
@@ -1065,7 +1065,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id).await
@@ -1095,7 +1095,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1135,7 +1135,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let reservations = FileReservationBmc::list_active_for_project(&ctx, &self.mm, project.id).await
@@ -1222,7 +1222,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let sender = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.sender_name).await
@@ -1267,7 +1267,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1293,7 +1293,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1328,7 +1328,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let existing_agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id).await
@@ -1376,7 +1376,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1407,7 +1407,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id).await
@@ -1436,7 +1436,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1473,7 +1473,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let threads = MessageBmc::list_threads(&ctx, &self.mm, project.id, p.limit.unwrap_or(50)).await
@@ -1502,12 +1502,12 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let from_project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.from_project_slug).await
+        let from_project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.from_project_slug).await
             .map_err(|e| McpError::invalid_params(format!("From project not found: {}", e), None))?;
         let from_agent = AgentBmc::get_by_name(&ctx, &self.mm, from_project.id, &p.from_agent_name).await
             .map_err(|e| McpError::invalid_params(format!("From agent not found: {}", e), None))?;
 
-        let to_project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.to_project_slug).await
+        let to_project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.to_project_slug).await
             .map_err(|e| McpError::invalid_params(format!("To project not found: {}", e), None))?;
         let to_agent = AgentBmc::get_by_name(&ctx, &self.mm, to_project.id, &p.to_agent_name).await
             .map_err(|e| McpError::invalid_params(format!("To agent not found: {}", e), None))?;
@@ -1559,7 +1559,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1595,7 +1595,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1627,7 +1627,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1699,7 +1699,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
@@ -1732,7 +1732,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let macros = MacroDefBmc::list(&ctx, &self.mm, project.id).await
@@ -1757,7 +1757,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let macro_c = MacroDefForCreate {
@@ -1786,7 +1786,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let deleted = MacroDefBmc::delete(&ctx, &self.mm, project.id, &p.name).await
@@ -1812,7 +1812,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let macro_def = MacroDefBmc::get_by_name(&ctx, &self.mm, project.id, &p.name).await
@@ -1839,7 +1839,7 @@ impl AgentMailService {
         let ctx = self.ctx();
         let p = params.0;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let messages = MessageBmc::list_by_thread(&ctx, &self.mm, project.id, &p.thread_id).await
@@ -1897,7 +1897,7 @@ impl AgentMailService {
         let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid).await
             .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let link_id = ProductBmc::link_project(&ctx, &self.mm, product.id, project.id).await
@@ -1925,7 +1925,7 @@ impl AgentMailService {
         let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid).await
             .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let unlinked = ProductBmc::unlink_project(&ctx, &self.mm, product.id, project.id).await
@@ -2014,7 +2014,7 @@ impl AgentMailService {
         let p = params.0;
         let format = p.format.unwrap_or_else(|| "markdown".to_string());
 
-        let project = ProjectBmc::get_by_slug(&ctx, &self.mm, &p.project_slug).await
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
             .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
 
         let agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id).await

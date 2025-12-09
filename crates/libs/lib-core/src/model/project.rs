@@ -101,6 +101,28 @@ impl ProjectBmc {
         }
     }
 
+    /// Get project by identifier - tries slug first, then human_key.
+    /// This allows APIs to accept either slug or human_key as project_key parameter.
+    pub async fn get_by_identifier(ctx: &crate::Ctx, mm: &ModelManager, identifier: &str) -> Result<Project> {
+        // First try by slug
+        if let Ok(project) = Self::get_by_slug(ctx, mm, identifier).await {
+            return Ok(project);
+        }
+
+        // Then try by human_key
+        if let Ok(project) = Self::get_by_human_key(ctx, mm, identifier).await {
+            return Ok(project);
+        }
+
+        // Finally, try slugified version of the identifier as slug
+        let slugified = crate::utils::slugify(identifier);
+        if let Ok(project) = Self::get_by_slug(ctx, mm, &slugified).await {
+            return Ok(project);
+        }
+
+        Err(crate::Error::ProjectNotFound(format!("Identifier: {}", identifier)))
+    }
+
     pub async fn ensure_archive(mm: &ModelManager, slug: &str) -> Result<()> {
         let repo_root = &mm.repo_root;
         let project_root = repo_root.join("projects").join(slug);

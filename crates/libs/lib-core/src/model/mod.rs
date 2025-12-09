@@ -28,7 +28,10 @@ impl ModelManager {
         // Default to "data/archive" for now, similar to Python's default or configurable
         let repo_root = std::env::current_dir()?.join("data").join("archive");
         std::fs::create_dir_all(&repo_root)?;
-        
+
+        // Auto-initialize git repository if not exists
+        crate::store::git_store::init_or_open_repo(&repo_root)?;
+
         Ok(ModelManager { db, repo_root })
     }
 
