@@ -149,6 +149,87 @@ mod tools_tests {
     }
 
     #[tokio::test]
+    async fn test_file_reservation_conflict() {
+        use lib_core::model::agent::{AgentBmc, AgentForCreate};
+        use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
+        use lib_core::model::project::ProjectBmc;
+        use lib_core::Ctx;
+
+        let (mm, _temp) = create_test_mm().await;
+        let ctx = Ctx::root_ctx();
+
+        // Setup: Create project and two agents
+        let project_id = ProjectBmc::create(&ctx, &mm, "conflict-project", "/conflict/test")
+            .await
+            .unwrap();
+
+        let agent_a_c = AgentForCreate {
+            project_id,
+            name: "AgentAlpha".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: "First agent".to_string(),
+        };
+        let agent_a_id = AgentBmc::create(&ctx, &mm, agent_a_c).await.unwrap();
+
+        let agent_b_c = AgentForCreate {
+            project_id,
+            name: "AgentBeta".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: "Second agent".to_string(),
+        };
+        let agent_b_id = AgentBmc::create(&ctx, &mm, agent_b_c).await.unwrap();
+
+        // Agent A reserves src/**/*.rs exclusively
+        let expires = chrono::Utc::now().naive_utc() + chrono::Duration::hours(1);
+        let fr_a = FileReservationForCreate {
+            project_id,
+            agent_id: agent_a_id,
+            path_pattern: "src/**/*.rs".to_string(),
+            exclusive: true,
+            reason: "Agent A working on src".to_string(),
+            expires_ts: expires,
+        };
+        let res_a_id = FileReservationBmc::create(&ctx, &mm, fr_a)
+            .await
+            .expect("Agent A should reserve successfully");
+        assert!(res_a_id > 0);
+
+        // Agent B tries to reserve overlapping path (should still succeed in advisory model)
+        let fr_b = FileReservationForCreate {
+            project_id,
+            agent_id: agent_b_id,
+            path_pattern: "src/main.rs".to_string(),
+            exclusive: true,
+            reason: "Agent B needs main.rs".to_string(),
+            expires_ts: expires,
+        };
+        let res_b_id = FileReservationBmc::create(&ctx, &mm, fr_b)
+            .await
+            .expect("Agent B reservation should succeed (advisory model allows conflicts)");
+        assert!(res_b_id > 0);
+
+        // Both reservations should be active
+        let active = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id)
+            .await
+            .expect("Failed to list reservations");
+        assert_eq!(active.len(), 2, "Both agents should have active reservations");
+
+        // Force release Agent A's reservation
+        FileReservationBmc::force_release(&ctx, &mm, res_a_id)
+            .await
+            .expect("Force release should succeed");
+
+        // Only Agent B's reservation should remain
+        let active_after = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id)
+            .await
+            .unwrap();
+        assert_eq!(active_after.len(), 1);
+        assert_eq!(active_after[0].id, res_b_id);
+    }
+
+    #[tokio::test]
     async fn test_build_slot_workflow() {
         use lib_core::model::agent::{AgentBmc, AgentForCreate};
         use lib_core::model::build_slot::{BuildSlotBmc, BuildSlotForCreate};
