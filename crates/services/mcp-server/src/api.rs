@@ -10,7 +10,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/health", get(tools::health_check))
         .route("/api/project/ensure", post(tools::ensure_project))
         .route("/api/projects", get(tools::list_all_projects))
-        .route("/api/projects/:project_slug/agents", get(tools::list_all_agents_for_project))
+        .route("/api/projects/{project_slug}/agents", get(tools::list_all_agents_for_project))
         // Identity
         .route("/api/agent/register", post(tools::register_agent))
         .route("/api/agent/whois", post(tools::whois))
@@ -22,7 +22,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/message/acknowledge", post(tools::acknowledge_message))
         .route("/api/messages/search", post(tools::search_messages))
         .route("/api/inbox", post(tools::list_inbox))
-        .route("/api/messages/:message_id", get(tools::get_message))
+        .route("/api/messages/{message_id}", get(tools::get_message))
         .route("/api/thread", post(tools::get_thread))
         .route("/api/threads", post(tools::list_threads))
         // File Reservations
