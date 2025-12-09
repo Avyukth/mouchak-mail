@@ -278,6 +278,41 @@ pub fn get_tool_schemas() -> Vec<ToolSchema> {
                 ParameterSchema { name: "thread_id".into(), param_type: "string".into(), required: true, description: "Thread ID".into() },
             ],
         },
+        ToolSchema {
+            name: "mark_message_read".into(),
+            description: "Mark a message as read by a recipient.".into(),
+            parameters: vec![
+                ParameterSchema { name: "project_slug".into(), param_type: "string".into(), required: true, description: "Project slug".into() },
+                ParameterSchema { name: "agent_name".into(), param_type: "string".into(), required: true, description: "Agent name marking as read".into() },
+                ParameterSchema { name: "message_id".into(), param_type: "integer".into(), required: true, description: "Message ID".into() },
+            ],
+        },
+        ToolSchema {
+            name: "acknowledge_message".into(),
+            description: "Acknowledge a message (sets both read and acknowledged).".into(),
+            parameters: vec![
+                ParameterSchema { name: "project_slug".into(), param_type: "string".into(), required: true, description: "Project slug".into() },
+                ParameterSchema { name: "agent_name".into(), param_type: "string".into(), required: true, description: "Agent name acknowledging".into() },
+                ParameterSchema { name: "message_id".into(), param_type: "integer".into(), required: true, description: "Message ID".into() },
+            ],
+        },
+        ToolSchema {
+            name: "set_contact_policy".into(),
+            description: "Set an agent's contact policy (open, auto, contacts_only, block_all).".into(),
+            parameters: vec![
+                ParameterSchema { name: "project_slug".into(), param_type: "string".into(), required: true, description: "Project slug".into() },
+                ParameterSchema { name: "agent_name".into(), param_type: "string".into(), required: true, description: "Agent name".into() },
+                ParameterSchema { name: "contact_policy".into(), param_type: "string".into(), required: true, description: "Policy: open, auto, contacts_only, block_all".into() },
+            ],
+        },
+        ToolSchema {
+            name: "renew_build_slot".into(),
+            description: "Extend the TTL of a build slot.".into(),
+            parameters: vec![
+                ParameterSchema { name: "slot_id".into(), param_type: "integer".into(), required: true, description: "Slot ID".into() },
+                ParameterSchema { name: "ttl_seconds".into(), param_type: "integer".into(), required: false, description: "New TTL in seconds".into() },
+            ],
+        },
     ]
 }
 
