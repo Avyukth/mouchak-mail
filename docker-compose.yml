@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - RUST_LOG=info,tower_http=debug
+      - LOG_FORMAT=json
+      - PORT=8000
+    volumes:
+      - mcp-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  mcp-data:

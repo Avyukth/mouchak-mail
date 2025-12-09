@@ -1,0 +1,43 @@
+# Build artifacts
+target/
+*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!migrations/*.md
+
+# Test data
+data/
+*.db
+*.db-journal
+
+# Node modules (if any frontend exists)
+node_modules/
+.svelte-kit/
+
+# Environment
+.env
+.env.*
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Misc
+.DS_Store
+Thumbs.db

@@ -141,3 +141,43 @@ CREATE TABLE IF NOT EXISTS project_sibling_suggestions (
     FOREIGN KEY (project_b_id) REFERENCES projects(id),
     UNIQUE (project_a_id, project_b_id)
 );
+
+-- Create build_slots table
+CREATE TABLE IF NOT EXISTS build_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    agent_id INTEGER NOT NULL,
+    slot_name TEXT NOT NULL,
+    created_ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_ts DATETIME NOT NULL,
+    released_ts DATETIME,
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    FOREIGN KEY (agent_id) REFERENCES agents(id)
+);
+
+-- Create macros table
+CREATE TABLE IF NOT EXISTS macros (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    steps JSON NOT NULL DEFAULT '[]',
+    created_ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    UNIQUE (project_id, name)
+);
+
+-- Create overseer_messages table
+CREATE TABLE IF NOT EXISTS overseer_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    sender_id INTEGER NOT NULL,
+    subject TEXT NOT NULL,
+    body_md TEXT NOT NULL,
+    importance TEXT NOT NULL DEFAULT 'normal',
+    created_ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_ts DATETIME,
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    FOREIGN KEY (sender_id) REFERENCES agents(id)
+);

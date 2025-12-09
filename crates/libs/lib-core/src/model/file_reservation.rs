@@ -164,8 +164,87 @@ impl FileReservationBmc {
             UPDATE file_reservations SET released_ts = ? WHERE id = ?
             "#
         ).await?;
-        
+
         stmt.execute((now_str, id)).await?;
+        Ok(())
+    }
+
+    pub async fn list_all_for_project(_ctx: &crate::Ctx, mm: &ModelManager, project_id: i64) -> Result<Vec<FileReservation>> {
+        let db = mm.db();
+        let stmt = db.prepare(
+            r#"
+            SELECT id, project_id, agent_id, path_pattern, exclusive, reason, created_ts, expires_ts, released_ts
+            FROM file_reservations
+            WHERE project_id = ?
+            ORDER BY created_ts DESC
+            "#
+        ).await?;
+        let mut rows = stmt.query([project_id]).await?;
+
+        let mut reservations = Vec::new();
+        while let Some(row) = rows.next().await? {
+            reservations.push(Self::from_row(row)?);
+        }
+        Ok(reservations)
+    }
+
+    pub async fn release_by_path(_ctx: &crate::Ctx, mm: &ModelManager, project_id: i64, agent_id: i64, path_pattern: &str) -> Result<Option<i64>> {
+        let db = mm.db();
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        // Find active reservation matching path
+        let stmt = db.prepare(
+            r#"
+            SELECT id FROM file_reservations
+            WHERE project_id = ? AND agent_id = ? AND path_pattern = ? AND released_ts IS NULL
+            "#
+        ).await?;
+        let mut rows = stmt.query((project_id, agent_id, path_pattern)).await?;
+
+        if let Some(row) = rows.next().await? {
+            let id: i64 = row.get(0)?;
+
+            // Release it
+            let stmt = db.prepare(
+                r#"
+                UPDATE file_reservations SET released_ts = ? WHERE id = ?
+                "#
+            ).await?;
+            stmt.execute((now_str, id)).await?;
+
+            Ok(Some(id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Force release a reservation by ID (any agent can call this for emergencies)
+    pub async fn force_release(_ctx: &crate::Ctx, mm: &ModelManager, reservation_id: i64) -> Result<()> {
+        let db = mm.db();
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let stmt = db.prepare(
+            r#"
+            UPDATE file_reservations SET released_ts = ? WHERE id = ? AND released_ts IS NULL
+            "#
+        ).await?;
+        stmt.execute((now_str, reservation_id)).await?;
+        Ok(())
+    }
+
+    /// Renew (extend) a file reservation's TTL
+    pub async fn renew(_ctx: &crate::Ctx, mm: &ModelManager, reservation_id: i64, new_expires_ts: chrono::NaiveDateTime) -> Result<()> {
+        let db = mm.db();
+        let expires_str = new_expires_ts.format("%Y-%m-%d %H:%M:%S").to_string();
+
+        let stmt = db.prepare(
+            r#"
+            UPDATE file_reservations SET expires_ts = ? WHERE id = ? AND released_ts IS NULL
+            "#
+        ).await?;
+        stmt.execute((expires_str, reservation_id)).await?;
         Ok(())
     }
 

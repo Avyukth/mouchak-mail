@@ -1,0 +1,35 @@
+[package]
+name = "mcp-stdio"
+version = "0.1.0"
+edition = "2021"
+description = "MCP stdio server for Agent Mail - Claude Desktop integration"
+
+[[bin]]
+name = "mcp-agent-mail"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+
+# MCP SDK
+rmcp.workspace = true
+schemars.workspace = true
+
+# Web Framework (for HTTP/SSE transport)
+axum.workspace = true
+
+# Internal
+lib-core = { path = "../../libs/lib-core" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tempfile = "3.20"
+libsql = "0.9"

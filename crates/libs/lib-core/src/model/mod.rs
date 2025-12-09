@@ -6,6 +6,9 @@ pub mod product;
 pub mod message_recipient;
 pub mod agent_link;
 pub mod project_sibling_suggestion;
+pub mod build_slot;
+pub mod overseer_message;
+pub mod macro_def;
 
 use crate::store::{self, Db};
 use crate::Result;
@@ -13,7 +16,7 @@ use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct ModelManager {
-    db: Db,
+    pub(crate) db: Db,
     pub repo_root: PathBuf,
 }
 
@@ -28,9 +31,22 @@ impl ModelManager {
         Ok(ModelManager { db, repo_root })
     }
 
+    /// Constructor for testing with custom db connection and paths
+    /// This is public so integration tests can use it
+    pub fn new_for_test(db: Db, repo_root: PathBuf) -> Self {
+        ModelManager { db, repo_root }
+    }
+
     /// Returns the sqlx db pool reference.
     /// (Only for the model layer)
     pub(in crate::model) fn db(&self) -> &Db {
         &self.db
+    }
+
+    /// Health check - verify database connectivity
+    pub async fn health_check(&self) -> Result<bool> {
+        let stmt = self.db.prepare("SELECT 1").await?;
+        let mut rows = stmt.query(()).await?;
+        Ok(rows.next().await?.is_some())
     }
 }
