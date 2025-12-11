@@ -69,6 +69,8 @@ pub struct Message {
     pub recipient: String,
     pub subject: Option<String>,
     pub body: String,
+    pub importance: Option<String>,
+    pub ack_required: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
 }
@@ -247,6 +249,11 @@ pub async fn get_messages(project_slug: Option<&str>, agent: Option<&str>) -> Re
             message: format!("Failed to get messages: {}", response.status()),
         })
     }
+}
+
+/// Get inbox messages for a specific project and agent.
+pub async fn get_inbox(project_slug: &str, agent: &str) -> Result<Vec<Message>, ApiError> {
+    get_messages(Some(project_slug), Some(agent)).await
 }
 
 /// Get a single message by ID.
