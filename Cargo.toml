@@ -5,6 +5,7 @@ members = [
     "crates/services/mcp-server",
     "crates/services/mcp-cli",
     "crates/services/mcp-stdio",
+    "crates/tests/e2e",
 ]
 
 [workspace.dependencies]

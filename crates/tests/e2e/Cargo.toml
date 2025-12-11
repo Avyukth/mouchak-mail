@@ -1,0 +1,35 @@
+[package]
+name = "e2e-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# Testing framework with browser support
+jugar-probar = { version = "0.1", features = ["browser", "runtime"] }
+
+# Async runtime for browser tests
+tokio = { workspace = true }
+futures = "0.3"
+
+# HTTP client for API tests
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+
+[dev-dependencies]
+# For integration with lib-core if needed
+lib-core = { path = "../../libs/lib-core" }
+
+[[test]]
+name = "web_ui"
+path = "tests/web_ui.rs"
+
+[[test]]
+name = "api"
+path = "tests/api.rs"
