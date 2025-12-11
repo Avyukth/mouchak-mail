@@ -17,3 +17,4 @@ build/
 # Playwright test artifacts (regenerated each run)
 playwright-report/
 test-results/
+.sandboxes/

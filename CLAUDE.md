@@ -21,6 +21,58 @@ make test
 
 ---
 
+## Multi-Agent Workflow
+
+This project supports concurrent multi-agent development using git worktrees for isolation.
+
+### Git Worktree Isolation
+
+Each agent works in an isolated git worktree to prevent conflicts:
+
+```bash
+# Create worktree for agent task
+git worktree add .sandboxes/agent-bd-abc feature/bd-abc
+
+# Agent works in sandbox
+cd .sandboxes/agent-bd-abc
+# ... make changes ...
+
+# On success: merge changes
+git checkout main
+git merge feature/bd-abc
+git worktree remove .sandboxes/agent-bd-abc
+
+# On failure: discard sandbox
+git worktree remove --force .sandboxes/agent-bd-abc
+git branch -D feature/bd-abc
+```
+
+**Benefits:**
+- Main repo stays clean
+- Multiple agents work in parallel without conflicts
+- Easy rollback on failure
+- Each agent has isolated file system
+
+**Directory Structure:**
+```
+.sandboxes/
+├── agent-bd-abc/     # Agent 1 working on bd-abc
+├── agent-bd-xyz/     # Agent 2 working on bd-xyz
+└── agent-bd-123/     # Agent 3 working on bd-123
+```
+
+### Hash-Based Issue IDs (Collision-Free)
+
+Beads uses hash-based IDs enabling collision-free multi-agent workflows:
+
+```bash
+# Agent A creates: bd-a1b2 (on branch feature-auth)
+# Agent B creates: bd-f14c (on branch feature-payments)
+# Git merge succeeds cleanly - no collision!
+```
+
+---
+
 ## Multi-Agent Memory System
 
 This project uses two complementary memory systems for cross-agent learning:
