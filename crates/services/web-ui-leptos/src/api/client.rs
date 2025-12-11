@@ -271,3 +271,56 @@ pub async fn get_message(id: &str) -> Result<Message, ApiError> {
         })
     }
 }
+
+/// Send a message.
+pub async fn send_message(
+    project_slug: &str,
+    sender: &str,
+    recipients: &[String],
+    subject: &str,
+    body: &str,
+    thread_id: Option<&str>,
+    importance: &str,
+    ack_required: bool,
+) -> Result<Message, ApiError> {
+    let url = format!("{}/api/messages", API_BASE_URL);
+    
+    #[derive(Serialize)]
+    struct SendMessagePayload<'a> {
+        project_slug: &'a str,
+        sender: &'a str,
+        recipients: &'a [String],
+        subject: &'a str,
+        body: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        thread_id: Option<&'a str>,
+        importance: &'a str,
+        ack_required: bool,
+    }
+    
+    let payload = SendMessagePayload {
+        project_slug,
+        sender,
+        recipients,
+        subject,
+        body,
+        thread_id,
+        importance,
+        ack_required,
+    };
+    
+    let response = Request::post(&url)
+        .header("Content-Type", "application/json")
+        .json(&payload)?
+        .send()
+        .await?;
+    
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to send message: {}", response.status()),
+        })
+    }
+}
+
