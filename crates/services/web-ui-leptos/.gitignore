@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+style/output.css
+
+# OS files
+.DS_Store
+
+# Trunk
+.trunk/
