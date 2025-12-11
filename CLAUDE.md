@@ -6,15 +6,69 @@
 ## Quick Start
 
 ```bash
-# Check what needs to be done
+# 1. Get procedural memory context
+cm context "<your task>"
+
+# 2. Check what needs to be done
 bd ready --json
 
-# Run development servers
+# 3. Run development servers
 make dev
 
-# Run tests
+# 4. Run tests
 make test
 ```
+
+---
+
+## Multi-Agent Memory System
+
+This project uses two complementary memory systems for cross-agent learning:
+
+### cass-rs (`cm`) - Procedural Memory
+
+**Before starting any non-trivial task:**
+
+```bash
+cm context "<task description>"
+```
+
+This returns:
+- **Relevant rules** from the playbook (scored by task relevance)
+- **Anti-patterns** to avoid (things that caused problems)
+- **Historical context** from past sessions
+
+**Agent Protocol:**
+
+| Phase | Action |
+|-------|--------|
+| **START** | Run `cm context "<task>"` before non-trivial work |
+| **WORK** | Reference rule IDs: "Following b-8f3a2c, checking token expiry..." |
+| **FEEDBACK** | Leave inline comments: `// [cass: helpful b-xyz] - reason` |
+| **END** | Just finish. Learning happens automatically via reflection. |
+
+**Inline Feedback (Optional):**
+
+```rust
+// [cass: helpful b-8f3a2c] - this rule saved debugging time
+// [cass: harmful b-x7k9p1] - this advice was wrong for our use case
+```
+
+### beads (`bd`) - Task Memory
+
+**Distributed issue tracker via git:**
+
+```bash
+bd ready --json           # Find ready work (no blockers)
+bd update <id> --status in_progress --json
+bd create "Bug: X" -t bug -p 0 --json
+bd close <id> --reason "Done" --json
+```
+
+**Hash-based IDs** enable collision-free multi-agent workflows:
+- Agent A creates `bd-a1b2` on branch `feature-auth`
+- Agent B creates `bd-f14c` on branch `feature-payments`
+- Git merge succeeds cleanly
 
 ---
 
@@ -103,15 +157,17 @@ uvx ruff check .
 ### Starting Work
 
 ```bash
-# 1. Orient
-bd ready --json          # What's available?
-bat AGENTS.md            # Refresh on rules
+# 1. Get procedural memory
+cm context "<task description>"
 
-# 2. Claim
+# 2. Find ready work
+bd ready --json
+
+# 3. Claim task
 bd update <id> --status in_progress --json
 
-# 3. Read context
-bd show <epic-id> --json # Parent epic details
+# 4. Read context
+bd show <id> --json
 ```
 
 ### During Work
@@ -123,6 +179,9 @@ make test
 
 # Found something new?
 bd create "Bug: X" -t bug --deps discovered-from:<current-id> --json
+
+# Rule helped/hurt?
+# Leave inline comment: // [cass: helpful b-xyz] - reason
 ```
 
 ### Completing Work
@@ -135,7 +194,10 @@ cargo test -p lib-core --test integration
 # 2. Close the task
 bd close <id> --reason "Implemented X" --json
 
-# 3. Commit with beads
+# 3. Sync beads
+bd sync
+
+# 4. Commit with beads
 git add -A && git commit -m "feat: X (closes bd-Y)"
 ```
 
@@ -148,41 +210,64 @@ git add -A && git commit -m "feat: X (closes bd-Y)"
 | Core | Rust, lib-core | `crates/libs/lib-core/` |
 | API | Axum 0.8 | `crates/services/mcp-server/` |
 | MCP | rmcp | `crates/services/mcp-stdio/` |
-| Frontend | SvelteKit, Bun | `crates/services/web-ui/` |
+| Frontend | SvelteKit → Leptos | `crates/services/web-ui/` |
 | Database | libsql (SQLite) | `migrations/*.sql` |
 | Tracker | beads (`bd`) | `.beads/issues.jsonl` |
+| Memory | cass-rs (`cm`) | `~/.cass-memory/playbook.yaml` (global) |
 
 ---
 
 ## Critical Rules
 
-✅ **DO**:
+**DO:**
+- Run `cm context "<task>"` before non-trivial work
 - Use `bd` for ALL task tracking
 - Run `make test` before completing work
 - Use `--json` flag for programmatic parsing
 - Commit `.beads/issues.jsonl` with code
+- Leave `// [cass: helpful/harmful b-xyz]` feedback
 
-❌ **DON'T**:
+**DON'T:**
 - Create markdown TODO lists
 - Use `unwrap()` in production code
 - Skip claiming issues before working
 - Ignore clippy warnings
+- Forget to sync beads before session end
+
+---
+
+## Hooks (Automatic)
+
+These run automatically via `.claude/settings.local.json`:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| SessionStart | Session begins | `bd ready --json` |
+| UserPromptSubmit | Each prompt | `cm context "<prompt>"` |
+| PreCompact | Before compaction | `bd ready --json` |
 
 ---
 
 ## Quick Reference
 
 ```bash
+# Memory Systems
+cm context "<task>"      # Get procedural memory
+cm stats                 # Playbook health
+cm mark <id> helpful     # Provide feedback
+
+# Task Tracking
+bd ready --json          # What to work on
+bd update <id> --status in_progress
+bd close <id> --reason "Done"
+bd sync                  # Sync with git
+
 # Development
 make dev                 # Run API + Web UI
 make test                # Run all tests
 
-# Beads
-bd ready --json          # What to work on
-bd update <id> --status in_progress
-bd close <id> --reason "Done"
-
 # Quality
 cargo clippy --workspace
 cargo fmt --all
+pmat rust-project-score  # Quality metrics
 ```
