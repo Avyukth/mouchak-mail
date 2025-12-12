@@ -23,8 +23,9 @@ pub fn Inbox() -> impl IntoView {
     let selected_agent = RwSignal::new(String::new());
 
     // Initialize from URL params
-    let init_project = query.read().get("project").unwrap_or_default();
-    let init_agent = query.read().get("agent").unwrap_or_default();
+    // Initialize from URL params
+    let init_project = query.with_untracked(|params| params.get("project").unwrap_or_default());
+    let init_agent = query.with_untracked(|params| params.get("agent").unwrap_or_default());
 
     // Load projects and initialize
     Effect::new(move |_| {
