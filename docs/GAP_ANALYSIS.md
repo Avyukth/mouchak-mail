@@ -86,8 +86,23 @@ scripts/
 ├── integrate_gemini_cli.sh       # 7KB
 ├── integrate_github_copilot.sh   # 9KB
 ├── integrate_opencode.sh         # 8KB
+├── integrate_antigravity.sh      # 7KB (New)
 └── automatically_detect_all_installed_coding_agents_and_install_mcp_agent_mail_in_all.sh  # 7KB
 ```
+
+#### Config Locations Summary
+
+| Agent | Config Path (macOS/Linux) |
+|-------|---------------------------|
+| **Antigravity (Gemini)** | `~/.gemini/mcp_servers.json` |
+| **Claude Code** | `~/.claude.json` |
+| **Cursor** | `~/.cursor/mcp.json` |
+| **Windsurf** | `~/.codeium/windsurf/mcp_config.json` |
+| **Cline** | `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json` |
+| **Codex CLI** | `~/.codex/config.json` |
+| **Gemini CLI** | `~/.gemini/settings.json` |
+| **OpenCode** | `~/.opencode/config.json` |
+| **GitHub Copilot** | `~/.config/github-copilot/mcp.json` |
 
 **Rust:** None
 

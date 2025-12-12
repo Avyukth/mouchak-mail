@@ -163,7 +163,7 @@ pub fn ProjectDetail() -> impl IntoView {
                                             type="text"
                                             prop:value=move || new_program.get()
                                             on:input=move |ev| new_program.set(event_target_value(&ev))
-                                            placeholder="claude-code"
+                                            placeholder="antigravity"
                                             class="input"
                                         />
                                     </div>
@@ -176,7 +176,7 @@ pub fn ProjectDetail() -> impl IntoView {
                                             type="text"
                                             prop:value=move || new_model.get()
                                             on:input=move |ev| new_model.set(event_target_value(&ev))
-                                            placeholder="claude-3-opus"
+                                            placeholder="gemini-2.0-pro"
                                             class="input"
                                         />
                                     </div>

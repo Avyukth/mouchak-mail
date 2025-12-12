@@ -2,6 +2,9 @@
 //!
 //! Tests for message sending, inbox retrieval, and threading.
 
+#[path = "common/mod.rs"]
+mod common;
+
 use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
@@ -53,6 +56,8 @@ async fn test_send_message() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Test Subject".to_string(),
         body_md: "Hello, this is a test message.".to_string(),
         thread_id: None,
@@ -76,6 +81,8 @@ async fn test_get_message() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Important Message".to_string(),
         body_md: "This is important content.".to_string(),
         thread_id: None,
@@ -103,6 +110,8 @@ async fn test_message_threading() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Thread Start".to_string(),
         body_md: "Starting a thread".to_string(),
         thread_id: None,
@@ -118,6 +127,8 @@ async fn test_message_threading() {
         project_id,
         sender_id: recipient_id, // Reply from recipient
         recipient_ids: vec![sender_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Re: Thread Start".to_string(),
         body_md: "This is a reply".to_string(),
         thread_id: initial.thread_id.clone(),
@@ -141,6 +152,8 @@ async fn test_search_messages() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Database Migration".to_string(),
         body_md: "We need to implement FTS5 full-text search for messages.".to_string(),
         thread_id: None,
@@ -152,6 +165,8 @@ async fn test_search_messages() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "API Design".to_string(),
         body_md: "The REST API should follow JSON:API spec.".to_string(),
         thread_id: None,
@@ -163,6 +178,8 @@ async fn test_search_messages() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Performance".to_string(),
         body_md: "Full-text search queries should be fast.".to_string(),
         thread_id: None,
@@ -192,6 +209,8 @@ async fn test_mark_message_read() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Unread Message".to_string(),
         body_md: "This message should be marked as read.".to_string(),
         thread_id: None,
@@ -219,6 +238,8 @@ async fn test_acknowledge_message() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Important - ACK Required".to_string(),
         body_md: "Please acknowledge this message.".to_string(),
         thread_id: None,
@@ -246,6 +267,8 @@ async fn test_list_threads() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Thread A - Start".to_string(),
         body_md: "Starting thread A".to_string(),
         thread_id: None,
@@ -259,6 +282,8 @@ async fn test_list_threads() {
         project_id,
         sender_id: recipient_id,
         recipient_ids: vec![sender_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Re: Thread A - Start".to_string(),
         body_md: "Reply in thread A".to_string(),
         thread_id: msg1.thread_id.clone(),
@@ -271,6 +296,8 @@ async fn test_list_threads() {
         project_id,
         sender_id,
         recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Thread B - Different topic".to_string(),
         body_md: "Starting thread B".to_string(),
         thread_id: None,

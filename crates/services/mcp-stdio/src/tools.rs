@@ -6,7 +6,11 @@ use anyhow::Result;
 use rmcp::{
     ErrorData as McpError,
     tool, tool_router,
-    model::{CallToolResult, CallToolRequestParam, Content, ListToolsResult, PaginatedRequestParam},
+    model::{
+        CallToolResult, CallToolRequestParam, Content, ListToolsResult, PaginatedRequestParam,
+        ListResourcesResult, ReadResourceResult, ReadResourceRequestParam, Resource, ResourceContents,
+        RawResource,
+    },
     handler::server::{ServerHandler, tool::ToolRouter, wrapper::Parameters},
     service::{RequestContext, RoleServer},
 };
@@ -14,7 +18,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use lib_core::{ctx::Ctx, model::ModelManager};
+use lib_core::{ctx::Ctx, model::{ModelManager, project::ProjectBmc, agent::AgentBmc, message::MessageBmc, file_reservation::FileReservationBmc, agent_capabilities::AgentCapabilityBmc}};
 
 // ============================================================================
 // Schema Export Types
@@ -345,6 +349,11 @@ impl AgentMailService {
         Ok(Self { mm, tool_router })
     }
 
+    pub fn new_with_mm(mm: Arc<ModelManager>) -> Self {
+        let tool_router = Self::tool_router();
+        Self { mm, tool_router }
+    }
+
     fn ctx(&self) -> Ctx {
         Ctx::root_ctx()
     }
@@ -373,6 +382,158 @@ impl ServerHandler for AgentMailService {
         let tool_context = rmcp::handler::server::tool::ToolCallContext::new(self, request, context);
         self.tool_router.call(tool_context)
     }
+
+    fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl std::future::Future<Output = Result<ListResourcesResult, McpError>> + Send + '_ {
+        async move {
+            // List project-rooted resources for all projects
+            let ctx = self.ctx();
+            let projects = ProjectBmc::list_all(&ctx, &self.mm).await
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+            let mut resources = Vec::new();
+
+            for project in projects {
+                let slug = &project.slug;
+                
+                // Agents list
+                resources.push(Resource {
+                    raw: RawResource {
+                        uri: format!("agent-mail://{}/agents", slug),
+                        name: format!("Agents ({})", slug),
+                        description: Some(format!("List of all agents in project '{}'", slug)),
+                        mime_type: Some("application/json".to_string()),
+                        size: None,
+                        icons: None,
+                        meta: None,
+                        title: None,
+                    },
+                    annotations: None,
+                });
+
+                // File reservations
+                resources.push(Resource {
+                    raw: RawResource {
+                        uri: format!("agent-mail://{}/file_reservations", slug),
+                        name: format!("File Reservations ({})", slug),
+                        description: Some(format!("Active file reservations in project '{}'", slug)),
+                        mime_type: Some("application/json".to_string()),
+                        size: None,
+                        icons: None,
+                        meta: None,
+                        title: None,
+                    },
+                    annotations: None,
+                });
+            }
+
+            Ok(ListResourcesResult {
+                resources,
+                next_cursor: None,
+                meta: None,
+            })
+        }
+    }
+
+    fn read_resource(
+        &self,
+        request: ReadResourceRequestParam,
+        _context: RequestContext<RoleServer>,
+    ) -> impl std::future::Future<Output = Result<ReadResourceResult, McpError>> + Send + '_ {
+        async move {
+            let uri_str = request.uri;
+            let uri = url::Url::parse(&uri_str)
+                .map_err(|e| McpError::invalid_params(format!("Invalid URI: {}", e), None))?;
+
+            if uri.scheme() != "agent-mail" {
+                return Err(McpError::invalid_params("URI scheme must be 'agent-mail'".to_string(), None));
+            }
+
+            // Path format: /{project_slug}/{resource_type}/{optional_id}
+            let segments: Vec<&str> = uri.path_segments()
+                .ok_or(McpError::invalid_params("Invalid URI path".to_string(), None))?
+                .collect();
+
+            if segments.len() < 2 {
+                return Err(McpError::invalid_params("URI path too short".to_string(), None));
+            }
+
+            let project_slug = segments[0];
+            let resource_type = segments[1];
+            let resource_id = segments.get(2).cloned();
+
+            let ctx = self.ctx();
+            let mm = &self.mm;
+
+            // Resolve project ID
+            let project = ProjectBmc::get_by_slug(&ctx, mm, project_slug).await
+                .map_err(|_| McpError::invalid_params(format!("Project not found: {}", project_slug), None))?;
+            let project_id = project.id;
+
+            let content = match resource_type {
+                "agents" => {
+                    let agents = AgentBmc::list_all_for_project(&ctx, mm, project_id).await
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                    serde_json::to_string_pretty(&agents)
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
+                },
+                "file_reservations" => {
+                    let reservations = FileReservationBmc::list_active_for_project(&ctx, mm, project_id).await
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                    serde_json::to_string_pretty(&reservations)
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
+                },
+                "inbox" => {
+                    let agent_name = resource_id.ok_or(McpError::invalid_params("Missing agent name".to_string(), None))?;
+                    let agent = AgentBmc::get_by_name(&ctx, mm, project_id, agent_name).await
+                        .map_err(|_| McpError::invalid_params(format!("Agent not found: {}", agent_name), None))?;
+                    
+                    // Default limit 20
+                    let messages = MessageBmc::list_inbox_for_agent(&ctx, mm, project_id, agent.id, 20).await
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                    serde_json::to_string_pretty(&messages)
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
+                },
+                "outbox" => {
+                    let agent_name = resource_id.ok_or(McpError::invalid_params("Missing agent name".to_string(), None))?;
+                    let agent = AgentBmc::get_by_name(&ctx, mm, project_id, agent_name).await
+                        .map_err(|_| McpError::invalid_params(format!("Agent not found: {}", agent_name), None))?;
+                    
+                    let messages = MessageBmc::list_outbox_for_agent(&ctx, mm, project_id, agent.id, 20).await
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                    serde_json::to_string_pretty(&messages)
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
+                },
+                "thread" => {
+                    let thread_id_str = resource_id.ok_or(McpError::invalid_params("Missing thread ID".to_string(), None))?;
+                    // Thread ID is string in DB, usually UUID, but protocol might send it differently.
+                    // Actually ThreadBmc doesn't exist? I used ThreadBmc::get_full_thread in previous attempt but check imports:
+                    // I imported `thread::ThreadBmc` but viewing `lib-core` didn't confirm it.
+                    // Wait, I saw `list_by_thread` in `MessageBmc`. 
+                    // Let's use `MessageBmc::list_by_thread`.
+                    
+                    let messages = MessageBmc::list_by_thread(&ctx, mm, project_id, thread_id_str).await
+                         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                    
+                    serde_json::to_string_pretty(&messages)
+                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
+                },
+                _ => return Err(McpError::invalid_params(format!("Unknown resource type: {}", resource_type), None)),
+            };
+
+            Ok(ReadResourceResult {
+                contents: vec![ResourceContents::TextResourceContents {
+                    uri: uri_str,
+                    mime_type: Some("application/json".to_string()),
+                    text: content,
+                    meta: None,
+                }],
+            })
+        }
+    }
 }
 
 // ============================================================================
@@ -393,9 +554,9 @@ pub struct RegisterAgentParams {
     pub project_slug: String,
     /// Agent's unique name within the project
     pub name: String,
-    /// Agent's program identifier (e.g., "claude-code")
+    /// Agent's program identifier (e.g., "claude-code", "antigravity")
     pub program: String,
-    /// Model being used (e.g., "claude-3-opus")
+    /// Model being used (e.g., "claude-3-opus", "gemini-2.0-pro")
     pub model: String,
     /// Description of the agent's task/responsibilities
     pub task_description: String,
@@ -854,6 +1015,11 @@ impl AgentMailService {
         let sender = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.sender_name).await
             .map_err(|e| McpError::invalid_params(format!("Sender not found: {}", e), None))?;
 
+        if !AgentCapabilityBmc::check(&ctx, &self.mm, sender.id, "send_message").await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))? {
+            return Err(McpError::invalid_params(format!("Agent '{}' does not have 'send_message' capability", p.sender_name), None));
+        }
+
         // Parse recipients
         let recipient_names: Vec<&str> = p.to.split(',').map(|s| s.trim()).collect();
         let mut recipient_ids = Vec::new();
@@ -868,6 +1034,8 @@ impl AgentMailService {
             project_id: project.id,
             sender_id: sender.id,
             recipient_ids,
+            cc_ids: None,
+            bcc_ids: None,
             subject: p.subject.clone(),
             body_md: p.body_md,
             thread_id: p.thread_id,
@@ -902,6 +1070,11 @@ impl AgentMailService {
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
             .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
+
+        if !AgentCapabilityBmc::check(&ctx, &self.mm, agent.id, "fetch_inbox").await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))? {
+            return Err(McpError::invalid_params(format!("Agent '{}' does not have 'fetch_inbox' capability", p.agent_name), None));
+        }
 
         let messages = MessageBmc::list_inbox_for_agent(&ctx, &self.mm, project.id, agent.id, p.limit.unwrap_or(50)).await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
@@ -1101,6 +1274,11 @@ impl AgentMailService {
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
             .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
 
+        if !AgentCapabilityBmc::check(&ctx, &self.mm, agent.id, "file_reservation_paths").await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))? {
+            return Err(McpError::invalid_params(format!("Agent '{}' does not have 'file_reservation_paths' capability", p.agent_name), None));
+        }
+
         let ttl = p.ttl_seconds.unwrap_or(3600);
         let expires_ts = chrono::Utc::now().naive_utc() + chrono::Duration::seconds(ttl);
 
@@ -1228,6 +1406,11 @@ impl AgentMailService {
         let sender = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.sender_name).await
             .map_err(|e| McpError::invalid_params(format!("Sender not found: {}", e), None))?;
 
+        if !AgentCapabilityBmc::check(&ctx, &self.mm, sender.id, "send_message").await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))? {
+            return Err(McpError::invalid_params(format!("Agent '{}' does not have 'send_message' capability", p.sender_name), None));
+        }
+
         let original_msg = MessageBmc::get(&ctx, &self.mm, p.message_id).await
             .map_err(|e| McpError::invalid_params(format!("Message not found: {}", e), None))?;
 
@@ -1241,6 +1424,8 @@ impl AgentMailService {
             project_id: project.id,
             sender_id: sender.id,
             recipient_ids: vec![original_msg.sender_id],
+            cc_ids: None,
+            bcc_ids: None,
             subject: subject.clone(),
             body_md: p.body_md,
             thread_id: original_msg.thread_id.clone(),
@@ -1298,6 +1483,11 @@ impl AgentMailService {
 
         let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name).await
             .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
+
+        if !AgentCapabilityBmc::check(&ctx, &self.mm, agent.id, "acknowledge_message").await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))? {
+            return Err(McpError::invalid_params(format!("Agent '{}' does not have 'acknowledge_message' capability", p.agent_name), None));
+        }
 
         MessageBmc::acknowledge(&ctx, &self.mm, p.message_id, agent.id).await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
@@ -2147,5 +2337,94 @@ impl AgentMailService {
                 Ok(CallToolResult::success(vec![Content::text(md)]))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lib_core::model::agent::{AgentForCreate, AgentBmc};
+    use lib_core::model::project::ProjectBmc;
+    use lib_core::model::agent_capabilities::{AgentCapabilityBmc, AgentCapabilityForCreate};
+    use tempfile::TempDir;
+    use std::sync::Arc;
+
+    async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
+        use libsql::Builder;
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test_middleware.db");
+        let archive_root = temp_dir.path().join("archive");
+        std::fs::create_dir_all(&archive_root).unwrap();
+
+        let db = Builder::new_local(&db_path).build().await.unwrap();
+        let conn = db.connect().unwrap();
+        let _ = conn.execute("PRAGMA journal_mode=WAL;", ()).await;
+        
+        let schema1 = include_str!("../../../../migrations/001_initial_schema.sql");
+        conn.execute_batch(schema1).await.unwrap();
+        let schema2 = include_str!("../../../../migrations/002_agent_capabilities.sql");
+        conn.execute_batch(schema2).await.unwrap();
+
+        let mm = ModelManager::new_for_test(conn, archive_root);
+        (Arc::new(mm), temp_dir)
+    }
+
+    #[tokio::test]
+    async fn test_middleware_enforcement() {
+        let (mm, _temp) = create_test_mm().await;
+        // Construct service
+        let service = AgentMailService::new_with_mm(mm.clone());
+        let ctx = Ctx::root_ctx();
+
+        // Create project/agent
+        let project_id = ProjectBmc::create(&ctx, &mm, "mw-test", "/mw/test").await.unwrap();
+        
+        let agent_c = AgentForCreate {
+            project_id,
+            name: "Sender".into(),
+            program: "test".into(),
+            model: "test".into(),
+            task_description: "Sender".into(),
+        };
+        let sender_id = AgentBmc::create(&ctx, &mm, agent_c).await.unwrap();
+
+        // 1. Try send_message WITHOUT capability
+        let params = SendMessageParams {
+            project_slug: "mw-test".into(),
+            sender_name: "Sender".into(),
+            to: "Sender".into(), // self-send
+            subject: "Test".into(),
+            body_md: "Body".into(),
+            importance: None,
+            thread_id: None,
+        };
+        
+        // We invoke the handler directly
+        let result = service.send_message(Parameters(params)).await;
+        assert!(result.is_err());
+        let err = result.err().unwrap();
+        // Check for specific permission denied message
+        assert!(err.message.contains("does not have 'send_message' capability"));
+
+        // 2. Grant capability
+        let cap_c = AgentCapabilityForCreate {
+            agent_id: sender_id,
+            capability: "send_message".into(),
+        };
+        AgentCapabilityBmc::create(&ctx, &mm, cap_c).await.unwrap();
+
+        // 3. Try again - should succeed
+        // Re-create params (consumed)
+        let params2 = SendMessageParams {
+            project_slug: "mw-test".into(),
+            sender_name: "Sender".into(),
+            to: "Sender".into(),
+            subject: "Test".into(),
+            body_md: "Body".into(),
+            importance: None,
+            thread_id: None,
+        };
+        let result = service.send_message(Parameters(params2)).await;
+        assert!(result.is_ok());
     }
 }

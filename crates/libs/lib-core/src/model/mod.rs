@@ -10,6 +10,7 @@ pub mod build_slot;
 pub mod overseer_message;
 pub mod macro_def;
 pub mod export;
+pub mod agent_capabilities;
 
 use crate::store::{self, Db};
 use crate::Result;

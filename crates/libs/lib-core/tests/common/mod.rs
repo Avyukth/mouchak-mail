@@ -76,6 +76,8 @@ async fn create_test_db(db_path: &std::path::Path) -> Result<lib_core::store::Db
     // Read schema from migrations directory (same path as store/mod.rs uses)
     let schema = include_str!("../../../../../migrations/001_initial_schema.sql");
     conn.execute_batch(schema).await?;
+    let schema002 = include_str!("../../../../../migrations/002_agent_capabilities.sql");
+    conn.execute_batch(schema002).await?;
     
     Ok(conn)
 }

@@ -2,6 +2,9 @@
 //!
 //! Tests for project creation, retrieval, and management.
 
+#[path = "common/mod.rs"]
+mod common;
+
 use crate::common::TestContext;
 use lib_core::model::project::ProjectBmc;
 use lib_core::utils::slugify;

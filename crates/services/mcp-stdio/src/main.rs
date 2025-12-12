@@ -1,7 +1,7 @@
-//! MCP Agent Mail - stdio server for Claude Desktop integration
+//! MCP Agent Mail - stdio server for Claude Desktop and Antigravity integration
 //!
-//! This binary exposes the Agent Mail API as MCP tools over stdio,
-//! allowing Claude Desktop to interact with the multi-agent messaging system.
+//! This binary implements the Model Context Protocol (MCP) server over stdio,
+//! allowing Claude Desktop and Antigravity to interact with the multi-agent messaging system.
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};

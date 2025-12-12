@@ -27,6 +27,8 @@ mod tools_tests {
         let _ = conn.execute("PRAGMA journal_mode=WAL;", ()).await;
         let schema = include_str!("../../../../migrations/001_initial_schema.sql");
         conn.execute_batch(schema).await.unwrap();
+        let schema002 = include_str!("../../../../migrations/002_agent_capabilities.sql");
+        conn.execute_batch(schema002).await.unwrap();
 
         let mm = ModelManager::new_for_test(conn, archive_root);
         (Arc::new(mm), temp_dir)
@@ -72,8 +74,8 @@ mod tools_tests {
         let agent_c = AgentForCreate {
             project_id,
             name: "TestAgent".to_string(),
-            program: "claude-code".to_string(),
-            model: "claude-3-opus".to_string(),
+            program: "antigravity".to_string(),
+            model: "gemini-2.0-pro".to_string(),
             task_description: "Integration test agent".to_string(),
         };
 
@@ -86,7 +88,7 @@ mod tools_tests {
         let agent = AgentBmc::get_by_name(&ctx, &mm, project_id, "TestAgent")
             .await
             .expect("Failed to find agent");
-        assert_eq!(agent.program, "claude-code");
+        assert_eq!(agent.program, "antigravity");
     }
 
     #[tokio::test]
@@ -390,8 +392,8 @@ mod tools_tests {
         let macros = MacroDefBmc::list(&ctx, &mm, project_id)
             .await
             .expect("Failed to list macros");
-        assert_eq!(macros.len(), 1);
-        assert_eq!(macros[0].name, "start_review");
+        assert_eq!(macros.len(), 6);
+        assert!(macros.iter().any(|m| m.name == "start_review"));
     }
 
     #[tokio::test]
@@ -497,6 +499,8 @@ mod tools_tests {
             project_id,
             sender_id,
             recipient_ids: vec![recipient_id],
+            cc_ids: None,
+            bcc_ids: None,
             subject: "Test Export Message".to_string(),
             body_md: "This message should appear in the export.".to_string(),
             thread_id: None,

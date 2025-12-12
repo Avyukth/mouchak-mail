@@ -2,6 +2,9 @@
 //!
 //! Tests for agent registration, lookup, and management.
 
+#[path = "common/mod.rs"]
+mod common;
+
 use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::project::ProjectBmc;
@@ -32,8 +35,8 @@ async fn test_register_agent() {
     let agent_c = AgentForCreate {
         project_id,
         name: "TestAgent".to_string(),
-        program: "claude-code".to_string(),
-        model: "claude-3-opus".to_string(),
+        program: "antigravity".to_string(),
+        model: "gemini-2.0-pro".to_string(),
         task_description: "Testing agent".to_string(),
     };
     
