@@ -108,6 +108,12 @@ pub struct SendMessagePayload {
     pub sender_name: String,
     #[serde(alias = "to_agent_names")]
     pub recipient_names: Vec<String>,
+    /// CC recipients (optional)
+    #[serde(default)]
+    pub cc_names: Option<Vec<String>>,
+    /// BCC recipients (optional)
+    #[serde(default)]
+    pub bcc_names: Option<Vec<String>>,
     pub subject: String,
     pub body_md: String,
     pub thread_id: Option<String>,
@@ -128,16 +134,43 @@ pub async fn send_message(State(app_state): State<AppState>, Json(payload): Json
     let project = lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug).await?;
     let sender = lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.sender_name).await?;
 
+    // Resolve "to" recipients
     let mut recipient_ids = Vec::new();
     for name in payload.recipient_names {
         let agent = lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name).await?;
         recipient_ids.push(agent.id);
     }
 
+    // Resolve "cc" recipients
+    let cc_ids = if let Some(cc_names) = payload.cc_names {
+        let mut ids = Vec::new();
+        for name in cc_names {
+            let agent = lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name).await?;
+            ids.push(agent.id);
+        }
+        Some(ids)
+    } else {
+        None
+    };
+
+    // Resolve "bcc" recipients
+    let bcc_ids = if let Some(bcc_names) = payload.bcc_names {
+        let mut ids = Vec::new();
+        for name in bcc_names {
+            let agent = lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name).await?;
+            ids.push(agent.id);
+        }
+        Some(ids)
+    } else {
+        None
+    };
+
     let msg_c = lib_core::model::message::MessageForCreate {
         project_id: project.id,
         sender_id: sender.id,
         recipient_ids,
+        cc_ids,
+        bcc_ids,
         subject: payload.subject,
         body_md: payload.body_md,
         thread_id: payload.thread_id,
@@ -758,6 +791,8 @@ pub async fn reply_message(
         project_id: project.id,
         sender_id: sender.id,
         recipient_ids,
+        cc_ids: None,
+        bcc_ids: None,
         subject,
         body_md: payload.body_md,
         thread_id,

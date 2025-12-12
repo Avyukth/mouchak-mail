@@ -27,7 +27,9 @@ pub struct Message {
 pub struct MessageForCreate {
     pub project_id: i64,
     pub sender_id: i64,
-    pub recipient_ids: Vec<i64>,
+    pub recipient_ids: Vec<i64>,     // "to" recipients
+    pub cc_ids: Option<Vec<i64>>,    // "cc" recipients
+    pub bcc_ids: Option<Vec<i64>>,   // "bcc" recipients
     pub subject: String,
     pub body_md: String,
     pub thread_id: Option<String>,
@@ -72,13 +74,36 @@ impl MessageBmc {
             return Err(crate::Error::InvalidInput("Failed to create message".into()));
         };
 
-        // 2. Insert Recipients
+        // 2. Insert Recipients with kind
+        // "to" recipients
         for recipient_id in &msg_c.recipient_ids {
              db.execute(
-                "INSERT INTO message_recipients (message_id, agent_id) VALUES (?, ?)",
+                "INSERT INTO message_recipients (message_id, agent_id, kind) VALUES (?, ?, 'to')",
                 (id, *recipient_id)
             )
             .await?;
+        }
+        
+        // "cc" recipients
+        if let Some(cc_ids) = &msg_c.cc_ids {
+            for recipient_id in cc_ids {
+                db.execute(
+                    "INSERT INTO message_recipients (message_id, agent_id, kind) VALUES (?, ?, 'cc')",
+                    (id, *recipient_id)
+                )
+                .await?;
+            }
+        }
+        
+        // "bcc" recipients
+        if let Some(bcc_ids) = &msg_c.bcc_ids {
+            for recipient_id in bcc_ids {
+                db.execute(
+                    "INSERT INTO message_recipients (message_id, agent_id, kind) VALUES (?, ?, 'bcc')",
+                    (id, *recipient_id)
+                )
+                .await?;
+            }
         }
 
         // 3. Git Operations
