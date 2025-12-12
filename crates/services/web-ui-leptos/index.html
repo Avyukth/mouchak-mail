@@ -1,13 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="MCP Agent Mail - Gmail for coding agents" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MCP Agent Mail - Agent-to-Agent Communication System">
+    <meta name="theme-color" content="#D97706">
     <title>MCP Agent Mail</title>
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Trunk processed assets -->
     <link data-trunk rel="css" href="style/output.css" />
+
+    <!-- Lucide Icons CSS -->
+    <link data-trunk rel="css" href="style/lucide.css" />
+
+    <link data-trunk rel="rust" data-bin="web-ui-leptos" data-wasm-opt="z" />
+
+    <!-- Lucide Icons Script -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body>
-    <link data-trunk rel="rust" data-wasm-opt="z" />
+
+<body class="antialiased">
+    <!-- App mounts here -->
+    <script>
+        // Initialize Lucide icons function
+        function initLucideIcons() {
+            if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+                lucide.createIcons();
+            }
+        }
+
+        // Debounce to avoid excessive calls
+        let debounceTimer = null;
+        function debouncedInit() {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(initLucideIcons, 50);
+        }
+
+        // Initialize after DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initial call
+            initLucideIcons();
+
+            // Watch for dynamic DOM changes (Leptos/WASM updates)
+            const observer = new MutationObserver(debouncedInit);
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        });
+
+        // Also try on window load as fallback
+        window.addEventListener('load', initLucideIcons);
+    </script>
 </body>
+
 </html>

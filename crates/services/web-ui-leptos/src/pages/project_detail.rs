@@ -1,4 +1,5 @@
 //! Project detail page - view project info and manage agents.
+//! Digital Correspondence design with Lucide icons.
 
 use leptos::prelude::*;
 use leptos_router::hooks::use_params_map;
@@ -54,7 +55,7 @@ pub fn ProjectDetail() -> impl IntoView {
     // Create agent handler
     let create_agent = {
         let slug = slug.clone();
-        let load_agents = load_agents.clone();
+        let _load_agents = load_agents.clone();
         move |_| {
             let name = new_name.get();
             if name.trim().is_empty() {
@@ -102,23 +103,29 @@ pub fn ProjectDetail() -> impl IntoView {
     view! {
         <div class="space-y-6">
             // Breadcrumb
-            <nav class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <a href="/projects" class="hover:text-primary-600 dark:hover:text-primary-400">"Projects"</a>
-                <span>"/"</span>
-                <span class="text-gray-900 dark:text-white font-medium">{slug}</span>
+            <nav class="flex items-center gap-2 text-sm text-charcoal-500 dark:text-charcoal-400">
+                <a href="/projects" class="flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                    <i data-lucide="folder-open" class="icon-sm"></i>
+                    "Projects"
+                </a>
+                <i data-lucide="chevron-right" class="icon-xs text-charcoal-400"></i>
+                <span class="text-charcoal-800 dark:text-cream-100 font-medium">{slug}</span>
             </nav>
 
             // Header
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{slug}</h1>
-                    <p class="text-gray-600 dark:text-gray-400">"Agents in this project"</p>
+                    <h1 class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100 flex items-center gap-2">
+                        <i data-lucide="folder" class="icon-xl text-amber-500"></i>
+                        {slug}
+                    </h1>
+                    <p class="text-charcoal-500 dark:text-charcoal-400">"Agents in this project"</p>
                 </div>
                 <button
                     on:click=move |_| show_new_form.update(|v| *v = !*v)
-                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                    class="btn-primary flex items-center gap-2"
                 >
-                    <span class="text-lg">"+"</span>
+                    <i data-lucide="user-plus" class="icon-sm"></i>
                     <span>"Register Agent"</span>
                 </button>
             </div>
@@ -127,12 +134,15 @@ pub fn ProjectDetail() -> impl IntoView {
             {move || {
                 if show_new_form.get() {
                     Some(view! {
-                        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-                            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">"Register New Agent"</h2>
+                        <div class="card-elevated p-6 animate-slide-up">
+                            <h2 class="font-display text-lg font-semibold text-charcoal-800 dark:text-cream-100 mb-4 flex items-center gap-2">
+                                <i data-lucide="bot" class="icon-lg text-violet-500"></i>
+                                "Register New Agent"
+                            </h2>
                             <form on:submit=move |ev| { ev.prevent_default(); create_agent(()); } class="space-y-4">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label for="agentName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        <label for="agentName" class="block text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
                                             "Agent Name *"
                                         </label>
                                         <input
@@ -141,11 +151,11 @@ pub fn ProjectDetail() -> impl IntoView {
                                             prop:value=move || new_name.get()
                                             on:input=move |ev| new_name.set(event_target_value(&ev))
                                             placeholder="BlueStone"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            class="input"
                                         />
                                     </div>
                                     <div>
-                                        <label for="agentProgram" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        <label for="agentProgram" class="block text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
                                             "Program"
                                         </label>
                                         <input
@@ -154,11 +164,11 @@ pub fn ProjectDetail() -> impl IntoView {
                                             prop:value=move || new_program.get()
                                             on:input=move |ev| new_program.set(event_target_value(&ev))
                                             placeholder="claude-code"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            class="input"
                                         />
                                     </div>
                                     <div>
-                                        <label for="agentModel" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        <label for="agentModel" class="block text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
                                             "Model"
                                         </label>
                                         <input
@@ -167,11 +177,11 @@ pub fn ProjectDetail() -> impl IntoView {
                                             prop:value=move || new_model.get()
                                             on:input=move |ev| new_model.set(event_target_value(&ev))
                                             placeholder="claude-3-opus"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            class="input"
                                         />
                                     </div>
                                     <div>
-                                        <label for="agentTask" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        <label for="agentTask" class="block text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
                                             "Task Description"
                                         </label>
                                         <input
@@ -180,7 +190,7 @@ pub fn ProjectDetail() -> impl IntoView {
                                             prop:value=move || new_task.get()
                                             on:input=move |ev| new_task.set(event_target_value(&ev))
                                             placeholder="Research and implement features"
-                                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            class="input"
                                         />
                                     </div>
                                 </div>
@@ -188,8 +198,13 @@ pub fn ProjectDetail() -> impl IntoView {
                                     <button
                                         type="submit"
                                         disabled=move || creating.get() || new_name.get().trim().is_empty()
-                                        class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        class="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
+                                        {move || if creating.get() {
+                                            view! { <i data-lucide="loader-2" class="icon-sm animate-spin"></i> }
+                                        } else {
+                                            view! { <i data-lucide="plus" class="icon-sm"></i> }
+                                        }}
                                         {move || if creating.get() { "Registering..." } else { "Register Agent" }}
                                     </button>
                                     <button
@@ -201,7 +216,7 @@ pub fn ProjectDetail() -> impl IntoView {
                                             new_model.set(String::new());
                                             new_task.set(String::new());
                                         }
-                                        class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                        class="btn-secondary"
                                     >
                                         "Cancel"
                                     </button>
@@ -217,8 +232,11 @@ pub fn ProjectDetail() -> impl IntoView {
             // Error Message
             {move || {
                 error.get().map(|e| view! {
-                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                        <p class="text-red-700 dark:text-red-400">{e}</p>
+                    <div class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 animate-slide-up">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="triangle-alert" class="icon-lg text-red-500"></i>
+                            <p class="text-red-700 dark:text-red-400">{e}</p>
+                        </div>
                     </div>
                 })
             }}
@@ -227,24 +245,30 @@ pub fn ProjectDetail() -> impl IntoView {
             {move || {
                 if loading.get() {
                     view! {
-                        <div class="flex items-center justify-center py-12">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <div class="flex items-center justify-center py-16">
+                            <div class="flex flex-col items-center gap-4">
+                                <i data-lucide="loader-2" class="icon-2xl text-amber-500 animate-spin"></i>
+                                <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">"Loading agents..."</p>
+                            </div>
                         </div>
                     }.into_any()
                 } else {
                     let agent_list = agents.get();
                     if agent_list.is_empty() {
                         view! {
-                            <div class="bg-white dark:bg-gray-800 rounded-xl p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-                                <div class="text-4xl mb-4">"🤖"</div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">"No agents yet"</h3>
-                                <p class="text-gray-600 dark:text-gray-400 mb-4">
+                            <div class="card-elevated p-12 text-center">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-900/50 mb-6">
+                                    <i data-lucide="bot" class="icon-2xl text-violet-600 dark:text-violet-400"></i>
+                                </div>
+                                <h3 class="font-display text-xl font-semibold text-charcoal-800 dark:text-cream-100 mb-2">"No agents yet"</h3>
+                                <p class="text-charcoal-500 dark:text-charcoal-400 mb-6">
                                     "Register your first agent to start sending and receiving messages."
                                 </p>
                                 <button
                                     on:click=move |_| show_new_form.set(true)
-                                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                                    class="btn-primary inline-flex items-center gap-2"
                                 >
+                                    <i data-lucide="user-plus" class="icon-sm"></i>
                                     "Register Agent"
                                 </button>
                             </div>
@@ -262,42 +286,47 @@ pub fn ProjectDetail() -> impl IntoView {
                                     let inbox_href = format!("/inbox?project={}&agent={}", project_slug, name);
                                     
                                     view! {
-                                        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                                        <div class="card-elevated p-6 group hover:border-violet-300 dark:hover:border-violet-700 transition-all">
                                             <div class="flex items-start justify-between mb-4">
                                                 <div class="flex items-center gap-3">
-                                                    <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                                                        <span class="text-lg">"🤖"</span>
+                                                    <div class="w-10 h-10 bg-violet-100 dark:bg-violet-900/50 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                                                        <i data-lucide="bot" class="icon-lg text-violet-600 dark:text-violet-400"></i>
                                                     </div>
                                                     <div>
-                                                        <h3 class="font-semibold text-gray-900 dark:text-white">{name.clone()}</h3>
-                                                        <p class="text-sm text-gray-500 dark:text-gray-400">{program}</p>
+                                                        <h3 class="font-display font-semibold text-charcoal-800 dark:text-cream-100">{name.clone()}</h3>
+                                                        <p class="text-sm text-charcoal-500 dark:text-charcoal-400">{program}</p>
                                                     </div>
                                                 </div>
                                             </div>
                                             
                                             <div class="space-y-2 text-sm">
                                                 <div class="flex justify-between">
-                                                    <span class="text-gray-500 dark:text-gray-400">"Model"</span>
-                                                    <span class="text-gray-900 dark:text-white font-mono">{model}</span>
+                                                    <span class="text-charcoal-500 dark:text-charcoal-400">"Model"</span>
+                                                    <span class="text-charcoal-800 dark:text-cream-100 font-mono text-xs">{model}</span>
                                                 </div>
                                                 {task.map(|t| view! {
                                                     <div>
-                                                        <span class="text-gray-500 dark:text-gray-400">"Task"</span>
-                                                        <p class="text-gray-700 dark:text-gray-300 mt-1 line-clamp-2">{t}</p>
+                                                        <span class="text-charcoal-500 dark:text-charcoal-400">"Task"</span>
+                                                        <p class="text-charcoal-700 dark:text-charcoal-300 mt-1 line-clamp-2">{t}</p>
                                                     </div>
                                                 })}
-                                                <div class="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
-                                                    <span class="text-gray-500 dark:text-gray-400">"Last Active"</span>
-                                                    <span class="text-gray-600 dark:text-gray-400">{format_date(&last_active)}</span>
+                                                <div class="flex justify-between pt-2 border-t border-cream-200 dark:border-charcoal-700">
+                                                    <span class="text-charcoal-500 dark:text-charcoal-400 flex items-center gap-1">
+                                                        <i data-lucide="clock" class="icon-xs"></i>
+                                                        "Last Active"
+                                                    </span>
+                                                    <span class="text-charcoal-600 dark:text-charcoal-400 font-mono text-xs">{format_date(&last_active)}</span>
                                                 </div>
                                             </div>
 
-                                            <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                            <div class="mt-4 pt-4 border-t border-cream-200 dark:border-charcoal-700">
                                                 <a
                                                     href=inbox_href
-                                                    class="text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 text-sm font-medium"
+                                                    class="flex items-center gap-2 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 text-sm font-medium group/link"
                                                 >
-                                                    "View Inbox →"
+                                                    <i data-lucide="inbox" class="icon-sm"></i>
+                                                    "View Inbox"
+                                                    <i data-lucide="arrow-right" class="icon-xs group-hover/link:translate-x-1 transition-transform"></i>
                                                 </a>
                                             </div>
                                         </div>

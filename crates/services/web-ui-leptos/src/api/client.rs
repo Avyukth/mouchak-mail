@@ -37,8 +37,9 @@ pub struct HealthResponse {
 /// Project response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
-    pub id: Option<String>,
+    pub id: i64,
     pub slug: String,
+    #[serde(default)]
     pub name: Option<String>,
     pub human_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -48,31 +49,45 @@ pub struct Project {
 /// Agent response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Agent {
-    pub id: Option<String>,
+    pub id: i64,
     pub name: String,
-    pub project_id: Option<String>,
+    #[serde(default)]
+    pub project_id: Option<i64>,
+    #[serde(default)]
     pub project_slug: Option<String>,
     pub program: Option<String>,
     pub model: Option<String>,
     pub task_description: Option<String>,
+    pub inception_ts: Option<String>,
     pub last_active_ts: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
 }
 
-/// Message response.
+/// Inbox message response (from POST /api/inbox).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InboxMessage {
+    pub id: i64,
+    pub subject: String,
+    pub sender_name: String,
+    pub created_ts: String,
+}
+
+/// Full message response (from GET /api/messages/:id).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
-    pub id: String,
+    pub id: i64,
+    pub project_id: i64,
+    pub sender_id: i64,
+    pub sender_name: String,
     pub thread_id: Option<String>,
-    pub sender: String,
-    pub recipient: String,
-    pub subject: Option<String>,
-    pub body: String,
-    pub importance: Option<String>,
-    pub ack_required: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
+    pub subject: String,
+    pub body_md: String,
+    pub importance: String,
+    pub ack_required: bool,
+    pub created_ts: String,
+    #[serde(default)]
+    pub attachments: Vec<serde_json::Value>,
 }
 
 /// Check API health.
@@ -222,23 +237,20 @@ pub async fn get_all_agents() -> Result<Vec<Agent>, ApiError> {
     }
 }
 
-/// Get messages (inbox).
-pub async fn get_messages(project_slug: Option<&str>, agent: Option<&str>) -> Result<Vec<Message>, ApiError> {
-    let mut url = format!("{}/api/messages", API_BASE_URL);
-    let mut params = Vec::new();
+/// Get inbox messages for a specific project and agent.
+pub async fn get_inbox(project_slug: &str, agent_name: &str) -> Result<Vec<InboxMessage>, ApiError> {
+    let url = format!("{}/api/inbox", API_BASE_URL);
     
-    if let Some(p) = project_slug {
-        params.push(format!("project={}", p));
-    }
-    if let Some(a) = agent {
-        params.push(format!("agent={}", a));
-    }
+    let payload = serde_json::json!({
+        "project_slug": project_slug,
+        "agent_name": agent_name,
+        "limit": 50
+    });
     
-    if !params.is_empty() {
-        url = format!("{}?{}", url, params.join("&"));
-    }
-    
-    let response = Request::get(&url)
+    let response = Request::post(&url)
+        .header("Content-Type", "application/json")
+        .body(payload.to_string())
+        .map_err(|e| ApiError { message: e.to_string() })?
         .send()
         .await?;
     
@@ -246,14 +258,9 @@ pub async fn get_messages(project_slug: Option<&str>, agent: Option<&str>) -> Re
         Ok(response.json().await?)
     } else {
         Err(ApiError {
-            message: format!("Failed to get messages: {}", response.status()),
+            message: format!("Failed to get inbox: {}", response.status()),
         })
     }
-}
-
-/// Get inbox messages for a specific project and agent.
-pub async fn get_inbox(project_slug: &str, agent: &str) -> Result<Vec<Message>, ApiError> {
-    get_messages(Some(project_slug), Some(agent)).await
 }
 
 /// Get a single message by ID.

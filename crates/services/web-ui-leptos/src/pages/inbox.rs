@@ -1,8 +1,9 @@
 //! Inbox page - view messages with cascading project/agent selects.
+//! Digital Correspondence design - envelope-style message cards.
 
 use leptos::prelude::*;
 use leptos_router::hooks::use_query_map;
-use crate::api::client::{self, Project, Agent, Message};
+use crate::api::client::{self, Project, Agent, InboxMessage};
 
 /// Inbox page component.
 #[component]
@@ -12,7 +13,7 @@ pub fn Inbox() -> impl IntoView {
     // State
     let projects = RwSignal::new(Vec::<Project>::new());
     let agents = RwSignal::new(Vec::<Agent>::new());
-    let messages = RwSignal::new(Vec::<Message>::new());
+    let messages = RwSignal::new(Vec::<InboxMessage>::new());
     let loading = RwSignal::new(true);
     let loading_messages = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
@@ -133,21 +134,22 @@ pub fn Inbox() -> impl IntoView {
 
     view! {
         <div class="space-y-6">
-            // Header
-            <div class="flex items-center justify-between">
+            // Header with gradient accent
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">"Inbox"</h1>
-                    <p class="text-gray-600 dark:text-gray-400">"View messages for your agents"</p>
+                    <h1 class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100 flex items-center gap-2">
+                        <i data-lucide="inbox" class="icon-xl text-amber-500"></i>
+                        "Inbox"
+                    </h1>
+                    <p class="text-charcoal-500 dark:text-charcoal-400">"View messages for your agents"</p>
                 </div>
                 {move || {
                     let project = selected_project.get();
                     let agent = selected_agent.get();
                     if !project.is_empty() && !agent.is_empty() {
                         Some(view! {
-                            <button
-                                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-                            >
-                                <span class="text-lg">"✉️"</span>
+                            <button class="btn-primary flex items-center gap-2">
+                                <i data-lucide="square-pen" class="icon-sm"></i>
                                 <span>"Compose"</span>
                             </button>
                         })
@@ -157,18 +159,19 @@ pub fn Inbox() -> impl IntoView {
                 }}
             </div>
 
-            // Filters
-            <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+            // Filters Card
+            <div class="card-elevated p-5">
                 <div class="flex flex-col md:flex-row gap-4">
                     // Project Selector
                     <div class="flex-1">
-                        <label for="projectSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label for="projectSelect" class="flex items-center gap-2 text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
+                            <i data-lucide="folder" class="icon-sm text-charcoal-400"></i>
                             "Project"
                         </label>
                         <select
                             id="projectSelect"
                             on:change=on_project_change
-                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            class="input"
                         >
                             <option value="">"Select a project..."</option>
                             {move || {
@@ -186,14 +189,15 @@ pub fn Inbox() -> impl IntoView {
 
                     // Agent Selector
                     <div class="flex-1">
-                        <label for="agentSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label for="agentSelect" class="flex items-center gap-2 text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
+                            <i data-lucide="bot" class="icon-sm text-charcoal-400"></i>
                             "Agent"
                         </label>
                         <select
                             id="agentSelect"
                             on:change=on_agent_change
                             disabled=move || selected_project.get().is_empty() || agents.get().is_empty()
-                            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="input disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <option value="">"Select an agent..."</option>
                             {move || {
@@ -219,9 +223,14 @@ pub fn Inbox() -> impl IntoView {
                                     <button
                                         on:click=refresh
                                         disabled=move || loading_messages.get()
-                                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                                        class="btn-secondary flex items-center gap-2 disabled:opacity-50"
                                     >
-                                        "🔄 Refresh"
+                                        {move || if loading_messages.get() {
+                                            view! { <i data-lucide="loader-2" class="icon-sm animate-spin"></i> }
+                                        } else {
+                                            view! { <i data-lucide="refresh-cw" class="icon-sm"></i> }
+                                        }}
+                                        <span>"Refresh"</span>
                                     </button>
                                 </div>
                             })
@@ -235,8 +244,11 @@ pub fn Inbox() -> impl IntoView {
             // Error Message
             {move || {
                 error.get().map(|e| view! {
-                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                        <p class="text-red-700 dark:text-red-400">{e}</p>
+                    <div class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 animate-slide-up">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="triangle-alert" class="icon-lg text-red-500"></i>
+                            <p class="text-red-700 dark:text-red-400">{e}</p>
+                        </div>
                     </div>
                 })
             }}
@@ -245,25 +257,33 @@ pub fn Inbox() -> impl IntoView {
             {move || {
                 if loading.get() {
                     view! {
-                        <div class="flex items-center justify-center py-12">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <div class="flex items-center justify-center py-16">
+                            <div class="flex flex-col items-center gap-4">
+                                <i data-lucide="loader-2" class="icon-2xl text-amber-500 animate-spin"></i>
+                                <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">"Loading..."</p>
+                            </div>
                         </div>
                     }.into_any()
                 } else if selected_project.get().is_empty() || selected_agent.get().is_empty() {
                     // Selection Prompt
                     view! {
-                        <div class="bg-white dark:bg-gray-800 rounded-xl p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div class="text-4xl mb-4">"📬"</div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">"Select an Agent"</h3>
-                            <p class="text-gray-600 dark:text-gray-400">
-                                "Choose a project and agent to view their inbox."
+                        <div class="card-elevated p-12 text-center">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/50 mb-6">
+                                <i data-lucide="inbox" class="icon-2xl text-amber-600 dark:text-amber-400"></i>
+                            </div>
+                            <h3 class="font-display text-xl font-semibold text-charcoal-800 dark:text-cream-100 mb-2">"Select an Agent"</h3>
+                            <p class="text-charcoal-500 dark:text-charcoal-400 max-w-sm mx-auto">
+                                "Choose a project and agent from the dropdowns above to view their inbox."
                             </p>
                         </div>
                     }.into_any()
                 } else if loading_messages.get() {
                     view! {
-                        <div class="flex items-center justify-center py-12">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <div class="flex items-center justify-center py-16">
+                            <div class="flex flex-col items-center gap-4">
+                                <i data-lucide="loader-2" class="icon-2xl text-amber-500 animate-spin"></i>
+                                <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">"Fetching messages..."</p>
+                            </div>
                         </div>
                     }.into_any()
                 } else {
@@ -272,15 +292,16 @@ pub fn Inbox() -> impl IntoView {
                         // Empty Inbox
                         let agent = selected_agent.get();
                         view! {
-                            <div class="bg-white dark:bg-gray-800 rounded-xl p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-                                <div class="text-4xl mb-4">"📭"</div>
-                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">"Inbox is empty"</h3>
-                                <p class="text-gray-600 dark:text-gray-400 mb-4">
-                                    "No messages for " {agent} " yet."
+                            <div class="card-elevated p-12 text-center">
+                                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-cream-200 dark:bg-charcoal-700 mb-6">
+                                    <i data-lucide="mail-open" class="icon-2xl text-charcoal-400"></i>
+                                </div>
+                                <h3 class="font-display text-xl font-semibold text-charcoal-800 dark:text-cream-100 mb-2">"Inbox is empty"</h3>
+                                <p class="text-charcoal-500 dark:text-charcoal-400 mb-6">
+                                    "No messages for " <span class="font-medium text-charcoal-700 dark:text-cream-200">{agent}</span> " yet."
                                 </p>
-                                <button
-                                    class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-                                >
+                                <button class="btn-primary flex items-center gap-2 mx-auto">
+                                    <i data-lucide="send" class="icon-sm"></i>
                                     "Send a Message"
                                 </button>
                             </div>
@@ -291,69 +312,59 @@ pub fn Inbox() -> impl IntoView {
                         let agent = selected_agent.get();
                         let msg_count = msg_list.len();
                         view! {
-                            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                                    <span class="text-sm text-gray-600 dark:text-gray-400">
-                                        {msg_count} " message" {if msg_count == 1 { "" } else { "s" }}
-                                    </span>
+                            <div class="card-elevated overflow-hidden">
+                                // Header
+                                <div class="px-6 py-4 border-b border-cream-200 dark:border-charcoal-700 bg-cream-50/50 dark:bg-charcoal-800/50">
+                                    <div class="flex items-center justify-between">
+                                        <span class="flex items-center gap-2 text-sm font-medium text-charcoal-600 dark:text-charcoal-400">
+                                            <i data-lucide="mails" class="icon-sm"></i>
+                                            {msg_count} " message" {if msg_count == 1 { "" } else { "s" }}
+                                        </span>
+                                        <span class="badge badge-teal flex items-center gap-1.5">
+                                            <i data-lucide="bot" class="icon-xs"></i>
+                                            {agent.clone()}
+                                        </span>
+                                    </div>
                                 </div>
-                                <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                                
+                                // Message List
+                                <ul class="divide-y divide-cream-200 dark:divide-charcoal-700">
                                     {msg_list.into_iter().map(|msg| {
-                                        let id = msg.id.clone();
+                                        let id = msg.id;
                                         let href = format!("/inbox/{}?project={}&agent={}", id, project, agent);
-                                        let subject = msg.subject.clone().unwrap_or_else(|| "(No subject)".to_string());
-                                        let body = msg.body.clone();
-                                        let body_preview = truncate_body(&body, 100);
-                                        let created = msg.created_at.clone().unwrap_or_default();
-                                        let importance = msg.importance.clone();
-                                        let ack_required = msg.ack_required.unwrap_or(false);
-                                        let has_thread = msg.thread_id.is_some();
+                                        let subject = msg.subject.clone();
+                                        let sender = msg.sender_name.clone();
+                                        let created = msg.created_ts.clone();
                                         
                                         view! {
-                                            <li>
+                                            <li class="group">
                                                 <a
                                                     href=href
-                                                    class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                                                    class="flex items-start gap-4 px-6 py-4 hover:bg-cream-50 dark:hover:bg-charcoal-800/50 transition-colors"
                                                 >
-                                                    <div class="flex items-start justify-between gap-4">
-                                                        <div class="flex-1 min-w-0">
-                                                            <div class="flex items-center gap-2 mb-1">
-                                                                <h4 class="font-medium text-gray-900 dark:text-white truncate">
-                                                                    {subject}
-                                                                </h4>
-                                                                {importance.as_ref().filter(|i| *i != "normal").map(|i| {
-                                                                    let badge_class = get_importance_badge(i);
-                                                                    view! {
-                                                                        <span class={format!("px-2 py-0.5 text-xs rounded-full {}", badge_class)}>
-                                                                            {i.clone()}
-                                                                        </span>
-                                                                    }
-                                                                })}
-                                                                {if ack_required {
-                                                                    Some(view! {
-                                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
-                                                                            "ACK"
-                                                                        </span>
-                                                                    })
-                                                                } else {
-                                                                    None
-                                                                }}
-                                                                {if has_thread {
-                                                                    Some(view! {
-                                                                        <span class="text-xs text-gray-400" title="Part of a thread">"🧵"</span>
-                                                                    })
-                                                                } else {
-                                                                    None
-                                                                }}
-                                                            </div>
-                                                            <p class="text-sm text-gray-600 dark:text-gray-400 truncate">
-                                                                {body_preview}
-                                                            </p>
-                                                        </div>
-                                                        <div class="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                            {format_date(&created)}
-                                                        </div>
+                                                    // Envelope icon
+                                                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                                        <i data-lucide="mail" class="icon-lg text-amber-600 dark:text-amber-400"></i>
                                                     </div>
+                                                    
+                                                    // Content
+                                                    <div class="flex-1 min-w-0">
+                                                        <div class="flex items-baseline justify-between gap-4 mb-1">
+                                                            <h4 class="font-medium text-charcoal-800 dark:text-cream-100 truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                                                {subject}
+                                                            </h4>
+                                                            <span class="flex-shrink-0 text-xs font-mono text-charcoal-400 dark:text-charcoal-500">
+                                                                {format_date(&created)}
+                                                            </span>
+                                                        </div>
+                                                        <p class="text-sm text-charcoal-500 dark:text-charcoal-400 flex items-center gap-1.5">
+                                                            <i data-lucide="user" class="icon-xs"></i>
+                                                            <span>{sender}</span>
+                                                        </p>
+                                                    </div>
+                                                    
+                                                    // Arrow
+                                                    <i data-lucide="chevron-right" class="icon-sm flex-shrink-0 text-charcoal-300 dark:text-charcoal-600 group-hover:text-amber-500 group-hover:translate-x-1 transition-all"></i>
                                                 </a>
                                             </li>
                                         }
@@ -368,26 +379,10 @@ pub fn Inbox() -> impl IntoView {
     }
 }
 
-fn truncate_body(body: &str, max_len: usize) -> String {
-    if body.len() <= max_len {
-        body.to_string()
-    } else {
-        format!("{}...", &body[..max_len])
-    }
-}
-
 fn format_date(date_str: &str) -> String {
     if date_str.is_empty() {
         return "—".to_string();
     }
-    // Simple: just return the date part
+    // Return just the date part for cleaner display
     date_str.split('T').next().unwrap_or(date_str).to_string()
-}
-
-fn get_importance_badge(importance: &str) -> &'static str {
-    match importance {
-        "high" => "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300",
-        "low" => "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
-        _ => "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
-    }
 }

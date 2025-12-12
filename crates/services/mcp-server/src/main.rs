@@ -4,6 +4,7 @@ use lib_core::ModelManager;
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use std::net::SocketAddr;
 use std::time::Instant;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -73,6 +74,11 @@ async fn main() -> std::result::Result<(), ServerError> {
     };
 
     // Build our application with routes
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let app = Router::new()
         .merge(api::routes())
         .route("/", get(root_handler))
@@ -80,6 +86,7 @@ async fn main() -> std::result::Result<(), ServerError> {
         .route("/health", get(health_handler))
         .route("/ready", get(ready_handler))
         .route("/metrics", get(metrics_handler))
+        .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(app_state);
 

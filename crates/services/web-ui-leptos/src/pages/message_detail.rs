@@ -1,4 +1,5 @@
 //! Message detail page - view a single message with reply functionality.
+//! Digital Correspondence design with Lucide icons.
 
 use leptos::prelude::*;
 use leptos_router::hooks::{use_params_map, use_query_map};
@@ -66,15 +67,18 @@ pub fn MessageDetail() -> impl IntoView {
     view! {
         <div class="space-y-6">
             // Breadcrumb / Back
-            <nav class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                <a href=back_url.clone() class="hover:text-primary-600 dark:hover:text-primary-400 flex items-center gap-1">
-                    <span>"←"</span>
+            <nav class="flex items-center gap-2 text-sm text-charcoal-500 dark:text-charcoal-400">
+                <a href=back_url.clone() class="flex items-center gap-1.5 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                    <i data-lucide="arrow-left" class="icon-sm"></i>
                     <span>"Back to Inbox"</span>
                 </a>
                 {if !agent_name.is_empty() {
                     Some(view! {
-                        <span>"/"</span>
-                        <span class="text-gray-900 dark:text-white font-medium">{agent_name.clone()}</span>
+                        <i data-lucide="chevron-right" class="icon-xs text-charcoal-400"></i>
+                        <span class="badge badge-teal flex items-center gap-1">
+                            <i data-lucide="bot" class="icon-xs"></i>
+                            {agent_name.clone()}
+                        </span>
                     })
                 } else {
                     None
@@ -84,8 +88,11 @@ pub fn MessageDetail() -> impl IntoView {
             // Error Message
             {move || {
                 error.get().map(|e| view! {
-                    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                        <p class="text-red-700 dark:text-red-400">{e}</p>
+                    <div class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 animate-slide-up">
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="triangle-alert" class="icon-lg text-red-500"></i>
+                            <p class="text-red-700 dark:text-red-400">{e}</p>
+                        </div>
                     </div>
                 })
             }}
@@ -94,43 +101,50 @@ pub fn MessageDetail() -> impl IntoView {
             {move || {
                 if loading.get() {
                     view! {
-                        <div class="flex items-center justify-center py-12">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <div class="flex items-center justify-center py-16">
+                            <div class="flex flex-col items-center gap-4">
+                                <i data-lucide="loader-2" class="icon-2xl text-amber-500 animate-spin"></i>
+                                <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">"Loading message..."</p>
+                            </div>
                         </div>
                     }.into_any()
                 } else if let Some(msg) = message.get() {
-                    let subject = msg.subject.clone().unwrap_or_else(|| "(No subject)".to_string());
-                    let body = msg.body.clone();
-                    let created = msg.created_at.clone().unwrap_or_default();
+                    let subject = msg.subject.clone();
+                    let body = msg.body_md.clone();
+                    let created = msg.created_ts.clone();
                     let importance = msg.importance.clone();
-                    let ack_required = msg.ack_required.unwrap_or(false);
+                    let ack_required = msg.ack_required;
                     let thread_id = msg.thread_id.clone();
-                    let msg_id = msg.id.clone();
-                    let sender = msg.sender.clone();
-                    let recipient = msg.recipient.clone();
+                    let msg_id = msg.id;
+                    let sender = msg.sender_name.clone();
                     let can_reply = !agents.get().is_empty();
 
                     view! {
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="card-elevated overflow-hidden">
                             // Message Header
-                            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="p-6 border-b border-cream-200 dark:border-charcoal-700">
                                 <div class="flex items-start justify-between gap-4">
                                     <div class="flex-1">
-                                        <h1 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                                        <h1 class="font-display text-xl font-bold text-charcoal-800 dark:text-cream-100 mb-3 flex items-center gap-2">
+                                            <i data-lucide="mail" class="icon-lg text-amber-500"></i>
                                             {subject.clone()}
                                         </h1>
                                         <div class="flex flex-wrap items-center gap-2 text-sm">
-                                            {importance.as_ref().filter(|i| *i != "normal").map(|i| {
-                                                let badge_class = get_importance_badge(i);
-                                                view! {
-                                                    <span class={format!("px-2 py-0.5 rounded-full {}", badge_class)}>
-                                                        {i.clone()} " priority"
+                                            {if importance != "normal" {
+                                                let badge_class = get_importance_badge(&importance);
+                                                Some(view! {
+                                                    <span class={format!("badge {}", badge_class)}>
+                                                        <i data-lucide={if importance == "high" { "alert-circle" } else { "minus-circle" }} class="icon-xs"></i>
+                                                        {importance.clone()} " priority"
                                                     </span>
-                                                }
-                                            })}
+                                                })
+                                            } else {
+                                                None
+                                            }}
                                             {if ack_required {
                                                 Some(view! {
-                                                    <span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+                                                    <span class="badge badge-amber flex items-center gap-1">
+                                                        <i data-lucide="check-circle" class="icon-xs"></i>
                                                         "Acknowledgment required"
                                                     </span>
                                                 })
@@ -138,7 +152,8 @@ pub fn MessageDetail() -> impl IntoView {
                                                 None
                                             }}
                                             {thread_id.as_ref().map(|tid| view! {
-                                                <span class="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
+                                                <span class="badge badge-violet flex items-center gap-1">
+                                                    <i data-lucide="git-branch" class="icon-xs"></i>
                                                     "Thread: " {tid.clone()}
                                                 </span>
                                             })}
@@ -148,9 +163,9 @@ pub fn MessageDetail() -> impl IntoView {
                                         Some(view! {
                                             <button
                                                 on:click=move |_| show_reply.set(true)
-                                                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                                                class="btn-primary flex items-center gap-2"
                                             >
-                                                <span>"↩️"</span>
+                                                <i data-lucide="reply" class="icon-sm"></i>
                                                 <span>"Reply"</span>
                                             </button>
                                         })
@@ -159,11 +174,16 @@ pub fn MessageDetail() -> impl IntoView {
                                     }}
                                 </div>
 
-                                <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                                <div class="mt-4 text-sm text-charcoal-500 dark:text-charcoal-400">
                                     <div class="flex items-center gap-4">
-                                        <span>"From: " {sender.clone()}</span>
-                                        <span>"To: " {recipient.clone()}</span>
-                                        <span>"Received: " {format_date(&created)}</span>
+                                        <span class="flex items-center gap-1.5">
+                                            <i data-lucide="user" class="icon-xs"></i>
+                                            "From: " {sender.clone()}
+                                        </span>
+                                        <span class="flex items-center gap-1.5">
+                                            <i data-lucide="calendar" class="icon-xs"></i>
+                                            "Received: " {format_date(&created)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -171,24 +191,27 @@ pub fn MessageDetail() -> impl IntoView {
                             // Message Body
                             <div class="p-6">
                                 <div class="prose dark:prose-invert max-w-none">
-                                    <pre class="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-300 bg-transparent p-0 overflow-visible">
+                                    <pre class="whitespace-pre-wrap font-sans text-charcoal-700 dark:text-charcoal-300 bg-transparent p-0 overflow-visible">
                                         {body}
                                     </pre>
                                 </div>
                             </div>
 
                             // Message Metadata
-                            <div class="p-6 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
-                                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">"Message Details"</h3>
+                            <div class="p-6 bg-cream-50 dark:bg-charcoal-800/50 border-t border-cream-200 dark:border-charcoal-700">
+                                <h3 class="text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-3 flex items-center gap-2">
+                                    <i data-lucide="info" class="icon-sm"></i>
+                                    "Message Details"
+                                </h3>
                                 <dl class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                     <div>
-                                        <dt class="text-gray-500 dark:text-gray-400">"Message ID"</dt>
-                                        <dd class="font-mono text-gray-900 dark:text-white">{msg_id}</dd>
+                                        <dt class="text-charcoal-500 dark:text-charcoal-400">"Message ID"</dt>
+                                        <dd class="font-mono text-charcoal-800 dark:text-cream-100 text-xs">{msg_id}</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-gray-500 dark:text-gray-400">"Thread ID"</dt>
-                                        <dd class="font-mono text-gray-900 dark:text-white">
-                                            {thread_id.unwrap_or_else(|| "None".to_string())}
+                                        <dt class="text-charcoal-500 dark:text-charcoal-400">"Thread ID"</dt>
+                                        <dd class="font-mono text-charcoal-800 dark:text-cream-100 text-xs">
+                                            {thread_id.clone().unwrap_or_else(|| "None".to_string())}
                                         </dd>
                                     </div>
                                 </dl>
@@ -199,16 +222,18 @@ pub fn MessageDetail() -> impl IntoView {
                         <div class="flex items-center gap-3">
                             <a
                                 href=back_url.clone()
-                                class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                                class="btn-secondary flex items-center gap-2"
                             >
-                                "← Back to Inbox"
+                                <i data-lucide="arrow-left" class="icon-sm"></i>
+                                "Back to Inbox"
                             </a>
                             {if can_reply {
                                 Some(view! {
                                     <button
                                         on:click=move |_| show_reply.set(true)
-                                        class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                                        class="btn-primary flex items-center gap-2"
                                     >
+                                        <i data-lucide="reply" class="icon-sm"></i>
                                         "Reply to Message"
                                     </button>
                                 })
@@ -220,16 +245,19 @@ pub fn MessageDetail() -> impl IntoView {
                 } else {
                     // Not Found
                     view! {
-                        <div class="bg-white dark:bg-gray-800 rounded-xl p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-                            <div class="text-4xl mb-4">"📭"</div>
-                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">"Message not found"</h3>
-                            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                        <div class="card-elevated p-12 text-center">
+                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-cream-200 dark:bg-charcoal-700 mb-6">
+                                <i data-lucide="mail-x" class="icon-2xl text-charcoal-400"></i>
+                            </div>
+                            <h3 class="font-display text-xl font-semibold text-charcoal-800 dark:text-cream-100 mb-2">"Message not found"</h3>
+                            <p class="text-charcoal-500 dark:text-charcoal-400 mb-6">
                                 "The message you're looking for doesn't exist or has been deleted."
                             </p>
                             <a
                                 href=back_url.clone()
-                                class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors inline-block"
+                                class="btn-primary inline-flex items-center gap-2"
                             >
+                                <i data-lucide="inbox" class="icon-sm"></i>
                                 "Back to Inbox"
                             </a>
                         </div>
@@ -247,14 +275,14 @@ pub fn MessageDetail() -> impl IntoView {
                             agents: agents.get(),
                             reply_to: Some(ReplyTo {
                                 thread_id: msg.thread_id.clone().or_else(|| Some(format!("thread-{}", msg.id))),
-                                subject: msg.subject.clone().unwrap_or_default(),
-                                recipient_name: Some(msg.sender.clone()),
+                                subject: msg.subject.clone(),
+                                recipient_name: Some(msg.sender_name.clone()),
                             }),
                         };
                         
                         Some(view! {
-                            <div class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                            <div class="fixed inset-0 bg-charcoal-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                                <div class="card-elevated max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
                                     <ComposeMessage
                                         props=props
                                         on_close=Callback::new(move |_| show_reply.set(false))
@@ -285,8 +313,8 @@ fn format_date(date_str: &str) -> String {
 
 fn get_importance_badge(importance: &str) -> &'static str {
     match importance {
-        "high" => "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300",
-        "low" => "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400",
-        _ => "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300",
+        "high" => "badge-red",
+        "low" => "bg-charcoal-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-charcoal-400",
+        _ => "badge-teal",
     }
 }
