@@ -448,29 +448,32 @@ CREATE TABLE agent_capabilities (
 
 | Task | Effort | Beads ID |
 |------|--------|----------|
-| CLI binary (config, server, health) | 3d | TBD |
-| Authentication middleware | 2d | TBD |
-| `.env.example` + docs | 0.5d | TBD |
-| MCP STDIO mode completion | 2d | TBD |
+| CLI binary (config, server, health) | 3d | `577.1` |
+| Authentication middleware (bearer) | 2d | `577.11` |
+| `.env.example` + docs | 0.5d | `1aj` |
+| MCP STDIO mode completion | 2d | `mzj` |
 
 ### Week 2: P0 Continued + P1
 
 | Task | Effort | Beads ID |
 |------|--------|----------|
-| Installer script | 1d | TBD |
-| Integration scripts (8) | 3d | TBD |
-| Outbox endpoint | 0.5d | TBD |
-| CC/BCC support | 1d | TBD |
-| MCP Resources (5) | 2d | TBD |
+| Installer script | 1d | `577.2` |
+| Integration scripts (8) | 3d | `dlf` |
+| Outbox endpoint | 0.5d | `ctb` |
+| CC/BCC support | 1d | `fw1` |
+| MCP Resources (5) | 2d | `if9` |
 
 ### Week 3: P1 Completion
 
 | Task | Effort | Beads ID |
 |------|--------|----------|
-| Built-in macros | 1d | TBD |
-| Capabilities/RBAC | 2d | TBD |
-| Git archive integration | 2d | TBD |
-| Project siblings | 1d | TBD |
+| Built-in macros | 1d | `4mw` |
+| Capabilities/RBAC | 2d | `rkm` |
+| Git archive integration | 2d | `azc` |
+| Project siblings | 1d | `y58` |
+| JWT/JWKS auth | 1d | `q4u` |
+| DB: recipient_type column | 0.5d | `yyh` |
+| DB: agent_capabilities table | 0.5d | `t0f` |
 
 ---
 
