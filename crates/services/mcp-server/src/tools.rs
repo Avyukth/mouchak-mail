@@ -190,6 +190,34 @@ pub async fn list_inbox(State(app_state): State<AppState>, Json(payload): Json<L
     Ok(Json(inbox_msgs).into_response())
 }
 
+// --- list_outbox ---
+#[derive(Deserialize)]
+pub struct ListOutboxPayload {
+    pub project_slug: String,
+    pub agent_name: String,
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+}
+
+pub async fn list_outbox(State(app_state): State<AppState>, Json(payload): Json<ListOutboxPayload>) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let project = lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug).await?;
+    let agent = lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name).await?;
+
+    let messages = lib_core::model::message::MessageBmc::list_outbox_for_agent(&ctx, mm, project.id, agent.id, payload.limit).await?;
+
+    let outbox_msgs: Vec<InboxMessage> = messages.into_iter().map(|msg| InboxMessage {
+        id: msg.id,
+        subject: msg.subject,
+        sender_name: msg.sender_name,
+        created_ts: msg.created_ts,
+    }).collect();
+
+    Ok(Json(outbox_msgs).into_response())
+}
+
 // --- list_all_projects ---
 #[derive(Serialize)]
 pub struct ProjectResponse {

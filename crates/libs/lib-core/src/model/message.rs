@@ -237,6 +237,59 @@ impl MessageBmc {
         Ok(messages)
     }
 
+    /// List outbox messages SENT BY an agent
+    pub async fn list_outbox_for_agent(_ctx: &Ctx, mm: &ModelManager, project_id: i64, agent_id: i64, limit: i64) -> Result<Vec<Message>> {
+        let db = mm.db();
+        let stmt = db.prepare(
+            r#"
+            SELECT
+                m.id, m.project_id, m.sender_id, ag.name as sender_name, m.thread_id, m.subject, m.body_md,
+                m.importance, m.ack_required, m.created_ts, m.attachments
+            FROM messages AS m
+            JOIN agents AS ag ON m.sender_id = ag.id
+            WHERE m.sender_id = ? AND m.project_id = ?
+            ORDER BY m.created_ts DESC
+            LIMIT ?
+            "#
+        ).await?;
+
+        let mut rows = stmt.query((agent_id, project_id, limit)).await?;
+        let mut messages = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let id: i64 = row.get(0)?;
+            let project_id: i64 = row.get(1)?;
+            let sender_id: i64 = row.get(2)?;
+            let sender_name: String = row.get(3)?;
+            let thread_id: Option<String> = row.get(4)?;
+            let subject: String = row.get(5)?;
+            let body_md: String = row.get(6)?;
+            let importance: String = row.get(7)?;
+            let ack_required: bool = row.get(8)?;
+            let created_ts_str: String = row.get(9)?;
+            let created_ts = NaiveDateTime::parse_from_str(&created_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            let attachments_str: String = row.get(10)?;
+            let attachments: Vec<Value> = serde_json::from_str(&attachments_str)?;
+
+            messages.push(Message {
+                id,
+                project_id,
+                sender_id,
+                sender_name,
+                thread_id,
+                subject,
+                body_md,
+                importance,
+                ack_required,
+                created_ts,
+                attachments,
+            });
+        }
+        Ok(messages)
+    }
+
     pub async fn get(_ctx: &Ctx, mm: &ModelManager, message_id: i64) -> Result<Message> {
         let db = mm.db();
         let stmt = db.prepare(

@@ -22,6 +22,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/message/acknowledge", post(tools::acknowledge_message))
         .route("/api/messages/search", post(tools::search_messages))
         .route("/api/inbox", post(tools::list_inbox))
+        .route("/api/outbox", post(tools::list_outbox))
         .route("/api/messages/{message_id}", get(tools::get_message))
         .route("/api/thread", post(tools::get_thread))
         .route("/api/threads", post(tools::list_threads))
