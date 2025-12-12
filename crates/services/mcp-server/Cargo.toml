@@ -36,5 +36,8 @@ tower = { version = "0.5", features = ["util"] }
 [dev-dependencies]
 tempfile = "3.8"
 libsql = { version = "0.9.29", features = [] }
+wiremock = "0.6"
+rsa = { version = "0.9", features = ["sha2"] }
+rand = "0.8"
 
 
