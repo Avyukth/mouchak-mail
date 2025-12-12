@@ -112,6 +112,8 @@ async fn main() -> Result<()> {
                 project_id: project.id,
                 sender_id: sender.id,
                 recipient_ids,
+                cc_ids: None,
+                bcc_ids: None,
                 subject,
                 body_md: body,
                 thread_id: None,
