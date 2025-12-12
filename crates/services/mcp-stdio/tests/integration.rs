@@ -532,6 +532,61 @@ mod tools_tests {
         assert!(md_export.content.contains("# Mailbox Export:"));
         assert!(md_export.content.contains("Test Export Message"));
     }
+
+    #[tokio::test]
+    async fn test_git_archive_workflow() {
+        use lib_core::model::project::ProjectBmc;
+        use lib_core::model::message::{MessageBmc, MessageForCreate};
+        use lib_core::model::agent::{AgentBmc, AgentForCreate};
+        use lib_core::Ctx;
+
+        let (mm, _temp) = create_test_mm().await;
+        let ctx = Ctx::root_ctx();
+
+        // 1. Create project
+        let project_id = ProjectBmc::create(&ctx, &mm, "archive-test", "/archive/test")
+            .await
+            .expect("Failed to create project");
+
+        // 2. Create agent & message (so we have content)
+        let agent_c = AgentForCreate {
+            project_id,
+            name: "Archiver".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: "Archive test".to_string(),
+        };
+        let agent_id = AgentBmc::create(&ctx, &mm, agent_c).await.unwrap();
+
+        let msg_c = MessageForCreate {
+            project_id,
+            sender_id: agent_id,
+            recipient_ids: vec![agent_id], // self
+            cc_ids: None,
+            bcc_ids: None,
+            subject: "Archive Me".to_string(),
+            body_md: "Content to be archived".to_string(),
+            thread_id: None,
+            importance: None,
+        };
+        MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
+
+        // 3. Sync to archive
+        let oid = ProjectBmc::sync_to_archive(&ctx, &mm, project_id, "Test archive commit")
+            .await
+            .expect("Sync should succeed");
+        
+        println!("Commit OID: {}", oid);
+        assert!(!oid.is_empty());
+
+        // 4. Verify file exists in repo (we can inspect the temp dir directly)
+        // mm.repo_root is inside _temp
+        let mailbox_path = mm.repo_root.join("projects").join("archive-test").join("mailbox.json");
+        assert!(mailbox_path.exists());
+        
+        let content = std::fs::read_to_string(mailbox_path).unwrap();
+        assert!(content.contains("Archive Me"));
+    }
 }
 
 

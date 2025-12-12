@@ -603,6 +603,14 @@ pub struct ListProjectSiblingsParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct CommitArchiveParams {
+    /// Project slug to archive
+    pub project_slug: String,
+    /// Commit message
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct WhoisParams {
     /// Project slug
     pub project_slug: String,
@@ -2190,6 +2198,29 @@ impl AgentMailService {
     }
 
 
+
+    /// Commit project state to archive
+    #[tool(description = "Commit project state (mailbox, agents) to the git archive.")]
+    async fn commit_archive(
+        &self,
+        params: Parameters<CommitArchiveParams>,
+    ) -> Result<CallToolResult, McpError> {
+        use lib_core::model::project::ProjectBmc;
+
+        let ctx = self.ctx();
+        let p = params.0;
+
+        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug).await
+            .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
+
+        let oid = ProjectBmc::sync_to_archive(&ctx, &self.mm, project.id, &p.message).await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+        let msg = format!("Archived project '{}' to git. Commit ID: {}", project.slug, oid);
+        Ok(CallToolResult::success(vec![Content::text(msg)]))
+    }
+
+    /// Product-wide inbox
     #[tool(description = "Get aggregated inbox across all projects in a product.")]
     async fn product_inbox(
         &self,

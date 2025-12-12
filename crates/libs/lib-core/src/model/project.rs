@@ -219,6 +219,54 @@ impl ProjectBmc {
         // Sort by slug for consistency
         siblings.sort_by(|a, b| a.slug.cmp(&b.slug));
         
+        
         Ok(siblings)
+    }
+
+    /// Sync project state to git archive.
+    /// 
+    /// Writes project data (mailbox, etc.) to files in the repo and commits them.
+    pub async fn sync_to_archive(ctx: &crate::Ctx, mm: &ModelManager, project_id: i64, message: &str) -> Result<String> {
+        // 1. Get project
+        let project = Self::get(ctx, mm, project_id).await?;
+        let repo_root = &mm.repo_root;
+        let project_root = repo_root.join("projects").join(&project.slug);
+        
+        // Ensure directory exists (it should, but just in case)
+        if !project_root.exists() {
+            std::fs::create_dir_all(&project_root)?;
+        }
+
+        // 2. Export Mailbox (JSON)
+        // reuse ExportBmc logic but specifically for archive
+        let messages = crate::model::message::MessageBmc::list_recent(ctx, mm, project_id, 1000).await?; // reasonable limit for archive?
+        let mailbox_json = serde_json::to_string_pretty(&messages)?;
+        let mailbox_path = project_root.join("mailbox.json");
+        std::fs::write(&mailbox_path, mailbox_json)?;
+
+        // 3. Export Agents (JSON)
+        let agents = crate::model::agent::AgentBmc::list_all_for_project(ctx, mm, project_id).await?;
+        let agents_json = serde_json::to_string_pretty(&agents)?;
+        let agents_path = project_root.join("agents.json");
+        std::fs::write(&agents_path, agents_json)?;
+
+        // 4. Commit using git_store
+        // We need to pass paths relative to the repo root
+        // Since we are inside repo_root, relative path is `projects/{slug}/mailbox.json`
+        let relative_mailbox = Path::new("projects").join(&project.slug).join("mailbox.json");
+        let relative_agents = Path::new("projects").join(&project.slug).join("agents.json");
+        
+        // We open the repo at mm.repo_root
+        let repo = git_store::open_repo(repo_root)?;
+        
+        let oid = git_store::commit_paths(
+            &repo,
+            &[relative_mailbox, relative_agents],
+            message,
+            "mcp-bot",
+            "mcp-bot@localhost"
+        )?;
+
+        Ok(oid.to_string())
     }
 }
