@@ -234,7 +234,7 @@ pub fn Projects() -> impl IntoView {
                                 </div>
 
                                 // Desktop Table Layout (visible on lg+ screens)
-                                <div class="hidden lg:block card-elevated overflow-hidden">
+                                <div class="hidden lg:block card-elevated overflow-x-auto">
                                     <table class="w-full">
                                         <thead class="bg-cream-50 dark:bg-charcoal-800 border-b border-cream-200 dark:border-charcoal-700">
                                             <tr>

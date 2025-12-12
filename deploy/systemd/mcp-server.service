@@ -1,0 +1,20 @@
+[Unit]
+Description=MCP Agent Mail Server
+After=network.target
+
+[Service]
+Type=simple
+User=mcp
+Group=mcp
+# Adjust path to your binary
+ExecStart=/usr/local/bin/mcp-server
+# Adjust path to your env file
+EnvironmentFile=/etc/mcp-server/env
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mcp-server
+
+[Install]
+WantedBy=multi-user.target

@@ -11,48 +11,48 @@ members = [
 
 [workspace.dependencies]
 # Web Framework
-axum = "0.8"
-tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["trace", "cors", "request-id"] }
+axum = "0.8.7"
+tokio = { version = "1.48.0", features = ["full"] }
+tower-http = { version = "0.6.8", features = ["trace", "cors", "request-id"] }
 
 # Metrics
-metrics = "0.24"
-metrics-exporter-prometheus = "0.18"
+metrics = "0.24.3"
+metrics-exporter-prometheus = "0.18.1"
 
 # Database
 libsql = { version = "0.9.29", features = [] }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.42", features = ["serde"] }
 
 # Git
-git2 = "0.20"
+git2 = "0.20.3"
 
 # Templating / Markdown
-minijinja = "2.13"
-pulldown-cmark = "0.13"
+minijinja = "2.13.0"
+pulldown-cmark = "0.13.0"
 
 # MCP Protocol SDK (Official)
-rmcp = { version = "0.11", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
-schemars = "1.1"
+rmcp = { version = "0.11.0", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
+schemars = "1.1.0"
 
 # Error Handling
-anyhow = "1.0"
-thiserror = "2.0"
+anyhow = "1.0.100"
+thiserror = "2.0.17"
 
 # Logging/Tracing
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = "0.2"
+tracing = "0.1.43"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
+tracing-appender = "0.2.4"
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 
 # CLI
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive"] }
 
 # Utilities
-uuid = { version = "1.19", features = ["v4", "serde"] }
-base64 = "0.22"
+uuid = { version = "1.19.0", features = ["v4", "serde"] }
+base64 = "0.22.1"
 
 # WASM-optimized release profile for web-ui-leptos
 [profile.release]
