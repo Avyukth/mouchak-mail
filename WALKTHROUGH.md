@@ -194,3 +194,68 @@ Restrict sensitive agent actions based on assigned capabilities.
 - **Verification**:
     - Verified script enforces root execution (ran without root, confirmed exit code 1).
     - Code review of unit file for standard best practices (Restart=always, User=mcp).
+
+---
+
+## Automated Video Walkthrough
+
+### Overview
+Fully automated browser walkthrough that records a demo video using Playwright for browser automation.
+
+### Prerequisites
+```bash
+# Install dependencies
+cd scripts/video-walkthrough
+bun install
+```
+
+### Running the Walkthrough
+
+1. **Start the backend and frontend**:
+```bash
+# Terminal 1: Backend
+cargo run -p mcp-server
+
+# Terminal 2: Frontend (SvelteKit)
+cd crates/services/web-ui && bun run dev
+```
+
+2. **Run the automated walkthrough**:
+```bash
+cd scripts/video-walkthrough
+
+# Without recording (browser visible)
+bun run walkthrough.ts
+
+# With video recording
+bun run walkthrough.ts --record
+```
+
+3. **Output**: Video saved as `walkthrough_<timestamp>.webm`
+
+### What Gets Recorded
+The walkthrough covers 8 scenes:
+1. **Dashboard & Theme** - Opens dashboard, toggles dark mode
+2. **Projects** - Lists projects, creates new project `/demo/video-walkthrough`
+3. **Agents** - Registers AlphaBot (claude-code) and BetaBot (gemini)
+4. **All Agents** - Navigates to agents list, demonstrates search
+5. **Inbox & Compose** - Selects project/agent, composes high-priority message with acknowledgment
+6. **Message Detail & Reply** - Views message as recipient, sends reply
+7. **Mobile View** - Resizes to 375×812 viewport, navigates key screens
+8. **Wrap Up** - Returns to desktop, toggles light mode, final dashboard shot
+
+### Timing Configuration
+Located in `scripts/video-walkthrough/walkthrough.ts`:
+```typescript
+const DELAY = {
+  SHORT: 500,      // Quick pauses
+  ACTION: 1200,    // Between user actions
+  SCENE: 2000,     // Between major scenes
+  TYPE: 50,        // Per character typing
+};
+```
+
+### Narration Scripts
+For generating audio narration:
+- `docs/WALKTHROUGH_NARRATION.srt` - SRT subtitle file with timestamps
+- `docs/WALKTHROUGH_NARRATION_SCRIPT.md` - TTS-optimized script with sync reference

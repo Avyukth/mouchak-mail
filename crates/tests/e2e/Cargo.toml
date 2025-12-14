@@ -33,3 +33,7 @@ path = "tests/web_ui.rs"
 [[test]]
 name = "api"
 path = "tests/api.rs"
+
+[[test]]
+name = "walkthrough"
+path = "tests/walkthrough.rs"

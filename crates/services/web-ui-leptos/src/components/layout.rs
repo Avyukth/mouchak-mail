@@ -44,7 +44,7 @@ pub fn Layout() -> impl IntoView {
     });
 
     view! {
-        <div class="min-h-screen bg-cream-100 dark:bg-charcoal-900 transition-colors">
+        <div class="min-h-screen bg-cream-100 dark:bg-charcoal-900 transition-colors flex flex-col">
             // Gradient mesh background overlay
             <div class="fixed inset-0 bg-gradient-mesh pointer-events-none" aria-hidden="true"></div>
             
@@ -98,7 +98,7 @@ pub fn Layout() -> impl IntoView {
             // Mobile navigation drawer (future enhancement)
             
             // Main content area
-            <main class="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <main class="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex-1 w-full">
                 <div class="animate-fade-in">
                     <Outlet />
                 </div>

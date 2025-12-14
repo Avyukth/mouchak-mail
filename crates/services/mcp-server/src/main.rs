@@ -122,7 +122,7 @@ async fn main() -> std::result::Result<(), ServerError> {
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(8000);
+        .unwrap_or(8765);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::info!("MCP Agent Mail Server starting on {}", addr);
     tracing::info!("Health check: http://{}/health", addr);

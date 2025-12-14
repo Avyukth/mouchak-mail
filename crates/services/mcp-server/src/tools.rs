@@ -32,8 +32,9 @@ pub struct EnsureProjectPayload {
 
 #[derive(Serialize)]
 pub struct EnsureProjectResponse {
-    pub project_id: i64,
+    pub id: i64,
     pub slug: String,
+    pub human_key: String,
 }
 
 pub async fn ensure_project(State(app_state): State<AppState>, Json(payload): Json<EnsureProjectPayload>) -> crate::error::Result<Response> {
@@ -56,8 +57,9 @@ pub async fn ensure_project(State(app_state): State<AppState>, Json(payload): Js
     };
 
     Ok(Json(EnsureProjectResponse {
-        project_id: project.id,
+        id: project.id,
         slug: project.slug,
+        human_key: project.human_key,
     }).into_response())
 }
 
@@ -68,13 +70,19 @@ pub struct RegisterAgentPayload {
     pub name: String,
     pub program: String,
     pub model: String,
-    pub task_description: String,
+    #[serde(default)]
+    pub task_description: Option<String>,
 }
 
 #[derive(Serialize)]
 pub struct RegisterAgentResponse {
-    pub agent_id: i64,
+    pub id: i64,
     pub name: String,
+    pub program: String,
+    pub model: String,
+    pub task_description: String,
+    pub inception_ts: chrono::NaiveDateTime,
+    pub last_active_ts: chrono::NaiveDateTime,
 }
 
 pub async fn register_agent(State(app_state): State<AppState>, Json(payload): Json<RegisterAgentPayload>) -> crate::error::Result<Response> {
@@ -86,16 +94,24 @@ pub async fn register_agent(State(app_state): State<AppState>, Json(payload): Js
     let agent_c = lib_core::model::agent::AgentForCreate {
         project_id: project.id,
         name: payload.name.clone(),
-        program: payload.program,
-        model: payload.model,
-        task_description: payload.task_description,
+        program: payload.program.clone(),
+        model: payload.model.clone(),
+        task_description: payload.task_description.clone().unwrap_or_default(),
     };
 
     let agent_id = lib_core::model::agent::AgentBmc::create(&ctx, mm, agent_c).await?;
 
+    // Fetch the full agent to return
+    let agent = lib_core::model::agent::AgentBmc::get(&ctx, mm, agent_id).await?;
+
     Ok(Json(RegisterAgentResponse {
-        agent_id,
-        name: payload.name,
+        id: agent.id,
+        name: agent.name,
+        program: agent.program,
+        model: agent.model,
+        task_description: agent.task_description,
+        inception_ts: agent.inception_ts,
+        last_active_ts: agent.last_active_ts,
     }).into_response())
 }
 
@@ -124,7 +140,16 @@ pub struct SendMessagePayload {
 
 #[derive(Serialize)]
 pub struct SendMessageResponse {
-    pub message_id: i64,
+    pub id: i64,
+    pub project_id: i64,
+    pub sender_id: i64,
+    pub sender_name: String,
+    pub thread_id: Option<String>,
+    pub subject: String,
+    pub body_md: String,
+    pub importance: String,
+    pub ack_required: bool,
+    pub created_ts: chrono::NaiveDateTime,
 }
 
 pub async fn send_message(State(app_state): State<AppState>, Json(payload): Json<SendMessagePayload>) -> crate::error::Result<Response> {
@@ -179,7 +204,21 @@ pub async fn send_message(State(app_state): State<AppState>, Json(payload): Json
 
     let message_id = lib_core::model::message::MessageBmc::create(&ctx, mm, msg_c).await?;
 
-    Ok(Json(SendMessageResponse { message_id }).into_response())
+    // Fetch the full message to return
+    let message = lib_core::model::message::MessageBmc::get(&ctx, mm, message_id).await?;
+
+    Ok(Json(SendMessageResponse {
+        id: message.id,
+        project_id: message.project_id,
+        sender_id: message.sender_id,
+        sender_name: message.sender_name,
+        thread_id: message.thread_id,
+        subject: message.subject,
+        body_md: message.body_md,
+        importance: message.importance,
+        ack_required: message.ack_required,
+        created_ts: message.created_ts,
+    }).into_response())
 }
 
 
@@ -801,7 +840,21 @@ pub async fn reply_message(
 
     let message_id = lib_core::model::message::MessageBmc::create(&ctx, mm, msg_c).await?;
 
-    Ok(Json(SendMessageResponse { message_id }).into_response())
+    // Fetch the full message to return
+    let message = lib_core::model::message::MessageBmc::get(&ctx, mm, message_id).await?;
+
+    Ok(Json(SendMessageResponse {
+        id: message.id,
+        project_id: message.project_id,
+        sender_id: message.sender_id,
+        sender_name: message.sender_name,
+        thread_id: message.thread_id,
+        subject: message.subject,
+        body_md: message.body_md,
+        importance: message.importance,
+        ack_required: message.ack_required,
+        created_ts: message.created_ts,
+    }).into_response())
 }
 
 // --- search_messages ---

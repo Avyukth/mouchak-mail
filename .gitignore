@@ -18,3 +18,8 @@ build/
 playwright-report/
 test-results/
 .sandboxes/
+
+# Large media files (video/audio outputs)
+*.mp4
+*.wav
+*.webm

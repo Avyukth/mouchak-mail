@@ -41,8 +41,9 @@ pub struct Project {
     pub slug: String,
     #[serde(default)]
     pub name: Option<String>,
+    #[serde(default)]
     pub human_key: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub created_at: Option<String>,
 }
 
@@ -55,12 +56,17 @@ pub struct Agent {
     pub project_id: Option<i64>,
     #[serde(default)]
     pub project_slug: Option<String>,
+    #[serde(default)]
     pub program: Option<String>,
+    #[serde(default)]
     pub model: Option<String>,
+    #[serde(default)]
     pub task_description: Option<String>,
+    #[serde(default)]
     pub inception_ts: Option<String>,
+    #[serde(default)]
     pub last_active_ts: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub created_at: Option<String>,
 }
 
@@ -80,10 +86,12 @@ pub struct Message {
     pub project_id: i64,
     pub sender_id: i64,
     pub sender_name: String,
+    #[serde(default)]
     pub thread_id: Option<String>,
     pub subject: String,
     pub body_md: String,
     pub importance: String,
+    #[serde(default)]
     pub ack_required: bool,
     pub created_ts: String,
     #[serde(default)]
@@ -124,21 +132,21 @@ pub async fn get_projects() -> Result<Vec<Project>, ApiError> {
 
 /// Create or ensure a project exists.
 pub async fn ensure_project(human_key: &str) -> Result<Project, ApiError> {
-    let url = format!("{}/api/projects", API_BASE_URL);
-    
+    let url = format!("{}/api/project/ensure", API_BASE_URL);
+
     #[derive(Serialize)]
     struct CreateProjectPayload<'a> {
         human_key: &'a str,
     }
-    
+
     let payload = CreateProjectPayload { human_key };
-    
+
     let response = Request::post(&url)
         .header("Content-Type", "application/json")
         .json(&payload)?
         .send()
         .await?;
-    
+
     if response.ok() {
         Ok(response.json().await?)
     } else {
@@ -180,6 +188,26 @@ pub async fn get_agents(project_slug: &str) -> Result<Vec<Agent>, ApiError> {
     }
 }
 
+/// Structured error response from backend (RFC 7807 style).
+#[derive(Debug, Clone, Deserialize)]
+struct BackendError {
+    /// Machine-readable error code (e.g., "NOT_FOUND", "CONFLICT").
+    #[serde(default)]
+    code: Option<String>,
+    /// Human-readable error message.
+    #[serde(default)]
+    error: Option<String>,
+}
+
+impl BackendError {
+    /// Returns a user-friendly error message.
+    fn message(&self) -> String {
+        self.error.clone().unwrap_or_else(|| {
+            self.code.clone().unwrap_or_else(|| "Unknown error".to_string())
+        })
+    }
+}
+
 /// Register a new agent for a project.
 pub async fn register_agent(
     project_slug: &str,
@@ -188,35 +216,43 @@ pub async fn register_agent(
     model: &str,
     task_description: Option<&str>,
 ) -> Result<Agent, ApiError> {
-    let url = format!("{}/api/projects/{}/agents", API_BASE_URL, project_slug);
-    
+    let url = format!("{}/api/agent/register", API_BASE_URL);
+
     #[derive(Serialize)]
     struct RegisterAgentPayload<'a> {
+        project_slug: &'a str,
         name: &'a str,
         program: &'a str,
         model: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         task_description: Option<&'a str>,
     }
-    
+
     let payload = RegisterAgentPayload {
+        project_slug,
         name,
         program,
         model,
         task_description,
     };
-    
+
     let response = Request::post(&url)
         .header("Content-Type", "application/json")
         .json(&payload)?
         .send()
         .await?;
-    
+
     if response.ok() {
         Ok(response.json().await?)
     } else {
+        // Try to parse structured error response from backend
+        let status = response.status();
+        let error_msg = match response.json::<BackendError>().await {
+            Ok(err) => err.message(),
+            Err(_) => format!("HTTP {}", status),
+        };
         Err(ApiError {
-            message: format!("Failed to register agent: {}", response.status()),
+            message: format!("Failed to register agent: {}", error_msg),
         })
     }
 }
@@ -288,40 +324,39 @@ pub async fn send_message(
     body: &str,
     thread_id: Option<&str>,
     importance: &str,
-    ack_required: bool,
+    _ack_required: bool,
 ) -> Result<Message, ApiError> {
-    let url = format!("{}/api/messages", API_BASE_URL);
-    
+    let url = format!("{}/api/message/send", API_BASE_URL);
+
     #[derive(Serialize)]
     struct SendMessagePayload<'a> {
         project_slug: &'a str,
-        sender: &'a str,
-        recipients: &'a [String],
+        sender_name: &'a str,
+        recipient_names: &'a [String],
         subject: &'a str,
-        body: &'a str,
+        body_md: &'a str,
         #[serde(skip_serializing_if = "Option::is_none")]
         thread_id: Option<&'a str>,
-        importance: &'a str,
-        ack_required: bool,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        importance: Option<&'a str>,
     }
-    
+
     let payload = SendMessagePayload {
         project_slug,
-        sender,
-        recipients,
+        sender_name: sender,
+        recipient_names: recipients,
         subject,
-        body,
+        body_md: body,
         thread_id,
-        importance,
-        ack_required,
+        importance: Some(importance),
     };
-    
+
     let response = Request::post(&url)
         .header("Content-Type", "application/json")
         .json(&payload)?
         .send()
         .await?;
-    
+
     if response.ok() {
         Ok(response.json().await?)
     } else {
