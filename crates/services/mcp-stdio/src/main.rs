@@ -124,7 +124,7 @@ async fn run_sse_server(host: &str, port: u16) -> Result<()> {
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
             AgentMailService::new().await
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+                .map_err(|e| std::io::Error::other(e.to_string()))
         })
     };
 
@@ -172,7 +172,7 @@ async fn list_tools() -> Result<()> {
     let schemas = tools::get_tool_schemas();
 
     println!("MCP Agent Mail Tools ({} total)\n", schemas.len());
-    println!("{:<30} {}", "TOOL", "DESCRIPTION");
+    println!("{:<30} DESCRIPTION", "TOOL");
     println!("{}", "-".repeat(80));
 
     for schema in &schemas {
@@ -211,7 +211,7 @@ fn generate_markdown_docs(schemas: &[tools::ToolSchema]) -> String {
                     param.description
                 ));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         md.push_str("### Example\n\n");

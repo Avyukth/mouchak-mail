@@ -135,6 +135,7 @@ pub struct SendMessagePayload {
     pub thread_id: Option<String>,
     pub importance: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub ack_required: bool,
 }
 
@@ -318,6 +319,7 @@ pub async fn list_all_projects(State(app_state): State<AppState>) -> crate::erro
 // --- list_all_agents_for_project ---
 // Keep for backwards compatibility with JSON body requests
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct ListAgentsPayload {
     pub project_slug: String,
 }
@@ -359,6 +361,7 @@ pub async fn list_all_agents_for_project(
 // --- get_message ---
 // Keep for backwards compatibility
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct GetMessagePayload {
     pub message_id: i64,
 }
@@ -464,20 +467,19 @@ pub async fn file_reservation_paths(State(app_state): State<AppState>, Json(payl
         // Simple overlap check for now (exact match)
         // TODO: Implement robust glob matching using globset
         for res in &active_reservations {
-            if res.agent_id != agent.id {
-                if res.exclusive || payload.exclusive {
-                     if res.path_pattern == path {
-                         conflicts.push(FileReservationConflict {
-                             path_pattern: res.path_pattern.clone(),
-                             exclusive: res.exclusive,
-                             expires_ts: res.expires_ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
-                             conflict_type: "FILE_RESERVATION_CONFLICT".to_string(),
-                             message: format!("Conflict with reservation held by agent ID {}", res.agent_id),
-                         });
-                         // We don't break, we collect all conflicts? Or just one per path?
-                         // Python collects conflicts.
-                     }
-                }
+            if res.agent_id != agent.id
+                && (res.exclusive || payload.exclusive)
+                && res.path_pattern == path
+            {
+                conflicts.push(FileReservationConflict {
+                    path_pattern: res.path_pattern.clone(),
+                    exclusive: res.exclusive,
+                    expires_ts: res.expires_ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
+                    conflict_type: "FILE_RESERVATION_CONFLICT".to_string(),
+                    message: format!("Conflict with reservation held by agent ID {}", res.agent_id),
+                });
+                // We don't break, we collect all conflicts? Or just one per path?
+                // Python collects conflicts.
             }
         }
 
@@ -1637,6 +1639,7 @@ pub async fn unregister_macro(
 pub struct InvokeMacroPayload {
     pub project_slug: String,
     pub name: String,
+    #[allow(dead_code)]
     pub params: Option<serde_json::Value>,
 }
 
@@ -1871,6 +1874,7 @@ pub struct AddAttachmentPayload {
     pub message_id: i64,
     pub filename: String,
     pub content_base64: String,
+    #[allow(dead_code)]
     pub mime_type: Option<String>,
 }
 

@@ -65,6 +65,7 @@ impl AuthConfig {
 
 /// JWKS Key structure
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 struct Jwk {
     kid: String,
     kty: String,

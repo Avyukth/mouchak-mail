@@ -30,6 +30,7 @@ pub enum ErrorCode {
     // 5xx Server Errors
     InternalError,
     DatabaseError,
+    #[allow(dead_code)]
     ServiceUnavailable,
 }
 
@@ -71,6 +72,7 @@ impl ErrorResponse {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
         self.details = Some(details.into());
         self
@@ -91,28 +93,36 @@ pub enum ServerError {
     Anyhow(#[from] anyhow::Error),
 
     // -- API-Specific Errors
+    #[allow(dead_code)]
     #[error("Resource not found: {0}")]
     NotFound(String),
 
+    #[allow(dead_code)]
     #[error("Resource conflict: {0}")]
     Conflict(String),
 
+    #[allow(dead_code)]
     #[error("Validation error: {0}")]
     Validation(String),
 
+    #[allow(dead_code)]
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    #[allow(dead_code)]
     #[error("Unauthorized")]
     Unauthorized,
 
+    #[allow(dead_code)]
     #[error("Forbidden")]
     Forbidden,
 
+    #[allow(dead_code)]
     #[error("Internal server error")]
     Internal,
 }
 
+#[allow(dead_code)]
 impl ServerError {
     /// Creates a NotFound error for a specific resource.
     pub fn not_found(resource: impl Into<String>) -> Self {
@@ -149,7 +159,7 @@ fn extract_conflict_message(msg: &str) -> String {
     if let Some(idx) = msg.find("UNIQUE constraint failed:") {
         let rest = &msg[idx + 25..];
         // Get the last field name (e.g., "name" from "agents.name")
-        if let Some(table_field) = rest.split('.').last() {
+        if let Some(table_field) = rest.split('.').next_back() {
             let field = table_field
                 .split(',')
                 .next()

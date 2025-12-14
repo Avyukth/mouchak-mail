@@ -78,7 +78,7 @@ impl ActivityBmc {
              items.push(ActivityItem {
                 id: format!("tool:{}", t.id),
                 kind: "tool".into(),
-                project_id: project_id,
+                project_id,
                 agent_id: t.agent_id,
                 title: format!("Tool Used: {}", t.tool_name),
                 description: Some(format!("Status: {}, Duration: {}ms", t.status, t.duration_ms)),

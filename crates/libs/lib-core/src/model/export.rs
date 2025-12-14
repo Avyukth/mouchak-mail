@@ -17,13 +17,15 @@ pub enum ExportFormat {
     Markdown,
 }
 
-impl ExportFormat {
-    pub fn from_str(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
+impl std::str::FromStr for ExportFormat {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(match s.to_lowercase().as_str() {
             "html" => Self::Html,
             "md" | "markdown" => Self::Markdown,
             _ => Self::Json, // default
-        }
+        })
     }
 }
 

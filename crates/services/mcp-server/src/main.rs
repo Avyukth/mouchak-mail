@@ -83,11 +83,7 @@ async fn main() -> std::result::Result<(), ServerError> {
     let auth_config = AuthConfig::from_env();
     tracing::info!("Auth Mode: {:?}", auth_config.mode);
 
-    let jwks_client = if let Some(url) = &auth_config.jwks_url {
-        Some(JwksClient::new(url.clone()))
-    } else {
-        None
-    };
+    let jwks_client = auth_config.jwks_url.as_ref().map(|url| JwksClient::new(url.clone()));
 
     let app_state = AppState {
         mm,

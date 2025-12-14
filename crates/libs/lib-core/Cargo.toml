@@ -5,27 +5,20 @@ edition = "2021"
 
 [dependencies]
 # Workspace dependencies
-anyhow.workspace = true
 chrono.workspace = true
 libsql.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tracing.workspace = true
 uuid.workspace = true
 git2.workspace = true
-minijinja.workspace = true
-pulldown-cmark.workspace = true
 slug = "0.1"
 
 # Crate-specific dependencies
-
-strum = "0.25" # For AsRefStr trait
 strum_macros = "0.25" # For AsRefStr derive
 tokio = { version = "1", features = ["macros"] }
 sha1 = "0.10.6"
 hex = "0.4.3"
-globset = "0.4.18"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

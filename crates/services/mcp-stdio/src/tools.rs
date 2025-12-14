@@ -529,6 +529,7 @@ impl AgentMailService {
     }
 }
 
+#[allow(clippy::manual_async_fn)]
 impl ServerHandler for AgentMailService {
     fn list_tools(
         &self,
