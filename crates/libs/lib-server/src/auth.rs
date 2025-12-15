@@ -1,10 +1,11 @@
 use axum::{
-    extract::State,
+    extract::{ConnectInfo, State},
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
 };
 use axum_extra::headers::{authorization::Bearer, Authorization, HeaderMapExt};
+use std::net::SocketAddr;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -213,6 +214,14 @@ struct Claims {
     jti: Option<String>,
 }
 
+/// Check if the IP address is localhost (127.0.0.1 or ::1)
+fn is_localhost(addr: &SocketAddr) -> bool {
+    match addr.ip() {
+        std::net::IpAddr::V4(ipv4) => ipv4.is_loopback(),
+        std::net::IpAddr::V6(ipv6) => ipv6.is_loopback(),
+    }
+}
+
 /// Auth Middleware
 pub async fn auth_middleware(
     State(state): State<AppState>,
@@ -228,24 +237,21 @@ pub async fn auth_middleware(
 
     // 2. Check Localhost Bypass
     if auth_config.allow_localhost {
-        // This is tricky with Axum extractors in middleware.
-        // We rely on ConnectInfo if available, or just X-Forwarded-For logic if behind proxy?
-        // Since we are creating a robust server, let's skip IP check for now as it usually requires
-        // `Router::into_make_service_with_connect_info`.
-        // Instead, we might assume if no token is present, we check if we should allow it?
-        // Actually, strictly speaking, localhost bypass usually implies checking the peer address.
-        // If we can't reliably check it here without adding complexity to main.rs, we might skip it or implement a simpler check.
-        // For now, let's implement the token check logic first.
+        // Try to get client IP from ConnectInfo extension (set by into_make_service_with_connect_info)
+        if let Some(connect_info) = req.extensions().get::<ConnectInfo<SocketAddr>>() {
+            if is_localhost(&connect_info.0) {
+                info!("Localhost bypass: allowing unauthenticated request from {}", connect_info.0);
+                return Ok(next.run(req).await);
+            }
+        }
     }
 
     // 3. Extract Token
     let token = match req.headers().typed_get::<Authorization<Bearer>>() {
         Some(Authorization(bearer)) => bearer.token().to_string(),
         None => {
-            // No token found.
-            // If localhost bypass is enabled, we *could* allow it if we were sure it's localhost.
-            // But for safety, blocking is better if we can't verify source IP easily.
-            // NOTE: In production, this service might sit behind a tailored proxy.
+            // No token found and not localhost - unauthorized
+            warn!("No Authorization header and localhost bypass not applicable");
             return Err(StatusCode::UNAUTHORIZED);
         }
     };
@@ -1079,5 +1085,139 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_auth_localhost_bypass() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let repo_root = temp_dir.path().join("archive");
+        std::fs::create_dir_all(&repo_root).unwrap();
+
+        let db = libsql::Builder::new_local(db_path).build().await.unwrap();
+        let conn = db.connect().unwrap();
+        let mm = crate::ModelManager::new_for_test(conn, repo_root);
+
+        // Auth enabled but localhost bypass also enabled
+        let auth_config = AuthConfig {
+            mode: AuthMode::Bearer,
+            bearer_token: Some("secret123".to_string()),
+            jwks_url: None,
+            jwt_audience: None,
+            jwt_issuer: None,
+            allow_localhost: true, // Enable localhost bypass
+        };
+        let app_state = AppState {
+            mm,
+            metrics_handle: crate::setup_metrics(),
+            start_time: std::time::Instant::now(),
+            auth_config,
+            jwks_client: None,
+        };
+
+        // Create router with ConnectInfo support
+        let app = Router::new()
+            .route("/", get(handler))
+            .layer(middleware::from_fn_with_state(app_state, auth_middleware))
+            .into_make_service_with_connect_info::<std::net::SocketAddr>();
+
+        // Start test server
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        // Wait briefly for server to start
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        // Make request WITHOUT auth header from localhost - should succeed due to bypass
+        let client = reqwest::Client::new();
+        let response = client
+            .get(format!("http://{}/", addr))
+            .send()
+            .await
+            .expect("Request failed");
+
+        assert_eq!(response.status().as_u16(), 200, "Localhost bypass should allow unauthenticated request");
+    }
+
+    #[tokio::test]
+    async fn test_auth_localhost_bypass_disabled() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let repo_root = temp_dir.path().join("archive");
+        std::fs::create_dir_all(&repo_root).unwrap();
+
+        let db = libsql::Builder::new_local(db_path).build().await.unwrap();
+        let conn = db.connect().unwrap();
+        let mm = crate::ModelManager::new_for_test(conn, repo_root);
+
+        // Auth enabled, localhost bypass disabled
+        let auth_config = AuthConfig {
+            mode: AuthMode::Bearer,
+            bearer_token: Some("secret123".to_string()),
+            jwks_url: None,
+            jwt_audience: None,
+            jwt_issuer: None,
+            allow_localhost: false, // Disable localhost bypass
+        };
+        let app_state = AppState {
+            mm,
+            metrics_handle: crate::setup_metrics(),
+            start_time: std::time::Instant::now(),
+            auth_config,
+            jwks_client: None,
+        };
+
+        // Create router with ConnectInfo support
+        let app = Router::new()
+            .route("/", get(handler))
+            .layer(middleware::from_fn_with_state(app_state, auth_middleware))
+            .into_make_service_with_connect_info::<std::net::SocketAddr>();
+
+        // Start test server
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.unwrap();
+        });
+
+        // Wait briefly for server to start
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        // Make request WITHOUT auth header from localhost - should fail since bypass is disabled
+        let client = reqwest::Client::new();
+        let response = client
+            .get(format!("http://{}/", addr))
+            .send()
+            .await
+            .expect("Request failed");
+
+        assert_eq!(response.status().as_u16(), 401, "With localhost bypass disabled, request should be unauthorized");
+    }
+
+    #[test]
+    fn test_is_localhost_ipv4() {
+        use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+        let localhost = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        assert!(super::is_localhost(&localhost), "127.0.0.1 should be localhost");
+
+        let external = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 8080);
+        assert!(!super::is_localhost(&external), "192.168.1.1 should not be localhost");
+    }
+
+    #[test]
+    fn test_is_localhost_ipv6() {
+        use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+
+        let localhost = SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080);
+        assert!(super::is_localhost(&localhost), "::1 should be localhost");
+
+        let external = SocketAddr::new(IpAddr::V6(Ipv6Addr::new(2001, 0x0db8, 0, 0, 0, 0, 0, 1)), 8080);
+        assert!(!super::is_localhost(&external), "2001:db8::1 should not be localhost");
     }
 }

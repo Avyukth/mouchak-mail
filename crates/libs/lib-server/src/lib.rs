@@ -98,11 +98,12 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
     tracing::info!("MCP Agent Mail Server starting on {}", addr);
     tracing::info!("Health check: http://{}/health", addr);
 
-    // Axum 0.8+ serve
+    // Axum 0.8+ serve with ConnectInfo for localhost bypass
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    
-    // Graceful shutdown
-    axum::serve(listener, app)
+
+    // Graceful shutdown - use into_make_service_with_connect_info to enable
+    // ConnectInfo<SocketAddr> extraction in middleware for localhost bypass
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
