@@ -11,6 +11,7 @@ pub mod overseer_message;
 pub mod macro_def;
 pub mod export;
 pub mod tool_metric;
+pub mod attachment;
 pub mod activity;
 pub mod agent_capabilities;
 

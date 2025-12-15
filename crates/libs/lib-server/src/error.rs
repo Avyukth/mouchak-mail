@@ -32,6 +32,7 @@ pub enum ErrorCode {
     DatabaseError,
     #[allow(dead_code)]
     ServiceUnavailable,
+    ConfigError,
 }
 
 impl ErrorCode {
@@ -47,6 +48,7 @@ impl ErrorCode {
             ErrorCode::InternalError => "INTERNAL_ERROR",
             ErrorCode::DatabaseError => "DATABASE_ERROR",
             ErrorCode::ServiceUnavailable => "SERVICE_UNAVAILABLE",
+            ErrorCode::ConfigError => "CONFIG_ERROR",
         }
     }
 }
@@ -116,6 +118,10 @@ pub enum ServerError {
     #[allow(dead_code)]
     #[error("Forbidden")]
     Forbidden,
+
+    #[allow(dead_code)]
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
 
     #[allow(dead_code)]
     #[error("Internal server error")]
@@ -301,6 +307,11 @@ impl IntoResponse for ServerError {
             ServerError::Forbidden => (
                 StatusCode::FORBIDDEN,
                 ErrorResponse::new(ErrorCode::Forbidden, "Access denied"),
+            ),
+
+            ServerError::ConfigError(ref msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorResponse::new(ErrorCode::ConfigError, msg.clone()),
             ),
 
             ServerError::Io(_) => (

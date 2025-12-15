@@ -12,6 +12,7 @@ pub mod error;
 pub mod api;
 pub mod auth;
 pub mod tools;
+pub mod ratelimit;
 
 pub use error::ServerError;
 pub use lib_core::ModelManager;
@@ -19,13 +20,14 @@ use auth::{auth_middleware, AuthConfig, JwksClient};
 use lib_common::config::ServerConfig;
 
 // --- Application State
-#[derive(Clone)]
+#[derive(Clone, axum::extract::FromRef)]
 pub struct AppState {
     pub mm: ModelManager,
     pub metrics_handle: PrometheusHandle,
     pub start_time: Instant,
     pub auth_config: AuthConfig,
     pub jwks_client: Option<JwksClient>,
+    pub ratelimit_config: ratelimit::RateLimitConfig,
 }
 
 static METRICS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
@@ -68,6 +70,7 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
         start_time: Instant::now(),
         auth_config,
         jwks_client,
+        ratelimit_config: ratelimit::RateLimitConfig::new(),
     };
 
     // Build our application with routes
@@ -90,9 +93,15 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
         .route("/metrics", get(metrics_handler))
         // Prod Hardening: Liveness/Readiness probes (k8s style)
         .route("/healthz", get(health_handler)) 
-        .layer(cors)
         .layer(TraceLayer::new_for_http())
+        // 4. Rate Limiting (Hardening 577.13)
+        // Global middleware using Axum 0.8 middleware::from_fn_with_state
+        .route_layer(axum::middleware::from_fn_with_state(
+            app_state.clone(),
+            ratelimit::rate_limit_middleware,
+        ))
         .with_state(app_state);
+
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("MCP Agent Mail Server starting on {}", addr);

@@ -4,6 +4,8 @@ use axum::Router;
 use crate::tools;
 use crate::AppState;
 
+pub mod attachments;
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         // Core
@@ -112,10 +114,23 @@ pub fn routes() -> Router<AppState> {
         .route("/api/uninstall_precommit_guard", post(tools::uninstall_precommit_guard)) // Python alias
         .route("/api/uninstall_guard", post(tools::uninstall_precommit_guard)) // Python alias (short)
         // Attachments
-        .route("/api/attachments/add", post(tools::add_attachment))
-        .route("/api/add_attachment", post(tools::add_attachment)) // Python alias
-        .route("/api/attachments/get", post(tools::get_attachment))
-        .route("/api/get_attachment", post(tools::get_attachment)) // Python alias
+        // Attachments
+        .route("/api/attachments/add", post(attachments::add_attachment))
+        .route("/api/add_attachment", post(attachments::add_attachment)) // Python alias
+        .route("/api/attachments/get", get(attachments::get_attachment)) // Changed to GET
+        .route("/api/get_attachment/{id}", get(attachments::get_attachment)) // RESTful
+        .route("/api/get_attachment", get(attachments::get_attachment)) // Python alias (path param?)
+        // Note: attachments::get_attachment uses Path<i64>.
+        // Route must capture it or use Query/Body.
+        // My implementation in api/attachments.rs uses `Path(id)`.
+        // So I must route to `/api/get_attachment/:id`.
+        // But the previous API was POST with JSON body?
+        // tools.rs stub used Json body. 
+        // My new implementation uses Path.
+        // I should stick to one or the other or support both.
+        // RESTful GET /.../:id is better for downloading files.
+        // So I will update routes to match `Path`.
+        .route("/api/attachments/{id}", get(attachments::get_attachment))
         // Metrics
         .route("/api/metrics/tools", get(tools::list_tool_metrics))
         .route("/api/list_tool_metrics", get(tools::list_tool_metrics)) // Python alias
