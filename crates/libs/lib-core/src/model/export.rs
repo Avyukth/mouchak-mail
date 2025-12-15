@@ -133,9 +133,42 @@ body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; pad
     }
 }
 
+impl ExportBmc {
+    pub async fn commit_archive(
+        ctx: &Ctx,
+        mm: &ModelManager,
+        project_slug: &str,
+        message: &str,
+    ) -> Result<String> {
+        // 1. Export in Markdown (default for archive)
+        let exported = Self::export_mailbox(ctx, mm, project_slug, ExportFormat::Markdown, true).await?;
+        
+        // 2. Determine file path in repo
+        let now = chrono::Utc::now();
+        let filename = format!("{}_{}.md", project_slug, now.format("%Y%m%d_%H%M%S"));
+        let rel_path = std::path::Path::new("mailboxes").join(project_slug).join(&filename);
+        
+        // 3. Open Repo
+        let repo = crate::store::git_store::open_repo(&mm.repo_root)?;
+        
+        // 4. Commit
+        let oid = crate::store::git_store::commit_file(
+            &repo,
+            &rel_path,
+            &exported.content,
+            message,
+            "MCP Agent Mail", // Committer name
+            "mcp@generic-agent.ai", // Committer email
+        )?;
+        
+        Ok(oid.to_string())
+    }
+}
+
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
         .replace('>', "&gt;")
         .replace('"', "&quot;")
 }
+

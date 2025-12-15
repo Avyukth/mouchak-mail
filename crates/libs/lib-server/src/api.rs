@@ -124,4 +124,10 @@ pub fn routes() -> Router<AppState> {
         .route("/api/tool_stats", get(tools::get_tool_stats)) // Python alias (short)
         .route("/api/activity", get(tools::list_activity))
         .route("/api/list_activity", get(tools::list_activity)) // Python alias
+        // Archive
+        .route("/api/archive/commit", post(tools::commit_archive))
+        .route("/api/commit_archive", post(tools::commit_archive)) // Python alias
+        // Siblings
+        .route("/api/project/siblings", post(tools::list_project_siblings))
+        .route("/api/list_project_siblings", post(tools::list_project_siblings)) // Python alias
 }

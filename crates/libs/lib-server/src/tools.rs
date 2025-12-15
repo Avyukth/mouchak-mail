@@ -56,6 +56,9 @@ pub async fn ensure_project(State(app_state): State<AppState>, Json(payload): Js
         }
     };
 
+    // Ensure built-in macros exist
+    lib_core::model::macro_def::MacroDefBmc::ensure_builtin_macros(&ctx, mm, project.id).await?;
+
     Ok(Json(EnsureProjectResponse {
         id: project.id,
         slug: project.slug,
@@ -2048,3 +2051,71 @@ pub async fn list_activity(
     
     Ok(Json(items).into_response())
 }
+
+// --- commit_archive ---
+#[derive(Deserialize)]
+pub struct CommitArchivePayload {
+    pub project_slug: String,
+    pub message: String,
+}
+
+#[derive(Serialize)]
+pub struct CommitArchiveResponse {
+    pub commit_id: String,
+    pub project_slug: String,
+}
+
+pub async fn commit_archive(
+    State(app_state): State<AppState>,
+    Json(payload): Json<CommitArchivePayload>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let commit_id = lib_core::model::export::ExportBmc::commit_archive(&ctx, mm, &payload.project_slug, &payload.message).await?;
+
+    Ok(Json(CommitArchiveResponse {
+        commit_id,
+        project_slug: payload.project_slug,
+    }).into_response())
+}
+
+// --- list_project_siblings ---
+#[derive(Deserialize)]
+pub struct ListProjectSiblingsPayload {
+    pub project_slug: String,
+}
+
+#[derive(Serialize)]
+pub struct ProjectSiblingResponse {
+    pub id: i64,
+    pub other_project_id: i64,
+    pub score: f64,
+    pub status: String,
+    pub rationale: String,
+}
+
+pub async fn list_project_siblings(
+    State(app_state): State<AppState>,
+    Json(payload): Json<ListProjectSiblingsPayload>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let project = lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug).await?;
+    let siblings = lib_core::model::project_sibling_suggestion::ProjectSiblingSuggestionBmc::list(&ctx, mm, project.id).await?;
+
+    let responses: Vec<ProjectSiblingResponse> = siblings.into_iter().map(|s| {
+        let other_id = if s.project_a_id == project.id { s.project_b_id } else { s.project_a_id };
+        ProjectSiblingResponse {
+            id: s.id,
+            other_project_id: other_id,
+            score: s.score,
+            status: s.status,
+            rationale: s.rationale,
+        }
+    }).collect();
+
+    Ok(Json(responses).into_response())
+}
+

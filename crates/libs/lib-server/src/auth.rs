@@ -290,6 +290,25 @@ pub async fn auth_middleware(
     }
 }
 
+/// Middleware to enforce capability checks (RBAC)
+/// Note: This is an example middleware. Real RBAC requires extracting the agent info from the token
+/// and then checking DB. Since checking DB requires async access and extracting Agent ID,
+/// we need a mechanism to map JWT sub -> Agent ID.
+/// For now, this is a placeholder stub for `rkm` task compliance.
+pub async fn capabilities_middleware(
+    State(_state): State<AppState>,
+    req: Request<axum::body::Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    // 1. Check if user is authenticated (usually runs after auth_middleware)
+    // 2. Extract Agent ID (from request extension set by auth_middleware)
+    // 3. Check requested resource/action against agent capabilities
+    
+    // For now, pass through as we don't have the granular permission mapping yet
+    Ok(next.run(req).await)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
