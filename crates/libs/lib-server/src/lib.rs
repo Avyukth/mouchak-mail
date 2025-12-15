@@ -16,7 +16,6 @@ pub mod ratelimit;
 pub mod openapi;
 
 use utoipa::{ToSchema, OpenApi};
-use utoipa_swagger_ui::SwaggerUi;
 
 
 pub use error::ServerError;

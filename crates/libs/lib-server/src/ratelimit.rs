@@ -26,6 +26,12 @@ pub struct RateLimitConfig {
     pub enabled: bool,
 }
 
+impl Default for RateLimitConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RateLimitConfig {
     pub fn new() -> Self {
         let enabled = std::env::var("RATE_LIMIT_ENABLED").unwrap_or_else(|_| "true".into()) == "true";

@@ -151,7 +151,7 @@ impl JwksClient {
             }
         }
 
-        // Slow path: refresh keys (either expired or key not found)
+        // Cache miss: refresh keys from JWKS endpoint
         if let Err(e) = self.refresh_keys().await {
             error!("Failed to refresh JWKS: {}", e);
             // Try to return cached key even if refresh failed
@@ -222,6 +222,62 @@ fn is_localhost(addr: &SocketAddr) -> bool {
     }
 }
 
+/// Validate bearer token against expected value
+fn validate_bearer_token(token: &str, expected: Option<&String>) -> Result<(), StatusCode> {
+    match expected {
+        Some(exp) if exp == token => Ok(()),
+        _ => Err(StatusCode::UNAUTHORIZED),
+    }
+}
+
+/// Validate JWT token and return authenticated user
+async fn validate_jwt_token(
+    token: &str,
+    jwks_client: &JwksClient,
+    auth_config: &AuthConfig,
+) -> Result<AuthenticatedUser, StatusCode> {
+    let header = decode_header(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let kid = header.kid.ok_or(StatusCode::UNAUTHORIZED)?;
+    let key = jwks_client.get_verifying_key(&kid).await.ok_or(StatusCode::UNAUTHORIZED)?;
+
+    let mut validation = Validation::new(header.alg);
+    if let Some(ref audience) = auth_config.jwt_audience {
+        validation.set_audience(&[audience]);
+    }
+    if let Some(ref issuer) = auth_config.jwt_issuer {
+        validation.set_issuer(&[issuer]);
+    }
+
+    match decode::<Claims>(token, &key, &validation) {
+        Ok(token_data) => {
+            info!("JWT validated successfully for subject: {}", token_data.claims.sub);
+            Ok(AuthenticatedUser {
+                subject: token_data.claims.sub.clone(),
+                agent_name: Some(token_data.claims.sub),
+                project_slug: None,
+            })
+        }
+        Err(e) => {
+            warn!("JWT validation failed: {}", e);
+            Err(StatusCode::UNAUTHORIZED)
+        }
+    }
+}
+
+/// Check if request should bypass authentication
+fn should_bypass_auth(req: &Request<axum::body::Body>, auth_config: &AuthConfig) -> bool {
+    if auth_config.mode == AuthMode::None {
+        return true;
+    }
+    if auth_config.allow_localhost
+        && let Some(connect_info) = req.extensions().get::<ConnectInfo<SocketAddr>>()
+            && is_localhost(&connect_info.0) {
+                info!("Localhost bypass: allowing unauthenticated request from {}", connect_info.0);
+                return true;
+            }
+    false
+}
+
 /// Auth Middleware
 pub async fn auth_middleware(
     State(state): State<AppState>,
@@ -230,86 +286,34 @@ pub async fn auth_middleware(
 ) -> Result<Response, StatusCode> {
     let auth_config = &state.auth_config;
 
-    // 1. Check Auth Mode None
-    if auth_config.mode == AuthMode::None {
+    if should_bypass_auth(&req, auth_config) {
         return Ok(next.run(req).await);
     }
 
-    // 2. Check Localhost Bypass
-    if auth_config.allow_localhost {
-        // Try to get client IP from ConnectInfo extension (set by into_make_service_with_connect_info)
-        if let Some(connect_info) = req.extensions().get::<ConnectInfo<SocketAddr>>() 
-            && is_localhost(&connect_info.0) {
-                info!("Localhost bypass: allowing unauthenticated request from {}", connect_info.0);
-                return Ok(next.run(req).await);
-        }
-    }
-
-    // 3. Extract Token
-    let token = match req.headers().typed_get::<Authorization<Bearer>>() {
-        Some(Authorization(bearer)) => bearer.token().to_string(),
-        None => {
-            // No token found and not localhost - unauthorized
+    let token = req.headers()
+        .typed_get::<Authorization<Bearer>>()
+        .map(|auth| auth.token().to_string())
+        .ok_or_else(|| {
             warn!("No Authorization header and localhost bypass not applicable");
-            return Err(StatusCode::UNAUTHORIZED);
-        }
-    };
+            StatusCode::UNAUTHORIZED
+        })?;
 
-    // 4. Validate Token based on mode
     match auth_config.mode {
         AuthMode::Bearer => {
-            match &auth_config.bearer_token {
-                Some(expected) if expected == &token => Ok(next.run(req).await),
-                _ => Err(StatusCode::UNAUTHORIZED),
-            }
+            validate_bearer_token(&token, auth_config.bearer_token.as_ref())?;
+            Ok(next.run(req).await)
         }
         AuthMode::Jwt => {
-            if let Some(jwks_client) = &state.jwks_client {
-                // Decode header to find KID
-                let header = match decode_header(&token) {
-                    Ok(h) => h,
-                    Err(_) => return Err(StatusCode::UNAUTHORIZED),
-                };
-
-                let kid = header.kid.ok_or(StatusCode::UNAUTHORIZED)?;
-                let key = jwks_client.get_verifying_key(&kid).await.ok_or(StatusCode::UNAUTHORIZED)?;
-
-                // Configure validation with audience and issuer if provided
-                let mut validation = Validation::new(header.alg);
-
-                if let Some(ref audience) = auth_config.jwt_audience {
-                    validation.set_audience(&[audience]);
-                }
-
-                if let Some(ref issuer) = auth_config.jwt_issuer {
-                    validation.set_issuer(&[issuer]);
-                }
-
-                // decode verifies signature, exp, aud, and iss
-                match decode::<Claims>(&token, &key, &validation) {
-                    Ok(token_data) => {
-                        info!("JWT validated successfully for subject: {}", token_data.claims.sub);
-                        // Store authenticated user in request extensions
-                        let auth_user = AuthenticatedUser {
-                            subject: token_data.claims.sub.clone(),
-                            agent_name: Some(token_data.claims.sub), // Default: subject is agent name
-                            project_slug: None, // Will be extracted from request body if needed
-                        };
-                        let mut req = req;
-                        req.extensions_mut().insert(auth_user);
-                        Ok(next.run(req).await)
-                    },
-                    Err(e) => {
-                        warn!("JWT validation failed: {}", e);
-                        Err(StatusCode::UNAUTHORIZED)
-                    },
-                }
-            } else {
+            let jwks_client = state.jwks_client.as_ref().ok_or_else(|| {
                 error!("Auth mode is JWT but JwksClient is missing");
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            let auth_user = validate_jwt_token(&token, jwks_client, auth_config).await?;
+            let mut req = req;
+            req.extensions_mut().insert(auth_user);
+            Ok(next.run(req).await)
         }
-        AuthMode::None => unreachable!(), // Handled above
+        AuthMode::None => unreachable!(),
     }
 }
 

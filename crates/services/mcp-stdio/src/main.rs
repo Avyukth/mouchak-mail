@@ -17,22 +17,17 @@ struct Cli {
 enum Commands {
     /// Run the MCP server over stdio (default)
     Serve {
-        /// Transport mode: stdio or sse
         #[arg(short, long, default_value = "stdio")]
         transport: String,
-        /// Port for SSE server (default: 3000)
         #[arg(short, long, default_value = "3000")]
         port: u16,
-        /// Host to bind SSE server (default: 127.0.0.1)
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
     },
     /// Export JSON schemas for all tools
     Schema {
-        /// Output format: json or markdown
         #[arg(short, long, default_value = "json")]
         format: String,
-        /// Output file (stdout if not specified)
         #[arg(short, long)]
         output: Option<String>,
     },
@@ -40,98 +35,62 @@ enum Commands {
     Tools,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let cli = Cli::parse();
+fn setup_logging() -> Result<()> {
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_writer(std::io::stderr))
+        .with(EnvFilter::from_default_env().add_directive("mcp_stdio=info".parse()?))
+        .init();
+    Ok(())
+}
 
-    // Note: Logging setup is tricky here. 
-    // lib-mcp doesn't set up logging, it assumes caller does.
-    // mcp-stdio used to set up stderr logging.
-    // We should replicate that here for the standalone binary.
-    
-    match cli.command.unwrap_or(Commands::Serve {
-        transport: "stdio".to_string(),
-        port: 3000,
-        host: "127.0.0.1".to_string(),
-    }) {
-        Commands::Serve { transport, port, host: _ } => {
-            // Setup logging for standalone mode
-            tracing_subscriber::registry()
-                .with(fmt::layer().with_writer(std::io::stderr))
-                .with(EnvFilter::from_default_env().add_directive("mcp_stdio=info".parse()?))
-                .init();
-
-            let config = McpConfig {
-                transport: transport.clone(),
-                port,
-            };
-
-            match transport.as_str() {
-                "sse" => run_sse(config).await,
-                _ => run_stdio(config).await,
-            }
-        }
-        Commands::Schema { format, output } => {
-            let schemas = get_tool_schemas();
-            let content = match format.as_str() {
-                "markdown" | "md" => generate_markdown_docs(&schemas),
-                _ => serde_json::to_string_pretty(&schemas)?,
-            };
-            if let Some(path) = output {
-                std::fs::write(&path, &content)?;
-                eprintln!("Schema written to {}", path);
-            } else {
-                println!("{}", content);
-            }
-            Ok(())
-        },
-        Commands::Tools => {
-            let schemas = get_tool_schemas();
-            println!("MCP Agent Mail Tools ({} total)\n", schemas.len());
-            println!("{:<30} DESCRIPTION", "TOOL");
-            println!("{}", "-".repeat(80));
-            for schema in schemas {
-                println!("{:<30} {}", schema.name, schema.description);
-            }
-            Ok(())
-        },
+async fn handle_serve(transport: String, port: u16) -> Result<()> {
+    setup_logging()?;
+    let config = McpConfig { transport: transport.clone(), port };
+    if transport == "sse" {
+        run_sse(config).await
+    } else {
+        run_stdio(config).await
     }
 }
 
-// Helper needed because it was local in main.rs before
-fn generate_markdown_docs(schemas: &[lib_mcp::tools::ToolSchema]) -> String {
-    let mut md = String::from("# MCP Agent Mail - Tool Reference\n\n");
-    md.push_str(&format!("Total tools: {}\n\n", schemas.len()));
-    md.push_str("## Table of Contents\n\n");
-
-    for schema in schemas {
-        md.push_str(&format!("- [{}](#{})\n", schema.name, schema.name.replace('_', "-")));
+fn handle_schema(format: String, output: Option<String>) -> Result<()> {
+    let schemas = get_tool_schemas();
+    let content = if format == "markdown" || format == "md" {
+        lib_mcp::docs::generate_markdown_docs(&schemas)
+    } else {
+        serde_json::to_string_pretty(&schemas)?
+    };
+    if let Some(path) = output {
+        std::fs::write(&path, &content)?;
+        eprintln!("Schema written to {}", path);
+    } else {
+        println!("{}", content);
     }
+    Ok(())
+}
 
-    md.push_str("\n---\n\n");
-
+fn handle_tools() {
+    let schemas = get_tool_schemas();
+    println!("MCP Agent Mail Tools ({} total)\n", schemas.len());
+    println!("{:<30} DESCRIPTION", "TOOL");
+    println!("{}", "-".repeat(80));
     for schema in schemas {
-        md.push_str(&format!("## {}\n\n", schema.name));
-        md.push_str(&format!("{}\n\n", schema.description));
-
-        if !schema.parameters.is_empty() {
-            md.push_str("### Parameters\n\n");
-            md.push_str("| Name | Type | Required | Description |\n");
-            md.push_str("|------|------|----------|-------------|\n");
-            md.push_str("|------|------|----------|-------------|\n"); 
-            // Loop params logic needs to be replicated or access schema internals
-            // ToolSchema in lib-mcp needs to be public inspectable. 
-            // Assuming it is standard struct.
-             for param in &schema.parameters {
-                md.push_str(&format!(
-                    "| `{}` | {} | {} | {} |\n",
-                    param.name,
-                    param.param_type,
-                    if param.required { "Yes" } else { "No" },
-                    param.description
-                ));
-            }
-        }
+        println!("{:<30} {}", schema.name, schema.description);
     }
-    md
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let cli = Cli::parse();
+    let cmd = cli.command.unwrap_or(Commands::Serve {
+        transport: "stdio".to_string(),
+        port: 3000,
+        host: "127.0.0.1".to_string(),
+    });
+
+    match cmd {
+        Commands::Serve { transport, port, .. } => handle_serve(transport, port).await,
+        Commands::Schema { format, output } => handle_schema(format, output),
+        Commands::Tools => { handle_tools(); Ok(()) }
+    }
 }

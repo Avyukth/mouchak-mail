@@ -140,7 +140,7 @@ body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; pad
         let mut wtr = csv::Writer::from_writer(vec![]);
         
         // Header
-        wtr.write_record(&["id", "created_at", "sender", "subject", "body"])
+        wtr.write_record(["id", "created_at", "sender", "subject", "body"])
             .map_err(|e| crate::Error::InvalidInput(format!("CSV Error: {}", e)))?;
             
         // Rows

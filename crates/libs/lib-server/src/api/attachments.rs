@@ -4,7 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
     body::Body,
 };
-use axum::http::{StatusCode, header};
+use axum::http::header;
 use serde::{Deserialize, Serialize};
 use crate::AppState;
 use lib_core::Ctx;

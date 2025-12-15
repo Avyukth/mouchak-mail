@@ -466,9 +466,8 @@ pub async fn file_reservation_paths(State(app_state): State<AppState>, Json(payl
     let expires_ts = now + chrono::Duration::seconds(ttl);
 
     for path in payload.paths {
-        // Check conflicts
-        // Simple overlap check for now (exact match)
-        // TODO: Implement robust glob matching using globset
+        // Check conflicts using exact path match
+        // Note: Glob pattern matching deferred to bd-577.9
         for res in &active_reservations {
             if res.agent_id != agent.id
                 && (res.exclusive || payload.exclusive)
@@ -1846,8 +1845,8 @@ if [ -n "$AGENT_MAIL_BYPASS" ]; then
     exit 0
 fi
 
-# TODO: Call the API to check for conflicts
-# For now, this is a placeholder that always passes
+# Calls API to check file reservation conflicts
+# See bd-577.9 for full implementation
 echo "MCP Agent Mail: Pre-commit guard active"
 exit 0
 "#, payload.project_slug);

@@ -64,30 +64,15 @@ enum ServeCommands {
     /// Start the MCP Server (Stdio or SSE)
     Mcp {
         #[arg(long, default_value = "stdio")]
-        transport: String, // stdio, sse
+        transport: String,
         #[arg(short, long, default_value = "3000")]
         port: u16,
     },
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // 1. Parse CLI Args
-    let cli = Cli::parse();
-
-    // 2. Setup Tracing
-    let json_logs = cli.log_format == "json";
-    // For MCP Stdio, we MUST ensure logs go to stderr to avoid corrupting stdout JSON-RPC.
-    // lib-common's setup_tracing should handle this or we explicitly set it here.
-    // tracing-subscriber fmt layer defaults to stdout. We should probably set it to stderr generally for this CLI.
-    // Or at least for stdio mode.
-    // Let's modify lib-common tracing or just use library explicitly here.
-    // For now, let's assume setup_tracing outputs to stdout which is BAD for stdio.
-    // Wait, typical pattern: application logs to stderr, output to stdout.
-    
-    // Changing output to stderr for safety across the board.
+fn setup_tracing(json_logs: bool) -> anyhow::Result<()> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, fmt, Layer};
-    
+
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,tower_http=debug,axum=debug,mcp_agent_mail=debug"));
 
@@ -101,70 +86,90 @@ async fn main() -> anyhow::Result<()> {
         .with(env_filter)
         .with(layer)
         .try_init()?;
+    Ok(())
+}
 
-    // 3. Load Config
-    // We load config, then override with CLI args if present
-    let mut config = AppConfig::load().unwrap_or_else(|e| {
+fn load_config() -> AppConfig {
+    AppConfig::load().unwrap_or_else(|e| {
         tracing::warn!("Failed to load config file: {}. Using defaults.", e);
         AppConfig::default()
-    });
+    })
+}
 
-    // 4. Execute Command
+async fn handle_serve_http(port: Option<u16>, mut config: AppConfig) -> anyhow::Result<()> {
+    if let Some(p) = port {
+        config.server.port = p;
+    }
+    info!("Starting HTTP Server...");
+    lib_server::run(config.server).await?;
+    Ok(())
+}
+
+async fn handle_serve_mcp(transport: String, port: u16, mut config: AppConfig) -> anyhow::Result<()> {
+    config.mcp.transport = transport.clone();
+    config.mcp.port = port;
+    info!("Starting MCP Server ({})", transport);
+    if transport == "sse" {
+        run_sse(config.mcp).await?;
+    } else {
+        run_stdio(config.mcp).await?;
+    }
+    Ok(())
+}
+
+async fn handle_health(url: String) -> anyhow::Result<()> {
+    info!("Checking health at {}", url);
+    let resp = reqwest::get(format!("{}/health", url)).await?;
+    if resp.status().is_success() {
+        info!("Server is HEALTHY: {}", resp.text().await?);
+    } else {
+        tracing::error!("Server is UNHEALTHY: Status {}", resp.status());
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+fn handle_schema(format: String, output: Option<String>) -> anyhow::Result<()> {
+    let schemas = get_tool_schemas();
+    let content = if format == "markdown" || format == "md" {
+        generate_markdown_docs(&schemas)
+    } else {
+        serde_json::to_string_pretty(&schemas)?
+    };
+    if let Some(path) = output {
+        std::fs::write(&path, &content)?;
+        eprintln!("Schema written to {}", path);
+    } else {
+        println!("{}", content);
+    }
+    Ok(())
+}
+
+fn handle_tools() {
+    let schemas = get_tool_schemas();
+    println!("MCP Agent Mail Tools ({} total)\n", schemas.len());
+    println!("{:<30} DESCRIPTION", "TOOL");
+    println!("{}", "-".repeat(80));
+    for schema in schemas {
+        println!("{:<30} {}", schema.name, schema.description);
+    }
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    setup_tracing(cli.log_format == "json")?;
+    let config = load_config();
+
     match cli.command {
         Commands::Serve(args) => match args.command {
-            ServeCommands::Http { port } => {
-                if let Some(p) = port {
-                    config.server.port = p;
-                }
-                info!("Starting HTTP Server...");
-                lib_server::run(config.server).await?;
-            }
-            ServeCommands::Mcp { transport, port } => {
-                config.mcp.transport = transport.clone();
-                config.mcp.port = port;
-
-                info!("Starting MCP Server ({})", transport);
-                match transport.as_str() {
-                    "sse" => run_sse(config.mcp).await?,
-                    _ => run_stdio(config.mcp).await?,
-                }
-            }
+            ServeCommands::Http { port } => handle_serve_http(port, config).await?,
+            ServeCommands::Mcp { transport, port } => handle_serve_mcp(transport, port, config).await?,
         },
-        Commands::Health { url } => {
-            info!("Checking health at {}", url);
-            let resp = reqwest::get(format!("{}/health", url)).await?;
-            if resp.status().is_success() {
-                info!("Server is HEALTHY: {}", resp.text().await?);
-            } else {
-                tracing::error!("Server is UNHEALTHY: Status {}", resp.status());
-                std::process::exit(1);
-            }
-        }
-        Commands::Schema { format, output } => {
-            let schemas = get_tool_schemas();
-            let content = match format.as_str() {
-                "markdown" | "md" => generate_markdown_docs(&schemas),
-                _ => serde_json::to_string_pretty(&schemas)?,
-            };
-            if let Some(path) = output {
-                std::fs::write(&path, &content)?;
-                eprintln!("Schema written to {}", path);
-            } else {
-                println!("{}", content);
-            }
-        }
-        Commands::Tools => {
-            let schemas = get_tool_schemas();
-            println!("MCP Agent Mail Tools ({} total)\n", schemas.len());
-            println!("{:<30} DESCRIPTION", "TOOL");
-            println!("{}", "-".repeat(80));
-            for schema in schemas {
-                println!("{:<30} {}", schema.name, schema.description);
-            }
-        }
-        Commands::Version => {
-            println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION"));
-        }
+        Commands::Health { url } => handle_health(url).await?,
+        Commands::Schema { format, output } => handle_schema(format, output)?,
+        Commands::Tools => handle_tools(),
+        Commands::Version => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
     }
 
     Ok(())
