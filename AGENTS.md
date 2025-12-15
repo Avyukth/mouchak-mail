@@ -1,25 +1,62 @@
-# Agent Instructions: MCP Agent Mail (Rust)
+# AGENTS.md - AI Coding Agent Instructions
 
-> This document provides instructions for AI coding agents (Claude, Gemini, Codex, GPT, etc.) working on this project.
+> Universal instructions for AI coding agents (Claude, Gemini, Codex, GPT, Copilot, etc.) working on this project.
+
+## Quick Start
+
+```bash
+# 1. Find ready work
+bd ready --json
+
+# 2. Claim a task
+bd update <id> --status in_progress --json
+
+# 3. Run development servers
+make dev
+
+# 4. Run tests
+make test
+```
+
+---
 
 ## Project Overview
 
-**Goal**: Translate Python `mcp_agent_mail` ("Gmail for coding agents") to idiomatic Rust with a SvelteKit frontend.
+**Goal**: "Gmail for coding agents" - A multi-agent messaging system implemented in Rust with SvelteKit frontend.
 
-**Strategy**: Depyler-assisted transpilation + manual refinement
+**Tech Stack**:
 
-**Current Phase**: Phase 1.5 complete (API Layer) → Phase 2 (SvelteKit Frontend) is next
+| Layer | Technology | Key Files |
+|-------|------------|-----------|
+| Core | Rust, lib-core | `crates/libs/lib-core/` |
+| API | Axum 0.8 | `crates/services/mcp-server/` |
+| MCP | rmcp | `crates/services/mcp-stdio/` |
+| Frontend | SvelteKit | `crates/services/web-ui/` |
+| Database | libsql (SQLite) | `migrations/*.sql` |
+| Tracker | beads (`bd`) | `.beads/issues.jsonl` |
+
+**Key Directories**:
+
+```
+mcp-agent-mail-rs/
+├── crates/
+│   ├── libs/lib-core/      # Domain logic, BMC pattern
+│   └── services/
+│       ├── mcp-server/     # Axum REST API
+│       ├── mcp-stdio/      # MCP protocol server
+│       ├── mcp-cli/        # CLI for testing
+│       └── web-ui/         # SvelteKit frontend
+├── migrations/             # SQL schema
+├── docs/                   # Documentation
+├── .beads/                 # Issue tracker
+└── scripts/                # Utility scripts
+```
+
+---
 
 ## Issue Tracking with bd (beads)
 
-**CRITICAL**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
-
-### Why bd?
-
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Multi-agent: All agents share the same issue database via git
+**CRITICAL**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs or other tracking methods.
 
 > **Warning:** Do not edit `.beads/*.jsonl` directly; only use `bd` commands.
 
@@ -31,7 +68,6 @@ bd ready --json
 
 # Create new issues
 bd create "Issue title" -t bug|feature|task -p 0-4 --json
-bd create "Subtask" --parent <epic-id> --json
 
 # Claim and update
 bd update <id> --status in_progress --json
@@ -43,17 +79,15 @@ bd close <id> --reason "Completed" --json
 bd list --json
 ```
 
-### Issue Types
+### Issue Types & Priorities
 
 | Type | Use For |
 |------|---------|
-| `epic` | Large features with subtasks (phases) |
+| `epic` | Large features with subtasks |
 | `feature` | New functionality |
-| `task` | Work items (implementation, tests, docs) |
+| `task` | Work items |
 | `bug` | Something broken |
-| `chore` | Maintenance (deps, tooling) |
-
-### Priorities
+| `chore` | Maintenance |
 
 | Priority | Meaning |
 |----------|---------|
@@ -61,211 +95,116 @@ bd list --json
 | 1 | High (major features) |
 | 2 | Medium (default) |
 | 3 | Low (polish) |
-| 4 | Backlog (future) |
+| 4 | Backlog |
 
-## Current Project Phases (Epics)
+---
 
-Run `bd list -t epic --json` to see all phases:
+## Multi-Agent Workflow
 
-| Phase | Epic ID | Status | Description |
-|-------|---------|--------|-------------|
-| 1 | bd-* | done | Core Architecture |
-| 1.5 | bd-* | done | API Layer (Axum) |
-| 2 | bd-* | todo | SvelteKit Frontend |
-| 3 | bd-* | todo | Full Feature Parity (46 MCP Tools) |
-| 4 | bd-* | todo | MCP Protocol Integration |
-| 5 | bd-* | todo | Production Hardening |
+This project supports concurrent multi-agent development using git worktrees for isolation.
 
-## Workflow for AI Agents
+### Agent Execution Flow
 
-### Starting a Session
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AGENT EXECUTION FLOW                          │
+└─────────────────────────────────────────────────────────────────┘
+
+ ┌──────────────────────────────────────────────────────────────┐
+ │ PHASE 1: INITIALIZATION                                       │
+ ├──────────────────────────────────────────────────────────────┤
+ │  1. bd ready --json         # Find ready work (no blockers)  │
+ │  2. bd show <id> --json     # Read issue details             │
+ │  3. bd update <id> --status in_progress                      │
+ └──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ PHASE 2: SANDBOX CREATION                                     │
+ ├──────────────────────────────────────────────────────────────┤
+ │  4. git worktree add .sandboxes/agent-<id> feature/<id>      │
+ │  5. cd .sandboxes/agent-<id>                                 │
+ │     └── Agent now has isolated workspace                     │
+ └──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ PHASE 3: EXECUTION                                            │
+ ├──────────────────────────────────────────────────────────────┤
+ │  6. Read code, understand requirements                        │
+ │  7. Make changes (edit, create, delete files)                │
+ │  8. Run tests: cargo test                                    │
+ │  9. Run linter: cargo clippy --workspace                     │
+ │                                                               │
+ │  If discovered issues:                                        │
+ │  bd create "Bug: X" -t bug --deps discovered-from:<id>       │
+ └──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ PHASE 4: QUALITY GATES                                        │
+ ├──────────────────────────────────────────────────────────────┤
+ │ 10. cargo test --workspace        # All tests pass?          │
+ │ 11. cargo clippy -- -D warnings   # No warnings?             │
+ │ 12. cargo fmt --check             # Formatted?               │
+ │                                                               │
+ │  ┌─────────┐                      ┌─────────┐                │
+ │  │  PASS   │                      │  FAIL   │                │
+ │  └────┬────┘                      └────┬────┘                │
+ │       │                                │                      │
+ │       ▼                                ▼                      │
+ │  Continue to                      File blocker issue         │
+ │  Phase 5                          bd create "Gate failed"    │
+ │                                   -t bug -p 0                 │
+ └──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ PHASE 5: COMMIT & MERGE (on success)                          │
+ ├──────────────────────────────────────────────────────────────┤
+ │ 13. git add -A                                                │
+ │ 14. git commit -m "feat: <description> (closes bd-<id>)"     │
+ │ 15. cd ../..                      # Back to main repo        │
+ │ 16. git checkout main                                        │
+ │ 17. git merge feature/<id>                                   │
+ │ 18. git worktree remove .sandboxes/agent-<id>                │
+ │ 19. git branch -d feature/<id>                               │
+ └──────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ PHASE 6: CLEANUP                                              │
+ ├──────────────────────────────────────────────────────────────┤
+ │ 20. bd close <id> --reason "Completed"                       │
+ │ 21. git add .beads/issues.jsonl                              │
+ │ 22. git commit -m "chore: close bd-<id>"                     │
+ └──────────────────────────────────────────────────────────────┘
+```
+
+### Git Worktree Isolation
+
+Each agent works in an isolated git worktree to prevent conflicts:
 
 ```bash
-# 1. Check for ready work
-bd ready --json
+# Create worktree for agent task
+git worktree add .sandboxes/agent-bd-abc feature/bd-abc
+cd .sandboxes/agent-bd-abc
 
-# 2. Pick an issue and claim it
-bd update <id> --status in_progress --json
+# On success: merge changes
+git checkout main
+git merge feature/bd-abc
+git worktree remove .sandboxes/agent-bd-abc
 
-# 3. Read the related epic for context
-bd show <epic-id> --json
+# On failure: discard sandbox
+git worktree remove --force .sandboxes/agent-bd-abc
+git branch -D feature/bd-abc
 ```
 
-### During Development
-
-```bash
-# Found a bug or TODO?
-bd create "Bug: missing validation" -t bug -p 1 --deps discovered-from:<current-id> --json
-
-# Need to break down work?
-bd create "Subtask: implement X" --parent <epic-id> --json
-```
-
-### Ending a Session
-
-```bash
-# 1. Complete finished work
-bd close <id> --reason "Implemented feature X" --json
-
-# 2. Update partially done work
-bd update <id> --status in_progress --json
-bd comment <id> "Progress: completed A, B remains"
-
-# 3. Ensure changes are synced
-# bd auto-syncs, but verify:
-ls -la .beads/issues.jsonl
-
-# 4. Commit together with code changes
-git add .beads/issues.jsonl
-git commit -m "feat: implement X (closes bd-123)"
-```
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Backend | Rust, Axum 0.6, libsql, git2, tokio |
-| Frontend | SvelteKit, TailwindCSS, Bun |
-| Database | SQLite (libsql) with FTS5 |
-| Storage | Git-backed mailbox (git2) |
-| Protocol | MCP (Model Context Protocol) |
-
-## Key Directories
-
-```
-mcp-agent-mail-rs/
-├── crates/
-│   ├── libs/lib-core/      # Domain logic, BMC pattern
-│   └── services/
-│       ├── mcp-server/     # Axum REST API
-│       ├── mcp-cli/        # CLI for testing
-│       └── web-ui/         # SvelteKit (Phase 2)
-├── migrations/             # SQL schema
-├── docs/
-│   └── PROJECT_PLAN.md     # Detailed task breakdown
-├── .beads/                 # Issue tracker
-└── llms.txt                # LLM-friendly overview
-```
-
-## Quality Gates
-
-Before marking work complete:
-
-- [ ] Code compiles: `cargo build`
-- [ ] No warnings: `cargo clippy`
-- [ ] Tests pass: `cargo test`
-- [ ] No `unwrap()` in production code
-- [ ] Update docs if behavior changed
-
-## Triggering Other Agents
-
-### For Gemini CLI
-
-Gemini CLI reads `GEMINI.md` and supports MCP servers.
-
-**Setup:**
-```bash
-# Create .gemini directory
-mkdir -p .gemini
-
-# Symlink AGENTS.md as GEMINI.md (or copy)
-ln -s ../AGENTS.md .gemini/GEMINI.md
-
-# Or use environment variable for system instructions
-export GEMINI_SYSTEM_MD=true
-# Then create .gemini/system.md with instructions
-```
-
-**Run:**
-```bash
-cd /path/to/mcp-agent-mail-rs
-gemini
-
-# Then tell it:
-# "Run bd ready --json and pick up the highest priority unblocked task"
-# "Work on mcp-agent-mail-rs-k43.1 - Initialize SvelteKit project"
-```
-
-**MCP Integration (recommended):**
-```bash
-# Install beads MCP server
-pip install beads-mcp
-
-# Configure in ~/.gemini/settings.json:
-# { "mcpServers": { "beads": { "command": "beads-mcp" } } }
-```
-
-### For OpenAI Codex CLI
-
-Codex CLI automatically reads `AGENTS.md` files in precedence order.
-
-**Setup:**
-```bash
-# AGENTS.md already exists - Codex will find it automatically
-# For global instructions, also add to ~/.codex/AGENTS.md
-```
-
-**Run:**
-```bash
-cd /path/to/mcp-agent-mail-rs
-codex
-
-# Or non-interactively:
-codex exec "Run bd ready --json, claim the first task, and implement it"
-```
-
-**With Agents SDK (advanced):**
-```bash
-# Codex can be exposed as MCP server for orchestration
-# See: https://developers.openai.com/codex/guides/agents-sdk/
-```
-
-### For Claude Code
-
-Claude Code automatically reads `CLAUDE.md` and `AGENTS.md`.
-
-**Setup:**
-```bash
-# Create CLAUDE.md that references AGENTS.md
-echo "See AGENTS.md for project-specific instructions." > CLAUDE.md
-```
-
-**Run:**
-```bash
-cd /path/to/mcp-agent-mail-rs
-claude
-
-# Then:
-# "Run bd ready --json and start the first task"
-# "Work on Phase 2 SvelteKit setup"
-```
-
-### For Any Agent (Universal Protocol)
-
-Any AI coding agent should follow this workflow:
-
-```bash
-# 1. ORIENT - Understand the project
-cat AGENTS.md        # Agent instructions
-cat llms.txt         # Project overview
-bd ready --json      # Available work
-
-# 2. CLAIM - Pick and claim a task
-bd update <id> --status in_progress --json
-
-# 3. WORK - Implement the task
-# ... write code, tests, docs ...
-
-# 4. DISCOVER - File new issues found during work
-bd create "Bug: X" -t bug --deps discovered-from:<id> --json
-
-# 5. COMPLETE - Close the task
-bd close <id> --reason "Implemented X" --json
-
-# 6. SYNC - Commit everything together
-git add -A
-git commit -m "feat: implement X (closes bd-Y)"
-```
+**Benefits:**
+- Main repo stays clean
+- Multiple agents work in parallel without conflicts
+- Easy rollback on failure
+- Each agent has isolated file system
 
 ### Multi-Agent Handoff Protocol
 
@@ -280,7 +219,6 @@ When handing off work between agents:
 2. **Incoming agent**: Check recent activity
    ```bash
    bd show <id> --json           # See full issue with comments
-   bd list --status open --json  # See all open work
    bd ready --json               # See unblocked work
    ```
 
@@ -290,22 +228,147 @@ When handing off work between agents:
    bd ready --json               # Beads auto-imports from JSONL
    ```
 
-## Important Rules
+---
 
-- ✅ Use `bd` for ALL task tracking
-- ✅ Always use `--json` flag for programmatic parsing
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ✅ Commit `.beads/issues.jsonl` with code changes
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT skip claiming issues before working
-- ❌ Do NOT edit `.beads/*.jsonl` directly (only use `bd` commands)
+## Reasoning & Planning Framework
+
+Before taking any action, reason through these steps:
+
+### 1. Logical Dependencies & Constraints
+
+Analyze the action against these factors (resolve conflicts in order):
+
+1. **Policy rules**: Check AGENTS.md constraints (use `bd`, quality gates, etc.)
+2. **Order of operations**: Will this action prevent a later necessary action?
+3. **Prerequisites**: What information/actions are needed first?
+4. **User preferences**: Explicit constraints from the conversation
+
+### 2. Risk Assessment
+
+| Risk Level | When to Proceed Without Asking |
+|------------|--------------------------------|
+| **LOW** | Missing optional params, exploratory searches |
+| **MEDIUM** | Modifying existing code, adding deps |
+| **HIGH** | Deleting files, changing configs, external calls |
+
+**Prefer action over asking** unless HIGH risk or Rule 1 issues.
+
+### 3. Abductive Reasoning
+
+When debugging:
+1. Look beyond obvious causes - the root issue may be deeper
+2. Prioritize hypotheses by likelihood, but don't discard low-probability ones
+3. Each hypothesis may need multiple steps to verify
+
+### 4. Adaptability
+
+After each observation:
+- Does the result change the plan?
+- If hypotheses disproven -> generate new ones from gathered info
+
+### 5. Persistence
+
+- On **transient** errors ("please try again"): RETRY
+- On **other** errors: Change strategy, don't repeat same call
+- Don't give up until reasoning is exhausted
+
+---
+
+## Environment Context
+
+### CLI Tools (prefer these)
+
+| Use | Not | Example |
+|-----|-----|---------|
+| `eza` | ls | `eza -la --icons --git` |
+| `bat` | cat | `bat file.rs` |
+| `rg` | grep | `rg "pattern" --type rust` |
+| `fd` | find | `fd -e rs` |
+
+### Package Managers
+
+**Rust** -> cargo (standard)
+```bash
+cargo build
+cargo test
+cargo clippy
+```
+
+**JavaScript** -> bun (not npm/yarn)
+```bash
+bun install
+bun add pkg
+bun run dev
+```
+
+**Python** -> uv (not pip/venv)
+```bash
+uv add pkg
+uv run python x.py
+uvx ruff check .
+```
+
+---
+
+## Quality Gates
+
+Before marking work complete:
+
+- [ ] Code compiles: `cargo build`
+- [ ] No warnings: `cargo clippy -- -D warnings`
+- [ ] Tests pass: `cargo test`
+- [ ] Formatted: `cargo fmt --check`
+- [ ] No `unwrap()` in production code
+- [ ] Update docs if behavior changed
+
+---
+
+## Critical Rules
+
+**DO:**
+- Use `bd` for ALL task tracking
+- Use `--json` flag for programmatic parsing
+- Link discovered work with `discovered-from` dependencies
+- Check `bd ready` before asking "what should I work on?"
+- Commit `.beads/issues.jsonl` with code changes
+
+**DON'T:**
+- Create markdown TODO lists
+- Edit `.beads/*.jsonl` directly (only use `bd` commands)
+- Use `unwrap()` in production code
+- Skip claiming issues before working
+- Ignore clippy warnings
+
+---
+
+## Quick Reference
+
+```bash
+# Task Tracking
+bd ready --json          # What to work on
+bd update <id> --status in_progress
+bd close <id> --reason "Done"
+
+# Development
+make dev                 # Run API + Web UI
+make test                # Run all tests
+make build               # Build all
+
+# Quality
+cargo clippy --workspace
+cargo fmt --all
+cargo test --workspace
+
+# Git Worktrees
+git worktree add .sandboxes/agent-<id> feature/<id>
+git worktree remove .sandboxes/agent-<id>
+```
+
+---
 
 ## References
 
+- [Project Plan](docs/PROJECT_PLAN.md)
 - [Python Source](https://github.com/Dicklesworthstone/mcp_agent_mail)
-- [Depyler Transpiler](https://github.com/paiml/depyler)
 - [Beads Issue Tracker](https://github.com/steveyegge/beads)
 - [MCP Protocol](https://modelcontextprotocol.io)
-- [Project Plan](docs/PROJECT_PLAN.md)
