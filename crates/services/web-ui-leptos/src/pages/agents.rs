@@ -3,6 +3,7 @@
 
 use leptos::prelude::*;
 use crate::api::client::{self, Project, Agent};
+use crate::components::{Select, SelectOption};
 
 /// Agent with project slug for display.
 #[derive(Clone)]
@@ -112,21 +113,24 @@ pub fn Agents() -> impl IntoView {
 
                     // Project Filter
                     <div class="md:w-64">
-                        <select
-                            on:change=move |ev| selected_project.set(event_target_value(&ev))
-                            class="input"
-                        >
-                            <option value="all">"All Projects"</option>
-                            {move || {
-                                projects.get().into_iter().map(|p| {
-                                    let slug = p.slug.clone();
-                                    let slug_display = slug.clone();
-                                    view! {
-                                        <option value=slug>{slug_display}</option>
-                                    }
-                                }).collect::<Vec<_>>()
-                            }}
-                        </select>
+                        {move || {
+                            let mut options = vec![SelectOption::new("all", "All Projects")];
+                            options.extend(
+                                projects.get()
+                                    .into_iter()
+                                    .map(|p| SelectOption::new(p.slug.clone(), p.slug.clone()))
+                            );
+                            view! {
+                                <Select
+                                    id="projectFilter".to_string()
+                                    options=options
+                                    value=selected_project
+                                    placeholder="Filter by project".to_string()
+                                    disabled=false
+                                    icon="folder"
+                                />
+                            }
+                        }}
                     </div>
                 </div>
             </div>

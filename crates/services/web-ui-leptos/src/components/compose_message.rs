@@ -2,6 +2,7 @@
 
 use leptos::prelude::*;
 use crate::api::client::{self, Agent};
+use super::{Select, SelectOption};
 
 /// Props for ComposeMessage component.
 #[derive(Clone)]
@@ -262,19 +263,21 @@ pub fn ComposeMessage(
                 // Options
                 <div class="flex flex-wrap gap-4">
                     // Importance
-                    <div>
-                        <label for="importance" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <div class="w-40">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             "Importance"
                         </label>
-                        <select
-                            id="importance"
-                            on:change=move |ev| importance.set(event_target_value(&ev))
-                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        >
-                            <option value="low">"Low"</option>
-                            <option value="normal" selected=true>"Normal"</option>
-                            <option value="high">"High"</option>
-                        </select>
+                        <Select
+                            id="importance".to_string()
+                            options=vec![
+                                SelectOption::new("low", "Low"),
+                                SelectOption::new("normal", "Normal"),
+                                SelectOption::new("high", "High"),
+                            ]
+                            value=importance
+                            placeholder="Select...".to_string()
+                            disabled=false
+                        />
                     </div>
 
                     // Ack Required

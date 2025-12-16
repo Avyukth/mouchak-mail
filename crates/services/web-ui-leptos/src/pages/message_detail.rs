@@ -11,10 +11,12 @@ use crate::components::{ComposeMessage, ComposeProps, ReplyTo};
 pub fn MessageDetail() -> impl IntoView {
     let params = use_params_map();
     let query = use_query_map();
-    
-    let message_id = move || params.read().get("id").unwrap_or_default();
-    let project_slug = query.read().get("project").unwrap_or_default();
-    let agent_name = query.read().get("agent").unwrap_or_default();
+
+    // Use with_untracked since route params don't change without navigation
+    // This avoids reactive tracking warnings while still getting the values
+    let message_id = params.with_untracked(|p| p.get("id").unwrap_or_default());
+    let project_slug = query.with_untracked(|q| q.get("project").unwrap_or_default());
+    let agent_name = query.with_untracked(|q| q.get("agent").unwrap_or_default());
 
     // State
     let message = RwSignal::new(Option::<Message>::None);
@@ -23,45 +25,42 @@ pub fn MessageDetail() -> impl IntoView {
     let error = RwSignal::new(Option::<String>::None);
     let show_reply = RwSignal::new(false);
 
+    // Clone values for use in Effect
+    let id_for_effect = message_id.clone();
+    let project_for_effect = project_slug.clone();
+
     // Load message and agents
-    Effect::new({
-        let project_slug = project_slug.clone();
-        move |_| {
-            let id = message_id();
-            let project = project_slug.clone();
-            
-            leptos::task::spawn_local(async move {
-                // Load message
-                match client::get_message(&id).await {
-                    Ok(m) => {
-                        message.set(Some(m));
-                        loading.set(false);
-                    }
-                    Err(e) => {
-                        error.set(Some(e.message));
-                        loading.set(false);
-                    }
+    Effect::new(move |_| {
+        let id = id_for_effect.clone();
+        let project = project_for_effect.clone();
+
+        leptos::task::spawn_local(async move {
+            // Load message
+            match client::get_message(&id).await {
+                Ok(m) => {
+                    message.set(Some(m));
+                    loading.set(false);
                 }
-                
-                // Load agents for reply
-                if !project.is_empty() {
-                    if let Ok(a) = client::get_agents(&project).await {
-                        agents.set(a);
-                    }
+                Err(e) => {
+                    error.set(Some(e.message));
+                    loading.set(false);
                 }
-            });
-        }
+            }
+
+            // Load agents for reply
+            if !project.is_empty() {
+                if let Ok(a) = client::get_agents(&project).await {
+                    agents.set(a);
+                }
+            }
+        });
     });
 
-    // Back to inbox URL
-    let back_url = {
-        let project = project_slug.clone();
-        let agent = agent_name.clone();
-        if !project.is_empty() && !agent.is_empty() {
-            format!("/inbox?project={}&agent={}", project, agent)
-        } else {
-            "/inbox".to_string()
-        }
+    // Back to inbox URL (static since params don't change)
+    let back_url = if !project_slug.is_empty() && !agent_name.is_empty() {
+        format!("/inbox?project={}&agent={}", project_slug, agent_name)
+    } else {
+        "/inbox".to_string()
     };
 
     view! {
@@ -72,17 +71,20 @@ pub fn MessageDetail() -> impl IntoView {
                     <i data-lucide="arrow-left" class="icon-sm"></i>
                     <span>"Back to Inbox"</span>
                 </a>
-                {if !agent_name.is_empty() {
-                    Some(view! {
-                        <i data-lucide="chevron-right" class="icon-xs text-charcoal-400"></i>
-                        <span class="badge badge-teal flex items-center gap-1">
-                            <i data-lucide="bot" class="icon-xs"></i>
-                            {agent_name.clone()}
-                        </span>
-                    })
-                } else {
-                    None
-                }}
+                {
+                    let agent = agent_name.clone();
+                    if !agent.is_empty() {
+                        Some(view! {
+                            <i data-lucide="chevron-right" class="icon-xs text-charcoal-400"></i>
+                            <span class="badge badge-teal flex items-center gap-1">
+                                <i data-lucide="bot" class="icon-xs"></i>
+                                {agent}
+                            </span>
+                        })
+                    } else {
+                        None
+                    }
+                }
             </nav>
 
             // Error Message
@@ -98,7 +100,10 @@ pub fn MessageDetail() -> impl IntoView {
             }}
 
             // Content
-            {move || {
+            {
+                let back_url_for_content = back_url.clone();
+                move || {
+                let back_url = back_url_for_content.clone();
                 if loading.get() {
                     view! {
                         <div class="flex items-center justify-center py-16">
@@ -266,12 +271,15 @@ pub fn MessageDetail() -> impl IntoView {
             }}
 
             // Reply Modal
-            {move || {
+            {
+                let project_for_modal = project_slug.clone();
+                let agent_for_modal = agent_name.clone();
+                move || {
                 if show_reply.get() {
                     if let Some(msg) = message.get() {
                         let props = ComposeProps {
-                            project_slug: project_slug.clone(),
-                            sender_name: agent_name.clone(),
+                            project_slug: project_for_modal.clone(),
+                            sender_name: agent_for_modal.clone(),
                             agents: agents.get(),
                             reply_to: Some(ReplyTo {
                                 thread_id: msg.thread_id.clone().or_else(|| Some(format!("thread-{}", msg.id))),

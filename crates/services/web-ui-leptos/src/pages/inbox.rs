@@ -4,6 +4,7 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_query_map;
 use crate::api::client::{self, Project, Agent, InboxMessage};
+use crate::components::{Select, SelectOption};
 
 /// Inbox page component.
 #[component]
@@ -23,9 +24,10 @@ pub fn Inbox() -> impl IntoView {
     let selected_agent = RwSignal::new(String::new());
 
     // Initialize from URL params
-    // Initialize from URL params
     let init_project = query.with_untracked(|params| params.get("project").unwrap_or_default());
     let init_agent = query.with_untracked(|params| params.get("agent").unwrap_or_default());
+    let init_project_for_prev = init_project.clone();
+    let init_agent_for_prev = init_agent.clone();
 
     // Load projects and initialize
     Effect::new(move |_| {
@@ -64,13 +66,26 @@ pub fn Inbox() -> impl IntoView {
         });
     });
 
-    // Handle project change
-    let on_project_change = move |ev: web_sys::Event| {
-        let value = event_target_value(&ev);
-        selected_project.set(value.clone());
+    // Track previous values to detect changes
+    let prev_project = RwSignal::new(init_project_for_prev);
+    let prev_agent = RwSignal::new(init_agent_for_prev);
+
+    // Handle project change via Effect
+    Effect::new(move |_| {
+        let value = selected_project.get();
+        let prev = prev_project.get();
+
+        // Skip if same value (avoid double-trigger)
+        if value == prev {
+            return;
+        }
+        prev_project.set(value.clone());
+
+        // Reset agent and messages
         selected_agent.set(String::new());
+        prev_agent.set(String::new());
         messages.set(Vec::new());
-        
+
         if value.is_empty() {
             agents.set(Vec::new());
         } else {
@@ -81,20 +96,29 @@ pub fn Inbox() -> impl IntoView {
                 }
             });
         }
-    };
+    });
 
-    // Handle agent change
-    let on_agent_change = move |ev: web_sys::Event| {
-        let value = event_target_value(&ev);
-        selected_agent.set(value.clone());
-        
+    // Handle agent change via Effect
+    Effect::new(move |_| {
+        let value = selected_agent.get();
+        let prev = prev_agent.get();
+
+        // Skip if same value
+        if value == prev {
+            return;
+        }
+        prev_agent.set(value.clone());
+
         if value.is_empty() {
             messages.set(Vec::new());
         } else {
             let project = selected_project.get();
+            if project.is_empty() {
+                return;
+            }
             loading_messages.set(true);
             error.set(None);
-            
+
             leptos::task::spawn_local(async move {
                 match client::get_inbox(&project, &value).await {
                     Ok(m) => {
@@ -108,7 +132,7 @@ pub fn Inbox() -> impl IntoView {
                 }
             });
         }
-    };
+    });
 
     // Refresh messages
     let refresh = move || {
@@ -210,53 +234,51 @@ pub fn Inbox() -> impl IntoView {
                 <div class="flex flex-col md:flex-row gap-4">
                     // Project Selector
                     <div class="flex-1">
-                        <label for="projectSelect" class="flex items-center gap-2 text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
+                        <label class="flex items-center gap-2 text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
                             <i data-lucide="folder" class="icon-sm text-charcoal-400"></i>
                             "Project"
                         </label>
-                        <select
-                            id="projectSelect"
-                            on:change=on_project_change
-                            class="input"
-                        >
-                            <option value="">"Select a project..."</option>
-                            {move || {
-                                projects.get().into_iter().map(|p| {
-                                    let slug = p.slug.clone();
-                                    let slug_display = slug.clone();
-                                    let selected = selected_project.get() == slug;
-                                    view! {
-                                        <option value=slug selected=selected>{slug_display}</option>
-                                    }
-                                }).collect::<Vec<_>>()
-                            }}
-                        </select>
+                        {move || {
+                            let options: Vec<SelectOption> = projects.get()
+                                .into_iter()
+                                .map(|p| SelectOption::new(p.slug.clone(), p.slug.clone()))
+                                .collect();
+                            view! {
+                                <Select
+                                    id="projectSelect".to_string()
+                                    options=options
+                                    value=selected_project
+                                    placeholder="Select a project...".to_string()
+                                    disabled=false
+                                    icon="folder"
+                                />
+                            }
+                        }}
                     </div>
 
                     // Agent Selector
                     <div class="flex-1">
-                        <label for="agentSelect" class="flex items-center gap-2 text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
+                        <label class="flex items-center gap-2 text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-2">
                             <i data-lucide="bot" class="icon-sm text-charcoal-400"></i>
                             "Agent"
                         </label>
-                        <select
-                            id="agentSelect"
-                            on:change=on_agent_change
-                            disabled=move || selected_project.get().is_empty() || agents.get().is_empty()
-                            class="input disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <option value="">"Select an agent..."</option>
-                            {move || {
-                                agents.get().into_iter().map(|a| {
-                                    let name = a.name.clone();
-                                    let name_display = name.clone();
-                                    let selected = selected_agent.get() == name;
-                                    view! {
-                                        <option value=name selected=selected>{name_display}</option>
-                                    }
-                                }).collect::<Vec<_>>()
-                            }}
-                        </select>
+                        {move || {
+                            let options: Vec<SelectOption> = agents.get()
+                                .into_iter()
+                                .map(|a| SelectOption::new(a.name.clone(), a.name.clone()))
+                                .collect();
+                            let is_disabled = selected_project.get().is_empty() || options.is_empty();
+                            view! {
+                                <Select
+                                    id="agentSelect".to_string()
+                                    options=options
+                                    value=selected_agent
+                                    placeholder="Select an agent...".to_string()
+                                    disabled=is_disabled
+                                    icon="bot"
+                                />
+                            }
+                        }}
                     </div>
 
                     // Refresh Button
