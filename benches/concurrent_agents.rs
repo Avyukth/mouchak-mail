@@ -400,12 +400,19 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             let body = JsonRpcRequest {
                 jsonrpc: "2.0".to_string(),
-                method: "tools/list".to_string(),
-                params: serde_json::json!({}),
+                method: "initialize".to_string(),
+                params: serde_json::json!({
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "bench", "version": "1.0"}
+                }),
                 id: 1,
             };
             let start = Instant::now();
-            let res = c.post(&u).json(&body).send().await;
+            let res = c.post(&u)
+                .header("Accept", "application/json, text/event-stream")
+                .json(&body)
+                .send().await;
             let lat = start.elapsed().as_millis() as u64;
             let success = matches!(res, Ok(r) if r.status().is_success());
             s.record(lat, success).await;
@@ -482,7 +489,7 @@ async fn main() -> Result<()> {
         };
 
         // Run message bench
-        let stats = run_load_test(&config, &client, "Full Agent Message", Some(100), task_msg).await?; // 100 req/s conservative
+        let stats = run_load_test(&config, &client, "Full Agent Message (Full Speed)", None, task_msg).await?;
         writeln!(file, "| {} | {:.0} | {:.1}% | {}ms | {} |", 
             stats.label, stats.actual_rate, stats.success_rate, stats.p99_latency_ms, stats.result_status)?;
     } else {

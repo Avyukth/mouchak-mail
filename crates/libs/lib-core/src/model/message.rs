@@ -76,36 +76,27 @@ impl MessageBmc {
             return Err(crate::Error::InvalidInput("Failed to create message".into()));
         };
 
-        // 2. Insert Recipients with recipient_type
-        // "to" recipients
-        for recipient_id in &msg_c.recipient_ids {
-             db.execute(
-                "INSERT INTO message_recipients (message_id, agent_id, recipient_type) VALUES (?, ?, 'to')",
-                (id, *recipient_id)
-            )
-            .await?;
-        }
+        // 2. Insert Recipients with recipient_type (BATCHED)
+        let mut recipient_tuples = Vec::new();
+        for rid in &msg_c.recipient_ids { recipient_tuples.push((*rid, "to")); }
+        if let Some(cc) = &msg_c.cc_ids { for rid in cc { recipient_tuples.push((*rid, "cc")); } }
+        if let Some(bcc) = &msg_c.bcc_ids { for rid in bcc { recipient_tuples.push((*rid, "bcc")); } }
 
-        // "cc" recipients
-        if let Some(cc_ids) = &msg_c.cc_ids {
-            for recipient_id in cc_ids {
-                db.execute(
-                    "INSERT INTO message_recipients (message_id, agent_id, recipient_type) VALUES (?, ?, 'cc')",
-                    (id, *recipient_id)
-                )
-                .await?;
-            }
-        }
+        if !recipient_tuples.is_empty() {
+             // Constuct batch insert query: ... VALUES (?, ?, ?), (?, ?, ?)
+             let mut query = String::from("INSERT INTO message_recipients (message_id, agent_id, recipient_type) VALUES ");
+             let mut params: Vec<libsql::Value> = Vec::with_capacity(recipient_tuples.len() * 3);
+             
+             for (i, (rid, rtype)) in recipient_tuples.iter().enumerate() {
+                 if i > 0 { query.push_str(", "); }
+                 query.push_str("(?, ?, ?)");
+                 params.push(id.into());
+                 params.push((*rid).into());
+                 params.push(rtype.to_string().into());
+             }
 
-        // "bcc" recipients
-        if let Some(bcc_ids) = &msg_c.bcc_ids {
-            for recipient_id in bcc_ids {
-                db.execute(
-                    "INSERT INTO message_recipients (message_id, agent_id, recipient_type) VALUES (?, ?, 'bcc')",
-                    (id, *recipient_id)
-                )
-                .await?;
-            }
+             let stmt = db.prepare(&query).await?;
+             stmt.execute(libsql::params::Params::Positional(params)).await?;
         }
 
         // 3. Git Operations - DEFERRED to background task for low latency
@@ -118,20 +109,35 @@ impl MessageBmc {
             return Err(crate::Error::ProjectNotFound(format!("ID: {}", msg_c.project_id)));
         };
 
-        let stmt = db.prepare("SELECT name FROM agents WHERE id = ?").await?;
-        let mut rows = stmt.query([msg_c.sender_id]).await?;
-        let sender_name: String = if let Some(row) = rows.next().await? {
-            row.get(0)?
-        } else {
-            return Err(crate::Error::AgentNotFound(format!("ID: {}", msg_c.sender_id)));
-        };
+        // Batch fetch sender and recipient names
+        let mut needed_ids = vec![msg_c.sender_id];
+        needed_ids.extend_from_slice(&msg_c.recipient_ids);
+        
+        let placeholders = needed_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!("SELECT id, name FROM agents WHERE id IN ({})", placeholders);
+        
+        let stmt = db.prepare(&query).await?;
+        let params: Vec<libsql::Value> = needed_ids.iter().map(|&id| id.into()).collect();
+        let mut rows = stmt.query(libsql::params::Params::Positional(params)).await?;
+        
+        let mut agent_map = std::collections::HashMap::new();
+        while let Some(row) = rows.next().await? {
+            let aid: i64 = row.get(0)?;
+            let name: String = row.get(1)?;
+            agent_map.insert(aid, name);
+        }
+
+        let sender_name = agent_map.remove(&msg_c.sender_id).ok_or_else(|| {
+            crate::Error::AgentNotFound(format!("ID: {}", msg_c.sender_id))
+        })?;
 
         let mut recipient_names = Vec::new();
         for recipient_id in &msg_c.recipient_ids {
-            let stmt = db.prepare("SELECT name FROM agents WHERE id = ?").await?;
-            let mut rows = stmt.query([*recipient_id]).await?;
-            if let Some(row) = rows.next().await? {
-                recipient_names.push(row.get::<String>(0)?);
+            if let Some(name) = agent_map.get(recipient_id) {
+                recipient_names.push(name.clone());
+            } else {
+                warn!("Recipient Name not found for ID: {}", recipient_id);
+                recipient_names.push(format!("Unknown-{}", recipient_id));
             }
         }
 
