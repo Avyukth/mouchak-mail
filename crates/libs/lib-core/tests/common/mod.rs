@@ -80,7 +80,13 @@ async fn create_test_db(db_path: &std::path::Path) -> Result<lib_core::store::Db
     conn.execute_batch(schema002).await?;
     let schema003 = include_str!("../../../../../migrations/003_tool_metrics.sql");
     conn.execute_batch(schema003).await?;
-    let schema004 = include_str!("../../../../../migrations/004_add_recipient_type.sql");
+    let schema004 = include_str!("../../../../../migrations/004_attachments.sql");
+    conn.execute_batch(schema004).await?;
+
+    // Verify idempotency: running migrations again should not fail
+    conn.execute_batch(schema).await?;
+    conn.execute_batch(schema002).await?;
+    conn.execute_batch(schema003).await?;
     conn.execute_batch(schema004).await?;
 
     Ok(conn)

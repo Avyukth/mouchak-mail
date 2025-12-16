@@ -1,4 +1,5 @@
-CREATE TABLE agent_capabilities (
+-- Agent Capabilities table (idempotent migration)
+CREATE TABLE IF NOT EXISTS agent_capabilities (
     id INTEGER PRIMARY KEY,
     agent_id INTEGER NOT NULL REFERENCES agents(id),
     capability TEXT NOT NULL,
@@ -7,4 +8,4 @@ CREATE TABLE agent_capabilities (
     expires_at TEXT,
     UNIQUE (agent_id, capability)
 );
-CREATE INDEX idx_agent_capabilities_agent_id ON agent_capabilities(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_capabilities_agent_id ON agent_capabilities(agent_id);

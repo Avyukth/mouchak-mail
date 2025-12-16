@@ -1,4 +1,5 @@
-CREATE TABLE attachments (
+-- Attachments table (idempotent migration)
+CREATE TABLE IF NOT EXISTS attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL REFERENCES projects(id),
     filename TEXT NOT NULL,
@@ -8,4 +9,4 @@ CREATE TABLE attachments (
     created_ts TEXT NOT NULL
 );
 
-CREATE INDEX idx_attachments_project ON attachments(project_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_project ON attachments(project_id);

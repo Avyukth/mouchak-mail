@@ -30,7 +30,7 @@ mod tests {
         conn.execute_batch(schema2).await.unwrap();
         let schema3 = include_str!("../../../../migrations/003_tool_metrics.sql");
         conn.execute_batch(schema3).await.unwrap();
-        let schema4 = include_str!("../../../../migrations/004_add_recipient_type.sql");
+        let schema4 = include_str!("../../../../migrations/004_attachments.sql");
         conn.execute_batch(schema4).await.unwrap();
 
         let mm = ModelManager::new_for_test(conn, archive_root);
