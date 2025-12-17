@@ -45,16 +45,18 @@ async fn test_list_builtin_workflows_returns_5_workflows() {
     let ctx = Ctx::root_ctx();
 
     // Create a project (which auto-creates 5 built-in macros)
-    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test").await.unwrap();
+    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test")
+        .await
+        .unwrap();
 
     // RED: This should list the 5 built-in workflow names
     // We're testing the CONTENT, not the tool (tool will call this logic)
     use lib_core::model::macro_def::MacroDefBmc;
     let macros = MacroDefBmc::list(&ctx, &mm, project_id).await.unwrap();
-    
+
     // Should have exactly 5 built-ins
     assert_eq!(macros.len(), 5, "Should have 5 built-in workflows");
-    
+
     // Verify the expected names
     let names: Vec<String> = macros.iter().map(|m| m.name.clone()).collect();
     assert!(names.contains(&"start_session".to_string()));
@@ -73,8 +75,10 @@ async fn test_quick_standup_sends_to_all_agents() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
 
-    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test").await.unwrap();
-    
+    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test")
+        .await
+        .unwrap();
+
     // Create 3 agents
     for i in 1..=3 {
         let agent_c = AgentForCreate {
@@ -88,16 +92,18 @@ async fn test_quick_standup_sends_to_all_agents() {
     }
 
     // RED: Test that we can list all agents (needed for standup broadcast)
-    let agents = AgentBmc::list_all_for_project(&ctx, &mm, project_id).await.unwrap();
+    let agents = AgentBmc::list_all_for_project(&ctx, &mm, project_id)
+        .await
+        .unwrap();
     assert_eq!(agents.len(), 3, "Should have 3 agents");
-    
+
     // Test we can send a message to all of them
     use lib_core::model::message::{MessageBmc, MessageForCreate};
     let agent_ids: Vec<i64> = agents.iter().map(|a| a.id).collect();
-    
+
     let msg_c = MessageForCreate {
         project_id,
-        sender_id: agent_ids[0], // First agent sends
+        sender_id: agent_ids[0],          // First agent sends
         recipient_ids: agent_ids.clone(), // To all agents
         cc_ids: None,
         bcc_ids: None,
@@ -106,7 +112,7 @@ async fn test_quick_standup_sends_to_all_agents() {
         thread_id: None,
         importance: None,
     };
-    
+
     let msg_id = MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
     assert!(msg_id > 0, "Should create standup message");
 }
@@ -120,8 +126,10 @@ async fn test_quick_handoff_sends_message() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
 
-    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test").await.unwrap();
-    
+    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test")
+        .await
+        .unwrap();
+
     // Create 2 agents (from and to)
     let agent1_c = AgentForCreate {
         project_id,
@@ -131,7 +139,7 @@ async fn test_quick_handoff_sends_message() {
         task_description: "Agent 1".to_string(),
     };
     let agent1_id = AgentBmc::create(&ctx, &mm, agent1_c).await.unwrap();
-    
+
     let agent2_c = AgentForCreate {
         project_id,
         name: "agent2".to_string(),
@@ -143,7 +151,7 @@ async fn test_quick_handoff_sends_message() {
 
     // RED: Test handoff message creation
     use lib_core::model::message::{MessageBmc, MessageForCreate};
-    
+
     let handoff_msg = MessageForCreate {
         project_id,
         sender_id: agent1_id,
@@ -155,7 +163,7 @@ async fn test_quick_handoff_sends_message() {
         thread_id: Some("HANDOFF-FEATURE-X".to_string()),
         importance: Some("high".to_string()),
     };
-    
+
     let msg_id = MessageBmc::create(&ctx, &mm, handoff_msg).await.unwrap();
     assert!(msg_id > 0, "Should create handoff message");
 }
@@ -169,8 +177,10 @@ async fn test_quick_review_reserves_files_and_sends_message() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
 
-    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test").await.unwrap();
-    
+    let project_id = ProjectBmc::create(&ctx, &mm, "test-project", "/test")
+        .await
+        .unwrap();
+
     // Create 2 agents (reviewer and reviewee)
     let requester_c = AgentForCreate {
         project_id,
@@ -180,7 +190,7 @@ async fn test_quick_review_reserves_files_and_sends_message() {
         task_description: "Developer 1".to_string(),
     };
     let requester_id = AgentBmc::create(&ctx, &mm, requester_c).await.unwrap();
-    
+
     let reviewer_c = AgentForCreate {
         project_id,
         name: "reviewer1".to_string(),
@@ -192,7 +202,7 @@ async fn test_quick_review_reserves_files_and_sends_message() {
 
     // RED: Test file reservation (non-exclusive for review)
     use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
-    
+
     let res_c = FileReservationForCreate {
         project_id,
         agent_id: reviewer_id,
@@ -201,13 +211,13 @@ async fn test_quick_review_reserves_files_and_sends_message() {
         reason: "Code review".to_string(),
         expires_ts: chrono::Utc::now().naive_utc() + chrono::Duration::hours(1),
     };
-    
+
     let res_id = FileReservationBmc::create(&ctx, &mm, res_c).await.unwrap();
     assert!(res_id > 0, "Should create file reservation");
-    
+
     // RED: Test review request message
     use lib_core::model::message::{MessageBmc, MessageForCreate};
-    
+
     let review_msg = MessageForCreate {
         project_id,
         sender_id: requester_id,
@@ -219,7 +229,7 @@ async fn test_quick_review_reserves_files_and_sends_message() {
         thread_id: Some("REVIEW-MAIN-RS".to_string()),
         importance: None,
     };
-    
+
     let msg_id = MessageBmc::create(&ctx, &mm, review_msg).await.unwrap();
     assert!(msg_id > 0, "Should create review request message");
 }

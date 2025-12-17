@@ -6,11 +6,8 @@ use tokio::io::{stdin, stdout};
 pub mod docs;
 pub mod tools;
 pub use tools::{
-    AgentMailService, 
-    ListMacrosParams, 
-    RegisterMacroParams, 
-    UnregisterMacroParams, 
-    InvokeMacroParams
+    AgentMailService, InvokeMacroParams, ListMacrosParams, RegisterMacroParams,
+    UnregisterMacroParams,
 };
 
 pub async fn run_stdio(_config: McpConfig) -> Result<()> {

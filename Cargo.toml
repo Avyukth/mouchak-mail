@@ -37,6 +37,12 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }
 
+# Git hooks (Rust-native)
+[dev-dependencies.cargo-husky]
+version = "1"
+default-features = false
+features = ["user-hooks"]
+
 [workspace.dependencies]
 # Web Framework
 axum = "0.8.7"

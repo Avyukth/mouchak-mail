@@ -1,0 +1,68 @@
+#!/bin/sh
+#
+# Pre-commit hook for mcp-agent-mail-rs (cargo-husky user-hooks)
+#
+# Quality gates before commit:
+# 1. cargo fmt --check    (REQUIRED - blocks commit)
+# 2. cargo clippy         (advisory - shows warnings)
+# 3. cargo audit          (advisory - shows vulnerabilities)
+# 4. bd sync              (beads issue tracking)
+#
+# Install: cargo test (cargo-husky auto-installs on first test run)
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# ============================================================================
+# 1. Rust Format Check (REQUIRED - blocks commit on failure)
+# ============================================================================
+echo "  -> Checking code formatting..."
+if ! cargo fmt --check --quiet 2>/dev/null; then
+    echo "ERROR: Format check failed!"
+    echo ""
+    echo "Run 'cargo fmt' to fix formatting issues."
+    echo ""
+    exit 1
+fi
+echo "  OK: Format check passed"
+
+# ============================================================================
+# 2. Clippy Lint Check (advisory - shows warnings but doesn't block)
+# ============================================================================
+echo "  -> Running clippy (advisory)..."
+if ! cargo clippy --workspace --quiet 2>/dev/null; then
+    echo "  WARN: Clippy found issues (not blocking commit)"
+    echo "  Run 'cargo clippy --workspace' to see details"
+fi
+
+# ============================================================================
+# 3. Security Audit (advisory - shows vulnerabilities but doesn't block)
+# ============================================================================
+if command -v cargo-audit >/dev/null 2>&1; then
+    echo "  -> Running security audit (advisory)..."
+    if ! cargo audit --quiet 2>/dev/null; then
+        echo "  WARN: Security audit found issues (not blocking commit)"
+        echo "  Run 'cargo audit' to see details"
+    fi
+else
+    echo "  SKIP: cargo-audit not installed (run 'cargo install cargo-audit')"
+fi
+
+# ============================================================================
+# 4. Beads Sync (bd)
+# ============================================================================
+if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
+    echo "  -> Syncing beads..."
+    if ! bd sync --flush-only >/dev/null 2>&1; then
+        echo "  WARN: Failed to flush bd changes"
+    fi
+    # Stage JSONL if modified
+    if [ -f .beads/issues.jsonl ]; then
+        git add .beads/issues.jsonl 2>/dev/null || true
+    fi
+    echo "  OK: Beads synced"
+fi
+
+echo "Pre-commit checks completed!"
+exit 0

@@ -174,6 +174,26 @@ db-info:
 	@ls -lh data/storage.db 2>/dev/null || echo "   (not created yet)"
 
 # ============================================================================
+# Git Hooks
+# ============================================================================
+
+## Install git hooks (cargo-husky auto-installs on cargo test)
+install-hooks:
+	@echo "Installing git hooks via cargo-husky..."
+	@cargo test --quiet 2>/dev/null || true
+	@echo "Hooks installed at .git/hooks/"
+	@ls -la .git/hooks/pre-commit
+
+## Verify hook installation
+check-hooks:
+	@echo "Checking git hooks..."
+	@if [ -f .git/hooks/pre-commit ]; then \
+		echo "  pre-commit hook: installed"; \
+	else \
+		echo "  pre-commit hook: NOT installed (run 'make install-hooks')"; \
+	fi
+
+# ============================================================================
 # Utilities
 # ============================================================================
 
@@ -231,6 +251,10 @@ help:
 	@echo "  lint         Run clippy lints"
 	@echo "  fmt          Format code"
 	@echo "  quality-gate Run all quality gates"
+	@echo ""
+	@echo "Git Hooks:"
+	@echo "  install-hooks  Install pre-commit hooks via cargo-husky"
+	@echo "  check-hooks    Verify hook installation"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  tools        List all MCP tools"

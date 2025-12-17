@@ -3198,12 +3198,12 @@ impl AgentMailService {
             ("contact_handshake", "Establish cross-project contact"),
             ("broadcast_message", "Send to multiple agents"),
         ];
-        
+
         let mut output = String::from("Built-in Workflows:\n\n");
         for (name, desc) in workflows {
             output.push_str(&format!("- {}: {}\n", name, desc));
         }
-        
+
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
@@ -3233,9 +3233,11 @@ impl AgentMailService {
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
         let recipient_ids: Vec<i64> = agents.iter().map(|a| a.id).collect();
-        
-        let question = p.standup_question.unwrap_or_else(|| "What are you working on today?".to_string());
-        
+
+        let question = p
+            .standup_question
+            .unwrap_or_else(|| "What are you working on today?".to_string());
+
         let msg_c = MessageForCreate {
             project_id: project.id,
             sender_id: sender.id,
@@ -3252,7 +3254,11 @@ impl AgentMailService {
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-        let msg = format!("Standup request sent to {} agents (message id: {})", agents.len(), msg_id);
+        let msg = format!(
+            "Standup request sent to {} agents (message id: {})",
+            agents.len(),
+            msg_id
+        );
         Ok(CallToolResult::success(vec![Content::text(msg)]))
     }
 
@@ -3303,7 +3309,10 @@ impl AgentMailService {
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-        let msg = format!("Handoff message sent from '{}' to '{}' (id: {})", p.from_agent, p.to_agent, msg_id);
+        let msg = format!(
+            "Handoff message sent from '{}' to '{}' (id: {})",
+            p.from_agent, p.to_agent, msg_id
+        );
         Ok(CallToolResult::success(vec![Content::text(msg)]))
     }
 
@@ -3356,7 +3365,11 @@ impl AgentMailService {
             cc_ids: None,
             bcc_ids: None,
             subject: "Code Review Request".to_string(),
-            body_md: format!("Please review:\n{}\n\nFiles:\n{}", p.description, p.files_to_review.join("\n")),
+            body_md: format!(
+                "Please review:\n{}\n\nFiles:\n{}",
+                p.description,
+                p.files_to_review.join("\n")
+            ),
             thread_id: Some("CODE-REVIEW".to_string()),
             importance: Some("normal".to_string()),
         };

@@ -773,12 +773,7 @@ async fn commit_message_to_git(
     let y_dir = now.format("%Y").to_string();
     let m_dir = now.format("%m").to_string();
     let created_iso = now.format("%Y-%m-%dT%H-%M-%SZ").to_string();
-    let filename = format!(
-        "{}__{}__{}.md",
-        created_iso,
-        slug::slugify(subject),
-        id
-    );
+    let filename = format!("{}__{}__{}.md", created_iso, slug::slugify(subject), id);
 
     let paths = build_message_paths(
         project_slug,
@@ -823,7 +818,13 @@ async fn commit_message_to_git(
         recipient_names.join(", "),
         subject
     );
-    git_store::commit_paths(&repo, &all_paths_ref, &commit_msg, "mcp-bot", "mcp-bot@localhost")?;
+    git_store::commit_paths(
+        &repo,
+        &all_paths_ref,
+        &commit_msg,
+        "mcp-bot",
+        "mcp-bot@localhost",
+    )?;
 
     info!("Background git commit succeeded for message {}", id);
     Ok(())
@@ -895,16 +896,35 @@ mod tests {
         let paths = build_message_paths(
             "proj",
             "sender",
-            &["alice".to_string(), "bob".to_string(), "charlie".to_string()],
+            &[
+                "alice".to_string(),
+                "bob".to_string(),
+                "charlie".to_string(),
+            ],
             "msg.md",
             "2025",
             "06",
         );
 
         assert_eq!(paths.inboxes.len(), 3);
-        assert!(paths.inboxes.iter().any(|p| p.to_string_lossy().contains("alice/inbox")));
-        assert!(paths.inboxes.iter().any(|p| p.to_string_lossy().contains("bob/inbox")));
-        assert!(paths.inboxes.iter().any(|p| p.to_string_lossy().contains("charlie/inbox")));
+        assert!(
+            paths
+                .inboxes
+                .iter()
+                .any(|p| p.to_string_lossy().contains("alice/inbox"))
+        );
+        assert!(
+            paths
+                .inboxes
+                .iter()
+                .any(|p| p.to_string_lossy().contains("bob/inbox"))
+        );
+        assert!(
+            paths
+                .inboxes
+                .iter()
+                .any(|p| p.to_string_lossy().contains("charlie/inbox"))
+        );
     }
 
     #[test]

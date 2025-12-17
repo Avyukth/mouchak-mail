@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# Pre-commit hook for mcp-agent-mail-rs
+#
+# Runs quality gates before allowing commit:
+# 1. cargo fmt --check (prevent CI format failures)
+# 2. cargo clippy (catch lint issues early) [optional]
+# 3. bd sync (beads issue tracking)
+#
+# Install: cp scripts/hooks/pre-commit .git/hooks/ && chmod +x .git/hooks/pre-commit
+# Or run: make install-hooks
+
+set -e
+
+echo "🔍 Running pre-commit checks..."
+
+# ============================================================================
+# 1. Rust Format Check
+# ============================================================================
+echo "  → Checking code formatting..."
+if ! cargo fmt --check --quiet 2>/dev/null; then
+    echo "❌ Format check failed!"
+    echo ""
+    echo "Run 'cargo fmt' to fix formatting issues."
+    echo ""
+    exit 1
+fi
+echo "  ✓ Format OK"
+
+# ============================================================================
+# 2. Clippy Lint Check (optional - can be slow)
+# ============================================================================
+# Uncomment to enable clippy in pre-commit:
+# echo "  → Running clippy..."
+# if ! cargo clippy --workspace --quiet -- -D warnings 2>/dev/null; then
+#     echo "❌ Clippy found warnings!"
+#     echo "Run 'cargo clippy --workspace -- -D warnings' to see issues."
+#     exit 1
+# fi
+# echo "  ✓ Clippy OK"
+
+# ============================================================================
+# 3. Beads Sync (bd)
+# ============================================================================
+if command -v bd >/dev/null 2>&1 && [ -d .beads ]; then
+    echo "  → Syncing beads..."
+    if ! bd sync --flush-only >/dev/null 2>&1; then
+        echo "⚠️  Warning: Failed to flush bd changes" >&2
+    fi
+    # Stage JSONL if modified
+    if [ -f .beads/issues.jsonl ]; then
+        git add .beads/issues.jsonl 2>/dev/null || true
+    fi
+    echo "  ✓ Beads synced"
+fi
+
+echo "✅ Pre-commit checks passed!"
+exit 0
