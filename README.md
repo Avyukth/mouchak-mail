@@ -141,7 +141,7 @@ mcp-agent-mail-rs/
 │   │   │   └── tests/            # Integration tests
 │   │   ├── lib-common/           # Config, errors, tracing
 │   │   ├── lib-server/           # Axum REST API, middleware, OpenAPI
-│   │   └── lib-mcp/              # MCP tool definitions (32+ tools)
+│   │   └── lib-mcp/              # MCP tool definitions (45 tools)
 │   ├── services/
 │   │   ├── mcp-server/           # REST API server binary
 │   │   ├── mcp-stdio/            # MCP protocol server (stdio + SSE)
@@ -311,7 +311,7 @@ data/archive/projects/{slug}/
 
 **Note:** Python-compatible aliases available (e.g., `/api/send_message`, `/api/fetch_inbox`)
 
-### MCP Protocol (32+ tools)
+### MCP Protocol (45 tools)
 
 ```bash
 # Run MCP server for Claude Desktop integration

@@ -560,27 +560,90 @@ ubs .
 
 ### 🤝 MCP Agent Mail — Multi-Agent Coordination
 
-**What it does**: Async coordination for multi-agent workflows via file reservations and messaging.
+**What it does**: Production-grade async coordination for multi-agent workflows via messaging, file reservations, and build slot management. Provides "Gmail for coding agents" — 45 MCP tools for agent coordination.
+
+**Server**: `http://localhost:8765` (start with `make dev-api`)
 
 #### When to Use
 
 - ✅ Multiple agents working concurrently on same repo
-- ✅ Need to prevent file conflicts
-- ✅ Real-time coordination required
+- ✅ Need to prevent file conflicts (file reservations)
+- ✅ Real-time coordination required (messaging + threads)
+- ✅ CI/CD isolation (build slots)
+- ✅ Cross-repo coordination (products)
 - ✅ Single agent workflows (works the same)
 
-#### Setup (Same Repo)
+#### MCP Tools Reference (45 total)
+
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Infrastructure** | `ensure_project`, `list_projects`, `get_project_info` | Project lifecycle |
+| **Agent** | `register_agent`, `list_agents`, `get_agent_profile` | Agent identity |
+| **Messaging** | `send_message`, `reply_message`, `check_inbox`, `list_outbox`, `get_message`, `search_messages` | Core messaging |
+| **Read Status** | `mark_message_read`, `acknowledge_message` | Message acknowledgment |
+| **Threads** | `list_threads`, `summarize_thread`, `summarize_threads` | Conversation tracking |
+| **Contacts** | `request_contact`, `respond_contact`, `list_contacts`, `set_contact_policy` | Agent routing |
+| **File Reservations** | `reserve_file`, `release_reservation`, `list_file_reservations`, `force_release_reservation`, `renew_file_reservation`, `file_reservation_paths` | Conflict prevention |
+| **Build Slots** | `acquire_build_slot`, `release_build_slot`, `renew_build_slot` | CI/CD isolation |
+| **Macros** | `list_macros`, `register_macro`, `invoke_macro` | Automation |
+| **Products** | `ensure_product`, `link_project_to_product`, `list_products`, `product_inbox` | Cross-repo coordination |
+| **Export** | `export_mailbox` | Archive to HTML/JSON/Markdown |
+| **Attachments** | `add_attachment`, `get_attachment` | File sharing |
+| **Pre-commit** | `install_precommit_guard`, `uninstall_precommit_guard` | Conflict detection |
+| **Metrics** | `list_tool_metrics`, `get_tool_stats`, `list_activity` | Usage analytics |
+
+#### Setup Workflow
 
 ```bash
-# 1. Register identity
-ensure_project → register_agent(project_key=<abs-path>, agent_name=<name>)
+# 1. Start server (if not running)
+make dev-api  # Starts on :8765
 
-# 2. Reserve files before editing (prevents conflicts)
-file_reservation_paths(project_key, agent_name, ["src/**"], ttl_seconds=3600, exclusive=true)
+# 2. Register identity (MCP call)
+ensure_project(project_key="/path/to/repo", human_key="my-project")
+register_agent(project_key="/path/to/repo", agent_name="claude-1", program="claude-code")
 
-# 3. Communicate via threads
-send_message(..., thread_id="FEAT-123")
-fetch_inbox → acknowledge_message
+# 3. Reserve files before editing (prevents conflicts)
+file_reservation_paths(
+  project_key="/path/to/repo",
+  agent_name="claude-1",
+  paths=["src/**/*.rs", "Cargo.toml"],
+  ttl_seconds=3600,
+  exclusive=true
+)
+
+# 4. Communicate via threads
+send_message(
+  project_key="/path/to/repo",
+  sender_name="claude-1",
+  recipient_names=["claude-2"],
+  subject="Found issue in auth module",
+  body_md="See src/auth.rs:42...",
+  thread_id="FEAT-123"
+)
+
+# 5. Check for messages
+check_inbox(project_key="/path/to/repo", agent_name="claude-1", unread_only=true)
+acknowledge_message(project_key="/path/to/repo", message_id=123, agent_name="claude-1")
+
+# 6. Release reservations when done
+release_reservation(project_key="/path/to/repo", reservation_id=1)
+```
+
+#### REST API (Alternative to MCP)
+
+```bash
+# Health check
+curl http://localhost:8765/api/health
+
+# Send message via REST
+curl -X POST http://localhost:8765/api/message/send \
+  -H "Content-Type: application/json" \
+  -d '{"project_key":"/path/to/repo","sender_name":"claude-1","recipient_names":["claude-2"],"subject":"Test","body_md":"Hello"}'
+
+# Check inbox
+curl -X POST http://localhost:8765/api/inbox \
+  -H "Content-Type: application/json" \
+  -d '{"project_key":"/path/to/repo","agent_name":"claude-1"}'
 ```
 
 #### Resources
@@ -905,7 +968,7 @@ mcp-agent-mail-rs/
 │   │   │   │   └── ...
 │   │   │   ├── store/           # Database, Git archive
 │   │   │   └── error.rs         # Domain errors (thiserror)
-│   │   ├── lib-mcp/             # MCP tools (50+)
+│   │   ├── lib-mcp/             # MCP tools (45)
 │   │   │   └── tools.rs         # AgentMailService + JSON schemas
 │   │   └── lib-server/          # HTTP layer (Axum 0.8)
 │   │       ├── api/             # REST handlers

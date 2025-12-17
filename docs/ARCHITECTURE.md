@@ -41,7 +41,7 @@ MCP Agent Mail is a high-performance messaging platform for AI coding agents, pr
 ├─────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
 │  │   Middleware    │  │   Handlers      │  │   MCP Tools             │  │
-│  │   ├─ Auth       │  │   (REST routes) │  │   (32+ operations)      │  │
+│  │   ├─ Auth       │  │   (REST routes) │  │   (45 operations)       │  │
 │  │   ├─ RateLimit  │  │                 │  │   ├─ ensure_project     │  │
 │  │   ├─ Tracing    │  │                 │  │   ├─ send_message       │  │
 │  │   └─ CORS       │  │                 │  │   └─ ...                │  │
@@ -358,7 +358,7 @@ impl AgentMailService {
         Ok(serde_json::to_string(&message).unwrap())
     }
 
-    // 31 more tools...
+    // 44 more tools...
 }
 ```
 
