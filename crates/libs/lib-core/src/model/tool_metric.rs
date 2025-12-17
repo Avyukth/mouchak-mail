@@ -27,9 +27,25 @@ pub struct ToolMetricForCreate {
     pub duration_ms: i64,
 }
 
+/// Backend Model Controller for Tool Metric operations.
+///
+/// Tracks MCP tool invocations for analytics, debugging, and performance
+/// monitoring. Each tool call is recorded with timing and status.
 pub struct ToolMetricBmc;
 
 impl ToolMetricBmc {
+    /// Records a new tool metric entry.
+    ///
+    /// Called automatically by the tool execution layer to track
+    /// every MCP tool invocation.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `metric_c` - Metric data (tool name, duration, status)
+    ///
+    /// # Returns
+    /// The metric record's database ID
     pub async fn create(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -63,6 +79,16 @@ impl ToolMetricBmc {
         Ok(id)
     }
 
+    /// Lists recent tool metrics.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `project_id` - Optional project filter (None = all projects)
+    /// * `limit` - Maximum number of records
+    ///
+    /// # Returns
+    /// Vector of metrics (newest first)
     pub async fn list_recent(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -106,6 +132,17 @@ impl ToolMetricBmc {
         })
     }
 
+    /// Gets aggregated statistics for tool usage.
+    ///
+    /// Provides per-tool counts, average duration, and error rates.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `project_id` - Optional project filter
+    ///
+    /// # Returns
+    /// Vector of per-tool statistics
     pub async fn get_stats(
         _ctx: &Ctx,
         mm: &ModelManager,

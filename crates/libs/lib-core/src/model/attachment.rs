@@ -25,9 +25,25 @@ pub struct AttachmentForCreate {
     pub size_bytes: i64,
 }
 
+/// Backend Model Controller for Attachment operations.
+///
+/// Manages file attachments associated with projects. Files are stored
+/// on disk and metadata is tracked in the database.
 pub struct AttachmentBmc;
 
 impl AttachmentBmc {
+    /// Creates a new attachment record.
+    ///
+    /// **Note**: This only creates the database record. The actual file
+    /// must be written to disk separately (typically by the API layer).
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `attachment_c` - Attachment metadata
+    ///
+    /// # Returns
+    /// The created attachment's database ID
     pub async fn create(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -61,6 +77,18 @@ impl AttachmentBmc {
         }
     }
 
+    /// Retrieves an attachment by its database ID.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `id` - Attachment ID
+    ///
+    /// # Returns
+    /// The attachment metadata
+    ///
+    /// # Errors
+    /// Returns `Error::NotFound` if attachment doesn't exist
     pub async fn get(_ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<Attachment> {
         let db = mm.db();
         let stmt = db.prepare("SELECT id, project_id, filename, stored_path, media_type, size_bytes, created_ts FROM attachments WHERE id = ?").await?;
@@ -73,6 +101,15 @@ impl AttachmentBmc {
         }
     }
 
+    /// Lists all attachments for a project.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `project_id` - Project database ID
+    ///
+    /// # Returns
+    /// Vector of attachments (newest first)
     pub async fn list_by_project(
         _ctx: &Ctx,
         mm: &ModelManager,

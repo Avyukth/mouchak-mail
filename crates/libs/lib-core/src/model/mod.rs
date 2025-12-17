@@ -1,3 +1,37 @@
+//! # Model Layer - BMC Pattern Implementation
+//!
+//! This module contains all Backend Model Controllers (BMCs) and their
+//! associated data structures for the MCP Agent Mail system.
+//!
+//! ## BMC Pattern
+//!
+//! Each entity has:
+//! - **Data Struct**: Serializable model (e.g., `Agent`, `Message`)
+//! - **ForCreate Struct**: Input for creation operations
+//! - **Bmc Struct**: Stateless controller with async CRUD methods
+//!
+//! ## Available Controllers
+//!
+//! | BMC | Description |
+//! |-----|-------------|
+//! | [`agent::AgentBmc`] | AI agent registration and profiles |
+//! | [`message::MessageBmc`] | Inter-agent messaging |
+//! | [`project::ProjectBmc`] | Project management |
+//! | [`file_reservation::FileReservationBmc`] | File locking coordination |
+//! | [`build_slot::BuildSlotBmc`] | CI/CD slot management |
+//! | [`macro_def::MacroDefBmc`] | Workflow macro definitions |
+//! | [`attachment::AttachmentBmc`] | File attachments |
+//! | [`activity::ActivityBmc`] | Unified activity feed |
+//! | [`tool_metric::ToolMetricBmc`] | Tool usage analytics |
+//! | [`overseer_message::OverseerMessageBmc`] | Human escalation messages |
+//!
+//! ## ModelManager
+//!
+//! The [`ModelManager`] provides centralized access to:
+//! - Database connections (libSQL)
+//! - Git repository operations
+//! - Concurrency control via `git_lock`
+
 pub mod activity;
 pub mod agent;
 pub mod agent_capabilities;

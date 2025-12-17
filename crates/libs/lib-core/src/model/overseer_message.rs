@@ -25,9 +25,26 @@ pub struct OverseerMessageForCreate {
     pub importance: String,
 }
 
+/// Backend Model Controller for Overseer Message operations.
+///
+/// Manages high-priority messages sent to the human overseer (project owner).
+/// These messages require human attention and are tracked separately from
+/// regular inter-agent communication.
 pub struct OverseerMessageBmc;
 
 impl OverseerMessageBmc {
+    /// Creates a new overseer message.
+    ///
+    /// Use this when an agent needs human attention (e.g., error escalation,
+    /// approval requests, or critical notifications).
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `msg_c` - Message content with importance level
+    ///
+    /// # Returns
+    /// The created message's database ID
     pub async fn create(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -66,6 +83,15 @@ impl OverseerMessageBmc {
         Ok(id)
     }
 
+    /// Lists all unread overseer messages for a project.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `project_id` - Project database ID
+    ///
+    /// # Returns
+    /// Vector of unread messages (newest first)
     pub async fn list_unread(
         _ctx: &Ctx,
         mm: &ModelManager,

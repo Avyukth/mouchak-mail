@@ -16,9 +16,30 @@ pub struct ActivityItem {
     pub created_at: String, // ISO 8601 string for uniformity
 }
 
+/// Backend Model Controller for Activity Feed operations.
+///
+/// Provides a unified activity feed combining messages, tool usage,
+/// and agent registration events into a single chronological stream.
 pub struct ActivityBmc;
 
 impl ActivityBmc {
+    /// Lists recent activity items for a project.
+    ///
+    /// Aggregates activity from multiple sources:
+    /// - Recent messages (with truncated body)
+    /// - Tool usage metrics (with duration/status)
+    /// - Agent registrations
+    ///
+    /// Results are sorted by timestamp (newest first) and limited.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `project_id` - Project database ID
+    /// * `limit` - Maximum number of items to return
+    ///
+    /// # Returns
+    /// Vector of activity items (may be mixed types)
     pub async fn list_recent(
         _ctx: &Ctx,
         mm: &ModelManager,
