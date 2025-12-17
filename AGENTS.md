@@ -592,6 +592,20 @@ ubs .
 | **Pre-commit** | `install_precommit_guard`, `uninstall_precommit_guard` | Conflict detection |
 | **Metrics** | `list_tool_metrics`, `get_tool_stats`, `list_activity` | Usage analytics |
 
+#### API Field Reference
+
+**IMPORTANT**: MCP tools and REST API use slightly different field names:
+
+| Field | MCP Tool | REST API |
+|-------|----------|----------|
+| Recipients | `to` (comma-separated string) | `recipient_names` (array) |
+| CC | `cc` (comma-separated string) | `cc_names` (array) |
+| BCC | `bcc` (comma-separated string) | `bcc_names` (array) |
+| Agent name | `name` (register_agent) | `name` |
+| Project | `project_slug` | `project_slug` |
+
+**Note**: `reply_message` is simpler—it only takes `message_id`, `sender_name`, `body_md`. Recipients and thread are auto-derived from the original message.
+
 #### Setup Workflow
 
 ```bash
@@ -621,7 +635,7 @@ file_reservation_paths(
 send_message(
   project_slug="/path/to/repo",
   sender_name="claude-1",
-  recipient_names=["claude-2"],
+  to="claude-2",  # comma-separated for multiple: "agent1,agent2"
   subject="Found issue in auth module",
   body_md="See src/auth.rs:42...",
   thread_id="FEAT-123"
@@ -1534,7 +1548,7 @@ file_reservation_paths(
 send_message(
   project_slug="<project-slug>",
   sender_name="worker-<task-id>",
-  recipient_names=["reviewer"],
+  to="reviewer",  # comma-separated for multiple
   subject="[TASK_STARTED] <task-id>: <task-title>",
   body_md="Starting work on task. ETA: <estimate>",
   thread_id="TASK-<task-id>"
@@ -1626,12 +1640,12 @@ cargo test -p <affected-crate>
 send_message(
   project_slug="<project-slug>",
   sender_name="worker-<task-id>",
-  recipient_names=["reviewer"],  # or ["human"] if no reviewer
-  cc_names=["human"],  # Human CCed for audit trail
+  to="reviewer",  # or "human" if no reviewer; comma-separated for multiple
+  cc="human",  # Human CCed for audit trail
   subject="[COMPLETION] <task-id>: <task-title>",
   body_md="<markdown report above>",
   thread_id="TASK-<task-id>",
-  priority="high"
+  importance="high"  # Options: low, normal, high, urgent
 )
 ```
 
@@ -1786,26 +1800,27 @@ Document any gaps found:
 
 ```python
 # 1. First, claim the review (sends [REVIEWING] message)
+# Note: reply_message automatically:
+#   - Sends to original sender
+#   - Uses same thread_id
+#   - Prefixes subject with "Re: "
 reviewing_msg = reply_message(
   project_slug="<project-slug>",
   message_id=<completion-mail-id>,
   sender_name="reviewer",
-  subject="[REVIEWING] <task-id>: <task-title>",
-  body_md="Review claimed. Starting validation...",
-  cc_names=["human"],
-  thread_id="TASK-<task-id>"
+  body_md="[REVIEWING] Review claimed. Starting validation..."
 )
 
 # 2. Perform validation (steps 1-7 from checklist)
 # ... validation work ...
 
 # 3. Send approval (reply to REVIEWING message)
-reply_message(
+# For multi-recipient or CC, use send_message instead of reply_message
+send_message(
   project_slug="<project-slug>",
-  message_id=reviewing_msg.id,
   sender_name="reviewer",
-  recipient_names=["worker-<task-id>"],
-  cc_names=["human"],  # Human CCed for audit
+  to="worker-<task-id>",
+  cc="human",  # Human CCed for audit
   subject="[APPROVED] <task-id>: <task-title>",
   body_md="""
 ## Review Complete - APPROVED
@@ -1875,13 +1890,12 @@ git branch -d fix/<task-id>
 Then send fix completion mail (reply to REVIEWING message):
 
 ```python
-# Reply to the REVIEWING message with [FIXED] result
-reply_message(
+# Send [FIXED] notification with CC (use send_message for CC support)
+send_message(
   project_slug="<project-slug>",
-  message_id=reviewing_msg.id,
   sender_name="reviewer",
-  recipient_names=["worker-<task-id>"],
-  cc_names=["human"],  # Human CCed for audit trail
+  to="worker-<task-id>",
+  cc="human",  # Human CCed for audit trail
   subject="[FIXED] <task-id>: <task-title>",
   body_md="""
 ## Review Complete - FIXED
@@ -1953,7 +1967,7 @@ if not reviewer_exists:
     send_message(
       project_slug="<project-slug>",
       sender_name="worker-<task-id>",
-      recipient_names=["human"],  # Skip reviewer, go direct
+      to="human",  # Skip reviewer, go direct
       subject="[COMPLETION] <task-id>: <task-title> (Self-Reviewed)",
       body_md="""
 ## Task Completion Report (Self-Reviewed)
@@ -2091,29 +2105,25 @@ if "COMPLETED" in states_found:
 Before starting review, Reviewer sends a `[REVIEWING]` message to claim the task:
 
 ```python
-# Step 1: Claim the review (atomic operation)
+# Step 1: Claim the review (simple reply to mark status)
 reply_message(
   project_slug="<project-slug>",
   message_id=<completion-mail-id>,  # Reply to completion mail
   sender_name="reviewer",
-  subject="[REVIEWING] <task-id>: <task-title>",
-  body_md="Review claimed by reviewer. Starting validation...",
-  cc_names=["human"],  # Human knows review started
-  thread_id="TASK-<task-id>"
+  body_md="[REVIEWING] Review claimed by reviewer. Starting validation..."
 )
 
 # Step 2: Perform review (validation checklist)
 # ... detailed review steps ...
 
-# Step 3: Send result (reply to own REVIEWING message)
-reply_message(
+# Step 3: Send result with CC support (use send_message for CC)
+send_message(
   project_slug="<project-slug>",
-  message_id=<reviewing-mail-id>,
   sender_name="reviewer",
-  recipient_names=["worker-<task-id>"],
+  to="worker-<task-id>",
+  cc="human",  # Human CCed on all outcomes
   subject="[APPROVED] <task-id>: <task-title>",
   body_md="<review results>",
-  cc_names=["human"],  # Human CCed on all outcomes
   thread_id="TASK-<task-id>"
 )
 ```

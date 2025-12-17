@@ -6,11 +6,17 @@ use crate::tools;
 
 pub mod attachments;
 pub mod export;
+pub mod unified_inbox;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        // Unified Inbox (Gmail-style cross-project view)
+        .route(
+            "/mail/api/unified-inbox",
+            get(unified_inbox::unified_inbox_json),
+        )
         // Core
-        // ...
+        // ..
         // Export
         .route("/api/export", post(export::export_mailbox))
         // Attachments

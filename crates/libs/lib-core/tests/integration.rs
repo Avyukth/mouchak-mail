@@ -10,3 +10,4 @@ mod cc_bcc_tests;
 mod common;
 mod message_tests;
 mod project_tests;
+mod unified_inbox_tests;
