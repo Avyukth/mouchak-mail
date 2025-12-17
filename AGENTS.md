@@ -582,54 +582,107 @@ fetch_inbox → acknowledge_message
 
 ### Git Worktree Flow (Sandbox Isolation)
 
-**What it does**: Git worktrees allow multiple working directories from the same repository, enabling safe parallel work and sandbox isolation.
+**What it does**: Git worktrees allow multiple working directories from the same repository, each checking out a different branch in its own directory. They share repository history and objects but keep work directories isolated. Available in Git 2.5+.
 
 #### When to Use Worktrees
 
 - ✅ Working on risky/experimental changes
-- ✅ Testing in isolation without affecting main work
+- ✅ Handling interruptions (hotfixes) without stashing
 - ✅ Parallel feature development
+- ✅ Code reviews and PR testing in isolation
 - ✅ AI executor sandboxes (VC uses this)
-- ✅ Code review with local testing
+- ✅ Long-running tasks (test suites) while continuing other work
+- ✅ Comparing branches side-by-side
 
-#### Basic Worktree Commands
+#### Core Commands
+
+| Command | Purpose | Key Options |
+|---------|---------|-------------|
+| `git worktree add <path> [<branch>]` | Create new worktree | `-b <new-branch>`: Create new branch<br>`--detach`: Detach HEAD<br>`--no-checkout`: Skip checkout |
+| `git worktree list` | Show all worktrees | `--verbose`: Add state details<br>`--porcelain`: Machine-readable |
+| `git worktree remove <path>` | Delete worktree | `-f`: Force (unclean/locked) |
+| `git worktree prune` | Clean stale metadata | `--expire <time>`: Age threshold |
+| `git worktree lock <path>` | Prevent pruning | `--reason <string>`: Add note |
+| `git worktree unlock <path>` | Allow management | |
+| `git worktree move <old> <new>` | Relocate worktree | |
+| `git worktree repair` | Fix broken links | After manual moves |
+
+#### Basic Workflow
 
 ```bash
-# Create a worktree for a new branch
+# 1. Create worktree for existing branch
 git worktree add ../project-feature feature-branch
 
-# Create worktree from existing branch
-git worktree add ../project-bugfix bugfix-branch
+# 2. Create worktree with NEW branch tracking remote
+git worktree add -b bugfix-123 ../bugfix-123 origin/main
 
-# List all worktrees
-git worktree list
+# 3. Work in the worktree
+cd ../bugfix-123
+# ... make changes, commit, push ...
 
-# Remove a worktree (when done)
-git worktree remove ../project-feature
-
-# Prune stale worktree references
-git worktree prune
+# 4. Return and clean up
+cd ../project
+git worktree remove ../bugfix-123
 ```
 
-#### Sandbox Pattern for Safe Experimentation
+#### Handling Interruptions (Hotfix Pattern)
+
+When urgent work arrives, don't stash—create a worktree:
 
 ```bash
-# 1. Create isolated sandbox
-git worktree add ../sandbox-experiment -b experiment/risky-change
+# 1. Create hotfix worktree (doesn't affect current work)
+git worktree add ../hotfix hotfix-branch
 
-# 2. Work in sandbox (cd to it)
-cd ../sandbox-experiment
+# 2. Fix the issue
+cd ../hotfix
+# ... fix, test, commit, push, deploy ...
 
-# 3. Make changes, test, iterate
-# ... your work here ...
+# 3. Clean up
+cd ../project
+git worktree remove ../hotfix
+```
 
-# 4. If successful: merge back
-git checkout main
-git merge experiment/risky-change
+#### Bare Repository Workflow (Advanced)
 
-# 5. Clean up
-git worktree remove ../sandbox-experiment
-git branch -d experiment/risky-change
+For cleaner organization, use a bare repo as central hub:
+
+```bash
+# 1. Clone as bare repository
+git clone --bare <repo-url> project.git
+
+# 2. Create worktrees from bare repo
+cd project.git
+git worktree add ../main main
+git worktree add ../feature-x feature-x
+```
+
+**Directory structure**:
+```
+project/
+├── project.git/     # Bare repo (central hub)
+├── main/            # Worktree for main branch
+├── feature-x/       # Worktree for feature
+└── bugfix-123/      # Worktree for bugfix
+```
+
+**Bare repo caveats**:
+- Fetching remote branches may require manual ref setup
+- Some prefer non-bare repos for simpler remote handling
+- Use `git config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"` to fix fetch issues
+
+#### PR Review Workflow (with GitHub CLI)
+
+```bash
+# 1. Create worktree for PR review
+git worktree add ../pr-review pr-branch
+# Or with GitHub CLI:
+cd ../pr-review && gh pr checkout <PR_NUMBER>
+
+# 2. Test and review
+# ... run tests, review code ...
+
+# 3. Clean up
+git worktree remove ../pr-review
 ```
 
 #### Worktree + bd Integration
@@ -643,14 +696,42 @@ bd --no-daemon update <id> --status in_progress
 bd --no-daemon close <id> --reason "Done"
 ```
 
-#### Worktree Best Practices
+#### Best Practices
 
 | Practice | Reason |
 |----------|--------|
-| Use descriptive directory names | `../project-feature-auth` not `../wt1` |
-| Clean up when done | Avoid accumulating stale worktrees |
-| Don't nest worktrees | Keep them siblings, not children |
-| Prune regularly | `git worktree prune` removes stale refs |
+| **Limit to 3-5 active worktrees** | Each duplicates files; manage disk space |
+| **Use descriptive naming** | `project-feature-auth` not `wt1` |
+| **Place as siblings** | `../project-feature` not `./worktrees/feature` |
+| **Remove promptly when done** | Avoid accumulating stale worktrees |
+| **Commit frequently** | Sync with main repo to avoid conflicts |
+| **Run `git worktree prune` regularly** | Clean up stale metadata |
+| **Lock worktrees on portable drives** | `git worktree lock ../usb-work --reason "USB drive"` |
+| **Use `repair` after manual moves** | Fixes broken links |
+
+#### Pitfalls to Avoid
+
+| Pitfall | Solution |
+|---------|----------|
+| Same branch in multiple worktrees | Git blocks this—use different branches |
+| Duplicated build artifacts | Share configs where possible; clean build dirs |
+| Submodule issues | Experimental support—avoid multiple superproject checkouts |
+| Manual directory deletion | Always use `git worktree remove`, then `prune` |
+| Stale worktrees accumulating | Regular `git worktree list` and cleanup |
+| Bare repo fetch problems | Configure remote.origin.fetch manually |
+
+#### Shell Aliases (Recommended)
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+alias gwa='git worktree add'
+alias gwl='git worktree list'
+alias gwr='git worktree remove'
+alias gwp='git worktree prune'
+
+# Quick worktree with new branch
+gwab() { git worktree add -b "$1" "../$1" "${2:-HEAD}"; }
+```
 
 ---
 
