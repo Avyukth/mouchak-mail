@@ -36,6 +36,7 @@ YOU ARE NEVER ALLOWED TO DELETE A FILE WITHOUT EXPRESS WRITTEN PERMISSION.
 | `git reset --hard` | Destroys uncommitted work |
 | `git clean -fd` | Deletes untracked files |
 | `rm -rf` | Recursive deletion |
+| `git push` | **NEVER**|
 | `git push --force` | Overwrites remote history |
 | Any command that deletes/overwrites code or data | Potential data loss |
 
@@ -837,18 +838,9 @@ git pull --rebase
 # Sync the database (exports to JSONL, commits)
 bd sync
 
-# MANDATORY: Push everything
-git push
-
 # VERIFY: Must show "up to date with origin"
 git status
 ```
-
-**CRITICAL RULES**:
-- The plane has NOT landed until `git push` completes successfully
-- NEVER stop before `git push` — that leaves work stranded
-- NEVER say "ready to push when you are" — YOU must push
-- If push fails, resolve and retry until it succeeds
 
 #### 5. Clean Up Git State
 
@@ -1228,7 +1220,6 @@ fn send(project: String, agent: String)  // Easy to swap args
 | `cass` launches TUI | Always use `--robot` or `--json` flag |
 | `bd` shows "database not found" | Run `bd init --quiet` |
 | `cm context` returns nothing | Run `cm init` to initialize playbook |
-| Git push fails | Pull with rebase, resolve conflicts, push again |
 | Issues not syncing | Run `bd sync` and `bd hooks install` |
 | Test DB conflicts | Use `--test-threads=1` for integration tests |
 | bd in worktree fails | Use `bd --no-daemon` flag |
