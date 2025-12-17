@@ -1565,6 +1565,47 @@ The Reviewer is the quality gatekeeper. It performs **deep analysis** of all imp
 - Resource leaks: file handles, connections
 - API contracts: breaking changes, backward compatibility
 
+**6. UI/Frontend Validation** (when PR modifies UI components, styles, or user-facing features)
+
+Use **dev-browser** (not Playwright MCP) for token efficiency (39% cheaper, 43% fewer turns):
+
+```bash
+# Install dev-browser plugin (one-time)
+/plugin marketplace add sawyerhood/dev-browser
+/plugin install dev-browser@sawyerhood/dev-browser
+```
+
+**Validation Checklist:**
+
+| Category | What to Check | Tool |
+|----------|---------------|------|
+| **Navigation** | All routes render, links work, back/forward | dev-browser |
+| **Components** | Buttons clickable, forms submit, modals open/close | dev-browser |
+| **Responsive** | Mobile (375px), tablet (768px), desktop (1280px) | dev-browser resize |
+| **Accessibility** | Focus order, ARIA labels, keyboard navigation | dev-browser + manual |
+| **Visual** | Layout not broken, text readable, icons visible | Screenshot compare |
+
+**Quick Validation Script:**
+
+```typescript
+// dev-browser script for UI smoke test
+await page.goto('http://localhost:8765');
+await page.waitForSelector('[data-testid="app-loaded"]');
+
+// Navigation check
+await page.click('[data-testid="nav-inbox"]');
+await expect(page.url()).toContain('/inbox');
+
+// Responsive check
+await page.setViewportSize({ width: 375, height: 667 });
+await page.screenshot({ path: 'mobile.png' });
+```
+
+**Reference Skills** (for detailed patterns):
+- `~/.claude/skills/frontend-dev-guidelines/` - Component patterns, styling
+- `~/.claude/skills/production-hardening-frontend/` - CSP, XSS prevention
+- `~/.claude/skills/mobile-frontend-design/` - Touch, responsive, PWA
+
 ### Workflow Overview
 
 ```
@@ -1956,6 +1997,14 @@ acknowledge_message(
   message_id=<completion-mail-id>,
   agent_name="reviewer"
 )
+
+# 6. Mark worker's original mail as read
+mark_message_read(
+  project_slug="<project-slug>",
+  message_id=<completion-mail-id>,
+  agent_name="reviewer"
+)
+
 ```
 
 #### 4.4 If Review FAILS (Fix Flow)
