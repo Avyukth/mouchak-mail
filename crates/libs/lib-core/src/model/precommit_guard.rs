@@ -1,4 +1,4 @@
-use crate::{ctx::Ctx, model::ModelManager, Result};
+use crate::{Result, ctx::Ctx, model::ModelManager};
 use std::path::Path;
 
 /// Pre-commit guard for file reservation checks
@@ -6,11 +6,7 @@ pub struct PrecommitGuardBmc;
 
 impl PrecommitGuardBmc {
     /// Install pre-commit hook in git repository
-    pub async fn install(
-        _ctx: &Ctx,
-        _mm: &ModelManager,
-        git_repo_path: &Path,
-    ) -> Result<String> {
+    pub async fn install(_ctx: &Ctx, _mm: &ModelManager, git_repo_path: &Path) -> Result<String> {
         let hooks_dir = git_repo_path.join(".git").join("hooks");
         let hook_path = hooks_dir.join("pre-commit");
 
@@ -49,11 +45,7 @@ exit 0
     }
 
     /// Uninstall pre-commit hook from git repository
-    pub async fn uninstall(
-        _ctx: &Ctx,
-        _mm: &ModelManager,
-        git_repo_path: &Path,
-    ) -> Result<String> {
+    pub async fn uninstall(_ctx: &Ctx, _mm: &ModelManager, git_repo_path: &Path) -> Result<String> {
         let hook_path = git_repo_path.join(".git").join("hooks").join("pre-commit");
 
         if hook_path.exists() {
@@ -74,10 +66,10 @@ mod tests {
     async fn test_install_uninstall_precommit_guard() {
         let temp_dir = TempDir::new().unwrap();
         let git_dir = temp_dir.path().join("test_repo");
-        
+
         // Initialize a git repo structure
         std::fs::create_dir_all(git_dir.join(".git/hooks")).unwrap();
-        
+
         let ctx = Ctx::root_ctx();
         let dummy_mm = {
             use libsql::Builder;
@@ -86,12 +78,12 @@ mod tests {
             let conn = db.connect().unwrap();
             ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
         };
-        
+
         // Test install
         let result = PrecommitGuardBmc::install(&ctx, &dummy_mm, &git_dir).await;
         assert!(result.is_ok());
         assert!(git_dir.join(".git/hooks/pre-commit").exists());
-        
+
         // Test uninstall
         let result = PrecommitGuardBmc::uninstall(&ctx, &dummy_mm, &git_dir).await;
         assert!(result.is_ok());
