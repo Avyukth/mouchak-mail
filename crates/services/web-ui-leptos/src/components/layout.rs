@@ -65,6 +65,7 @@ pub fn Layout() -> impl IntoView {
                                 <NavLink href="/projects" label="Projects" icon="folder-open" />
                                 <NavLink href="/agents" label="Agents" icon="bot" />
                                 <NavLink href="/inbox" label="Inbox" icon="inbox" />
+                                <NavLink href="/mail/unified" label="All Mail" icon="layers" />
                             </div>
                         </div>
 
