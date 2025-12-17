@@ -648,6 +648,111 @@ pub struct ThreadSummary {
     pub last_message_ts: NaiveDateTime,
 }
 
+/// Paths for git archival of a message
+struct MessageArchivePaths {
+    canonical: PathBuf,
+    outbox: PathBuf,
+    inboxes: Vec<PathBuf>,
+}
+
+/// Build all file paths for message archival
+fn build_message_paths(
+    project_slug: &str,
+    sender_name: &str,
+    recipient_names: &[String],
+    filename: &str,
+    y_dir: &str,
+    m_dir: &str,
+) -> MessageArchivePaths {
+    let project_root = PathBuf::from("projects").join(project_slug);
+
+    let canonical = project_root
+        .join("messages")
+        .join(y_dir)
+        .join(m_dir)
+        .join(filename);
+
+    let outbox = project_root
+        .join("agents")
+        .join(sender_name)
+        .join("outbox")
+        .join(y_dir)
+        .join(m_dir)
+        .join(filename);
+
+    let inboxes = recipient_names
+        .iter()
+        .map(|name| {
+            project_root
+                .join("agents")
+                .join(name)
+                .join("inbox")
+                .join(y_dir)
+                .join(m_dir)
+                .join(filename)
+        })
+        .collect();
+
+    MessageArchivePaths {
+        canonical,
+        outbox,
+        inboxes,
+    }
+}
+
+/// Format message content with JSON frontmatter
+fn format_message_content(
+    id: i64,
+    project_slug: &str,
+    sender_name: &str,
+    recipient_names: &[String],
+    subject: &str,
+    body_md: &str,
+    thread_id: &str,
+    importance: &str,
+    created_iso: &str,
+) -> Result<String> {
+    let frontmatter = serde_json::json!({
+        "id": id,
+        "project": project_slug,
+        "from": sender_name,
+        "to": recipient_names,
+        "subject": subject,
+        "thread_id": thread_id,
+        "created": created_iso,
+        "importance": importance,
+    });
+    Ok(format!(
+        "---json\n{}\n---\n\n{}",
+        serde_json::to_string_pretty(&frontmatter)?,
+        body_md
+    ))
+}
+
+/// Write content to a path, creating parent directories as needed
+fn write_archive_file(root: &std::path::Path, rel: &std::path::Path, content: &str) -> Result<()> {
+    let full = root.join(rel);
+    if let Some(p) = full.parent() {
+        std::fs::create_dir_all(p)?;
+    }
+    std::fs::write(full, content)?;
+    Ok(())
+}
+
+/// Write message to all archive paths (canonical, outbox, inboxes)
+fn write_message_to_archive(
+    workdir: &std::path::Path,
+    paths: &MessageArchivePaths,
+    content: &str,
+) -> Result<()> {
+    write_archive_file(workdir, &paths.canonical, content)?;
+    write_archive_file(workdir, &paths.outbox, content)?;
+    for inbox_path in &paths.inboxes {
+        write_archive_file(workdir, inbox_path, content)?;
+    }
+    Ok(())
+}
+
 /// Background git commit for message archival
 /// This runs async after the DB commit returns, keeping API latency low
 #[allow(clippy::too_many_arguments)]
@@ -663,104 +768,62 @@ async fn commit_message_to_git(
     thread_id: &str,
     importance: &str,
 ) -> Result<()> {
-    // Construct paths
+    // Build timestamp-based paths
     let now = chrono::Utc::now();
     let y_dir = now.format("%Y").to_string();
     let m_dir = now.format("%m").to_string();
     let created_iso = now.format("%Y-%m-%dT%H-%M-%SZ").to_string();
-
-    let subject_slug = slug::slugify(subject);
-    let filename = format!("{}__{}__{}.md", created_iso, subject_slug, id);
-
-    let project_root = PathBuf::from("projects").join(project_slug);
-    let canonical_path = project_root
-        .join("messages")
-        .join(&y_dir)
-        .join(&m_dir)
-        .join(&filename);
-
-    let outbox_path = project_root
-        .join("agents")
-        .join(sender_name)
-        .join("outbox")
-        .join(&y_dir)
-        .join(&m_dir)
-        .join(&filename);
-
-    let mut inbox_paths = Vec::new();
-    for recipient_name in recipient_names {
-        inbox_paths.push(
-            project_root
-                .join("agents")
-                .join(recipient_name)
-                .join("inbox")
-                .join(&y_dir)
-                .join(&m_dir)
-                .join(&filename),
-        );
-    }
-
-    // Content
-    let frontmatter = serde_json::json!({
-        "id": id,
-        "project": project_slug,
-        "from": sender_name,
-        "to": recipient_names,
-        "subject": subject,
-        "thread_id": thread_id,
-        "created": created_iso,
-        "importance": importance,
-    });
-    let content = format!(
-        "---json\n{}\n---\n\n{}",
-        serde_json::to_string_pretty(&frontmatter)?,
-        body_md
+    let filename = format!(
+        "{}__{}__{}.md",
+        created_iso,
+        slug::slugify(subject),
+        id
     );
 
-    // Git Operations - serialized to prevent lock contention
-    let _git_guard = git_lock.lock().await;
+    let paths = build_message_paths(
+        project_slug,
+        sender_name,
+        recipient_names,
+        &filename,
+        &y_dir,
+        &m_dir,
+    );
 
+    let content = format_message_content(
+        id,
+        project_slug,
+        sender_name,
+        recipient_names,
+        subject,
+        body_md,
+        thread_id,
+        importance,
+        &created_iso,
+    )?;
+
+    // Git operations - serialized to prevent lock contention
+    let _git_guard = git_lock.lock().await;
     let repo = git_store::open_repo(&repo_root)?;
+    let workdir = repo
+        .workdir()
+        .ok_or(crate::Error::InvalidInput("No workdir".into()))?;
+
+    write_message_to_archive(workdir, &paths, &content)?;
+
+    // Commit all paths
+    let all_paths: Vec<PathBuf> = std::iter::once(paths.canonical.clone())
+        .chain(std::iter::once(paths.outbox.clone()))
+        .chain(paths.inboxes.iter().cloned())
+        .collect();
+    let all_paths_ref: Vec<&std::path::Path> = all_paths.iter().map(|p| p.as_path()).collect();
+
     let commit_msg = format!(
         "mail: {} -> {} | {}",
         sender_name,
         recipient_names.join(", "),
         subject
     );
-
-    let workdir = repo
-        .workdir()
-        .ok_or(crate::Error::InvalidInput("No workdir".into()))?;
-
-    fn write_file(root: &std::path::Path, rel: &std::path::Path, content: &str) -> Result<()> {
-        let full = root.join(rel);
-        if let Some(p) = full.parent() {
-            std::fs::create_dir_all(p)?;
-        }
-        std::fs::write(full, content)?;
-        Ok(())
-    }
-
-    write_file(workdir, &canonical_path, &content)?;
-    write_file(workdir, &outbox_path, &content)?;
-    for inbox_path in &inbox_paths {
-        write_file(workdir, inbox_path, &content)?;
-    }
-
-    // Collect all paths to commit
-    let mut all_paths = vec![canonical_path.clone()];
-    all_paths.push(outbox_path.clone());
-    all_paths.extend(inbox_paths.clone());
-
-    let all_paths_as_ref: Vec<&std::path::Path> = all_paths.iter().map(|p| p.as_path()).collect();
-
-    git_store::commit_paths(
-        &repo,
-        &all_paths_as_ref,
-        &commit_msg,
-        "mcp-bot",
-        "mcp-bot@localhost",
-    )?;
+    git_store::commit_paths(&repo, &all_paths_ref, &commit_msg, "mcp-bot", "mcp-bot@localhost")?;
 
     info!("Background git commit succeeded for message {}", id);
     Ok(())
