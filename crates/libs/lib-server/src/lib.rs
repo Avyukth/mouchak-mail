@@ -96,7 +96,7 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new()
+    let mut app = Router::new()
         .merge(api::routes())
         .merge(mcp_routes)
         .route_layer(axum::middleware::from_fn_with_state(
@@ -106,7 +106,6 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
         // Public routes (no auth)
         // .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()))
         .route("/api-docs/openapi.json", get(openapi_json))
-        .route("/", get(root_handler))
         .route("/health", get(health_handler))
         .route("/ready", get(ready_handler))
         .route("/metrics", get(metrics_handler))
@@ -119,8 +118,23 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
             app_state.clone(),
             ratelimit::rate_limit_middleware,
         ))
-        .layer(cors) // Enable CORS
-        .with_state(app_state);
+        .layer(cors); // Enable CORS
+
+    // Conditionally add embedded web UI routes
+    #[cfg(feature = "with-web-ui")]
+    if config.serve_ui {
+        tracing::info!("Web UI enabled at /");
+        app = app.fallback(static_files::serve_embedded_file);
+    } else {
+        app = app.route("/", get(root_handler));
+    }
+
+    #[cfg(not(feature = "with-web-ui"))]
+    {
+        app = app.route("/", get(root_handler));
+    }
+
+    let app = app.with_state(app_state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("MCP Agent Mail Server starting on {}", addr);

@@ -13,6 +13,13 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub auth_hmac: Option<String>,
+    /// Enable serving embedded web UI (when compiled with with-web-ui feature)
+    #[serde(default = "default_serve_ui")]
+    pub serve_ui: bool,
+}
+
+fn default_serve_ui() -> bool {
+    true
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -28,6 +35,7 @@ impl Default for AppConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8765,
                 auth_hmac: None,
+                serve_ui: true,
             },
             mcp: McpConfig {
                 transport: "stdio".to_string(),
@@ -51,6 +59,7 @@ impl AppConfig {
             // Start with defaults
             .set_default("server.host", "0.0.0.0")?
             .set_default("server.port", 8765)?
+            .set_default("server.serve_ui", true)?
             .set_default("mcp.transport", "stdio")?
             .set_default("mcp.port", 3000)?
             // Merge in config files
