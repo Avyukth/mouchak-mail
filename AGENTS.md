@@ -649,22 +649,95 @@ acknowledge_message(project_slug="/path/to/repo", message_id=123, agent_name="cl
 release_reservation(project_slug="/path/to/repo", reservation_id=1)
 ```
 
-#### REST API (Alternative to MCP)
+#### REST API Reference (Alternative to MCP)
 
+> **Important**: Most endpoints use POST with JSON body. Use correct HTTP method.
+
+##### Health & Status
 ```bash
-# Health check
+# Health check (GET)
 curl http://localhost:8765/api/health
 
-# Send message via REST
+# List all projects (GET)
+curl http://localhost:8765/api/projects
+```
+
+##### Agent Management
+```bash
+# Register agent (POST)
+curl -X POST http://localhost:8765/api/agent/register \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project","name":"worker-1","program":"claude-code","model":"claude-3.5-sonnet"}'
+
+# List agents for project (GET)
+curl http://localhost:8765/api/projects/my-project/agents
+
+# Whois lookup (POST)
+curl -X POST http://localhost:8765/api/agent/whois \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project","agent_name":"worker-1"}'
+```
+
+##### Messaging
+```bash
+# Send message (POST)
 curl -X POST http://localhost:8765/api/message/send \
   -H "Content-Type: application/json" \
-  -d '{"project_slug":"/path/to/repo","sender_name":"claude-1","recipient_names":["claude-2"],"subject":"Test","body_md":"Hello"}'
+  -d '{"project_slug":"my-project","sender_name":"worker-1","recipient_names":["reviewer"],"subject":"Test","body_md":"Hello","importance":"normal"}'
 
-# Check inbox
+# Check inbox (POST - not GET!)
 curl -X POST http://localhost:8765/api/inbox \
   -H "Content-Type: application/json" \
-  -d '{"project_slug":"/path/to/repo","agent_name":"claude-1"}'
+  -d '{"project_slug":"my-project","agent_name":"worker-1","limit":20}'
+
+# Get single message by ID (GET with path param)
+curl http://localhost:8765/api/messages/123
+
+# Get thread (POST)
+curl -X POST http://localhost:8765/api/thread \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project","thread_id":"TASK-123"}'
+
+# Mark message read (POST)
+curl -X POST http://localhost:8765/api/message/read \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project","message_id":123,"agent_name":"worker-1"}'
+
+# Unified inbox - all projects (GET with query params)
+curl "http://localhost:8765/mail/api/unified-inbox?importance=high&limit=50"
 ```
+
+##### File Reservations
+```bash
+# Reserve files (POST)
+curl -X POST http://localhost:8765/api/file_reservations/paths \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project","agent_name":"worker-1","file_paths":["src/main.rs"]}'
+
+# List reservations (POST)
+curl -X POST http://localhost:8765/api/file_reservations/list \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project"}'
+
+# Release reservation (POST)
+curl -X POST http://localhost:8765/api/file_reservations/release \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project","reservation_id":1}'
+```
+
+##### Project Info
+```bash
+# Get project info (POST)
+curl -X POST http://localhost:8765/api/project/info \
+  -H "Content-Type: application/json" \
+  -d '{"project_slug":"my-project"}'
+
+# Ensure project exists (POST - creates if missing)
+curl -X POST http://localhost:8765/api/project/ensure \
+  -H "Content-Type: application/json" \
+  -d '{"human_key":"my-project"}'
+```
+
 
 #### Resources
 
