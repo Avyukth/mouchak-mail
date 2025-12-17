@@ -13,9 +13,41 @@ pub struct Project {
     pub created_at: NaiveDateTime,
 }
 
+/// Backend Model Controller for Project operations.
+///
+/// Manages projects which are the top-level organizational unit for agents and messages.
 pub struct ProjectBmc;
 
 impl ProjectBmc {
+    /// Creates a new project with Git archive initialization.
+    ///
+    /// This method:
+    /// 1. Inserts project into database
+    /// 2. Creates project directory structure in Git
+    /// 3. Initializes README.md and .gitkeep files
+    ///
+    /// # Arguments
+    /// * `ctx` - Request context
+    /// * `mm` - ModelManager providing database and Git access
+    /// * `slug` - URL-safe project identifier (lowercase, hyphenated)
+    /// * `human_key` - Human-friendly project identifier
+    ///
+    /// # Returns
+    /// The created project's database ID
+    ///
+    /// # Errors
+    /// Returns an error if project slug already exists
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use lib_core::model::project::ProjectBmc;
+    /// # use lib_core::model::ModelManager;
+    /// # use lib_core::ctx::Ctx;
+    /// # async fn example(mm: &ModelManager) {
+    /// let ctx = Ctx::root_ctx();
+    /// let id = ProjectBmc::create(&ctx, mm, "my-project", "My Project").await.unwrap();
+    /// # }
+    /// ```
     pub async fn create(
         ctx: &crate::Ctx,
         mm: &ModelManager,
@@ -46,6 +78,14 @@ impl ProjectBmc {
         Ok(id)
     }
 
+    /// Lists all projects ordered by creation time (newest first).
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager providing database access
+    ///
+    /// # Returns
+    /// Vector of all projects (may be empty)
     pub async fn list_all(_ctx: &crate::Ctx, mm: &ModelManager) -> Result<Vec<Project>> {
         let db = mm.db();
         let stmt = db
@@ -71,6 +111,18 @@ impl ProjectBmc {
         Ok(projects)
     }
 
+    /// Retrieves a project by its slug (URL-safe identifier).
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context  
+    /// * `mm` - ModelManager
+    /// * `slug` - Project slug (e.g., "my-project")
+    ///
+    /// # Returns
+    /// The project data
+    ///
+    /// # Errors
+    /// Returns `Error::ProjectNotFound` if slug doesn't exist
     pub async fn get_by_slug(_ctx: &crate::Ctx, mm: &ModelManager, slug: &str) -> Result<Project> {
         let db = mm.db();
         // Note: We are mapping manually because libsql doesn't have FromRow like sqlx yet
@@ -128,7 +180,20 @@ impl ProjectBmc {
     }
 
     /// Get project by identifier - tries slug first, then human_key.
-    /// This allows APIs to accept either slug or human_key as project_key parameter.
+    ///
+    /// This is a convenience method that allows APIs to accept either slug
+    /// or human_key as the project identifier parameter.
+    ///
+    /// # Arguments
+    /// * `ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `identifier` - Either a slug or human_key
+    ///
+    /// # Returns
+    /// The matching project
+    ///
+    /// # Errors
+    /// Returns `Error::ProjectNotFound` if no match for either slug or human_key
     pub async fn get_by_identifier(
         ctx: &crate::Ctx,
         mm: &ModelManager,

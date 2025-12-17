@@ -28,9 +28,50 @@ pub struct FileReservationForCreate {
     pub expires_ts: NaiveDateTime,
 }
 
+/// Backend Model Controller for File Reservation operations.
+///
+/// Manages file-level locking and coordination between agents.
+/// Supports both exclusive and shared locks with TTL-based expiration.
 pub struct FileReservationBmc;
 
 impl FileReservationBmc {
+    /// Creates a new file reservation (lock) for an agent.
+    ///
+    /// This method:
+    /// 1. Inserts reservation into database
+    /// 2. Archives reservation to Git
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `fr_c` - Reservation data (path pattern, exclusive flag, TTL)
+    ///
+    /// # Returns  
+    /// The created reservation's database ID
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - Agent or project doesn't exist
+    /// - Conflicting exclusive lock exists
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use lib_core::model::file_reservation::*;
+    /// # use lib_core::model::ModelManager;
+    /// # use lib_core::ctx::Ctx;
+    /// # async fn example(mm: &ModelManager) {
+    /// let ctx = Ctx::root_ctx();
+    /// let reservation = FileReservationForCreate {
+    ///     project_id: 1,
+    ///     agent_id: 1,
+    ///     path_pattern: "src/**/*.rs".to_string(),
+    ///     exclusive: true,
+    ///     reason: "Refactoring module".to_string(),
+    ///     expires_ts: chrono::Utc::now().naive_utc() + chrono::Duration::hours(1),
+    /// };
+    /// let id = FileReservationBmc::create(&ctx, mm, reservation).await.unwrap();
+    /// # }
+    /// ```
     pub async fn create(
         _ctx: &crate::Ctx,
         mm: &ModelManager,
@@ -154,6 +195,18 @@ impl FileReservationBmc {
         Ok(reservations)
     }
 
+    /// Retrieves a reservation by its database ID.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `id` - Reservation ID
+    ///
+    /// # Returns
+    /// The file reservation
+    ///
+    /// # Errors
+    /// Returns `Error::FileReservationNotFound` if ID doesn't exist
     pub async fn get(_ctx: &crate::Ctx, mm: &ModelManager, id: i64) -> Result<FileReservation> {
         let db = mm.db();
         let stmt = db.prepare(
@@ -172,6 +225,15 @@ impl FileReservationBmc {
         }
     }
 
+    /// Releases a file reservation by marking it as released.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `id` - Reservation ID to release
+    ///
+    /// # Errors
+    /// Returns an error if the reservation doesn't exist
     pub async fn release(_ctx: &crate::Ctx, mm: &ModelManager, id: i64) -> Result<()> {
         let db = mm.db();
         let now = chrono::Utc::now().naive_utc();
