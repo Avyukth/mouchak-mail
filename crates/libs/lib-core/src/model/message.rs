@@ -1,3 +1,45 @@
+//! Message management for agent-to-agent communication.
+//!
+//! This module provides the core messaging infrastructure for AI agents.
+//! Messages support threading, importance levels, read receipts, and
+//! acknowledgment tracking. All messages are archived to Git for audit.
+//!
+//! # Features
+//!
+//! - **Threading**: Messages can be grouped into conversation threads
+//! - **Importance**: High/Normal priority levels for triage
+//! - **Recipients**: To/CC/BCC support with delivery tracking
+//! - **Full-text search**: FTS5-powered message search
+//! - **Git archival**: Automatic commit to audit log
+//!
+//! # Example
+//!
+//! ```no_run
+//! use lib_core::model::message::{MessageBmc, MessageForCreate};
+//! use lib_core::model::ModelManager;
+//! use lib_core::ctx::Ctx;
+//!
+//! # async fn example() -> lib_core::Result<()> {
+//! let mm = ModelManager::new().await?;
+//! let ctx = Ctx::root_ctx();
+//!
+//! // Send a message
+//! let msg = MessageForCreate {
+//!     project_id: 1,
+//!     sender_id: 1,
+//!     recipient_ids: vec![2],
+//!     cc_ids: None,
+//!     bcc_ids: None,
+//!     subject: "Code Review".to_string(),
+//!     body_md: "Please review PR #42".to_string(),
+//!     thread_id: None,
+//!     importance: Some("high".to_string()),
+//! };
+//! let id = MessageBmc::create(&ctx, &mm, msg).await?;
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::Result;
 use crate::ctx::Ctx;
 use crate::model::ModelManager;
