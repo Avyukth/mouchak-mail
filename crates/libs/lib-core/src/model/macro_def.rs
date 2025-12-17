@@ -24,9 +24,42 @@ pub struct MacroDefForCreate {
     pub steps: Vec<Value>,
 }
 
+/// Backend Model Controller for Macro Definition operations.
+///
+/// Manages workflow macros (automated sequences of MCP tool calls).
+/// Includes 5 built-in macros that are auto-registered for each project.
 pub struct MacroDefBmc;
 
 impl MacroDefBmc {
+    /// Creates a new macro definition.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `macro_c` - Macro creation data (name, description, steps)
+    ///
+    /// # Returns
+    /// The created macro's database ID
+    ///
+    /// # Errors
+    /// Returns an error if macro name already exists in project
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use lib_core::model::macro_def::*;
+    /// # use lib_core::model::ModelManager;
+    /// # use lib_core::ctx::Ctx;
+    /// # async fn example(mm: &ModelManager) {
+    /// let ctx = Ctx::root_ctx();
+    /// let macro_def = MacroDefForCreate {
+    ///     project_id: 1,
+    ///     name: "deploy".to_string(),
+    ///     description: "Deploy to production".to_string(),
+    ///     steps: vec![],
+    /// };
+    /// let id = MacroDefBmc::create(&ctx, mm, macro_def).await.unwrap();
+    /// # }
+    /// ```
     pub async fn create(_ctx: &Ctx, mm: &ModelManager, macro_c: MacroDefForCreate) -> Result<i64> {
         let db = mm.db();
         let steps_json = serde_json::to_string(&macro_c.steps)?;
@@ -88,6 +121,15 @@ impl MacroDefBmc {
         }
     }
 
+    /// Lists all macros for a project (built-in + custom).
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager
+    /// * `project_id` - Project database ID
+    ///
+    /// # Returns
+    /// Vector of all macro definitions (may be empty)
     pub async fn list(_ctx: &Ctx, mm: &ModelManager, project_id: i64) -> Result<Vec<MacroDef>> {
         let db = mm.db();
         let stmt = db
