@@ -52,10 +52,11 @@ pub async fn export_mailbox(
     
     let filename = format!("{}_mailbox.{}", payload.project_slug, ext);
     
-    Ok(Response::builder()
+    let response = Response::builder()
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", filename))
         .body(exported.content)
-        .unwrap()
-        .into_response())
+        .map_err(|e| crate::ServerError::Internal(format!("Failed to build response: {}", e)))?;
+    
+    Ok(response.into_response())
 }

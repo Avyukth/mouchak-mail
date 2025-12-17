@@ -316,12 +316,11 @@ async fn main() -> Result<()> {
     println!("Waiting for server to be ready...");
     let mut ready = false;
     for _ in 0..60 { // 60 attempts
-        if let Ok(res) = client.get(format!("{}/health", config.base_url)).send().await {
-            if res.status().is_success() {
+        if let Ok(res) = client.get(format!("{}/health", config.base_url)).send().await
+            && res.status().is_success() {
                 ready = true;
                 break;
             }
-        }
         sleep(Duration::from_secs(1)).await;
     }
     

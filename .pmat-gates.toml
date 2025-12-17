@@ -1,0 +1,17 @@
+# PMAT Quality Gates Configuration
+# See: https://paiml.github.io/pmat-book/
+
+[tdg]
+# Technical Debt Grading minimum threshold
+min_grade = "B"
+fail_on_violation = true
+
+[mutation]
+# Mutation testing quality threshold
+threshold = 80
+fail_on_violation = true
+
+[quality_gates]
+# General quality gate settings
+enabled = true
+strict_mode = true

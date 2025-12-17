@@ -49,8 +49,8 @@ impl RateLimitConfig {
             .parse::<u32>()
             .unwrap_or(2000);
 
-        let quota = Quota::per_second(NonZeroU32::new(rps).unwrap_or(NonZeroU32::new(100).unwrap()))
-            .allow_burst(NonZeroU32::new(burst).unwrap_or(NonZeroU32::new(200).unwrap()));
+        let quota = Quota::per_second(NonZeroU32::new(rps).expect("RPS should be non-zero"))
+            .allow_burst(NonZeroU32::new(burst).expect("Burst should be non-zero"));
 
         let limiter = Arc::new(RateLimiter::keyed(quota));
 
