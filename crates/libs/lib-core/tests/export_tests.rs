@@ -230,3 +230,63 @@ async fn test_export_timestamp() {
     assert!(!exported.exported_at.is_empty());
     assert!(exported.exported_at.contains("UTC"));
 }
+
+/// Test commit_archive creates a git commit with exported mailbox
+#[tokio::test]
+async fn test_commit_archive() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let (_, slug) = setup_project_with_messages(&tc, "archive").await;
+
+    let commit_message = "Archive mailbox for testing";
+    let oid = ExportBmc::commit_archive(&tc.ctx, &tc.mm, &slug, commit_message)
+        .await
+        .expect("Failed to commit archive");
+
+    // Verify OID is a valid git hash (40 hex characters)
+    assert_eq!(oid.len(), 40, "Git OID should be 40 characters");
+    assert!(
+        oid.chars().all(|c| c.is_ascii_hexdigit()),
+        "Git OID should be hexadecimal"
+    );
+}
+
+/// Test commit_archive for empty mailbox
+#[tokio::test]
+async fn test_commit_archive_empty_mailbox() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let human_key = "/test/empty-archive-repo";
+    let slug = slugify(human_key);
+
+    ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .expect("Failed to create project");
+
+    let oid = ExportBmc::commit_archive(&tc.ctx, &tc.mm, &slug, "Archive empty mailbox")
+        .await
+        .expect("Failed to commit empty archive");
+
+    // Should still create a valid commit even with no messages
+    assert_eq!(oid.len(), 40, "Git OID should be 40 characters");
+}
+
+/// Test commit_archive for nonexistent project fails
+#[tokio::test]
+async fn test_commit_archive_nonexistent_project() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let result =
+        ExportBmc::commit_archive(&tc.ctx, &tc.mm, "nonexistent-archive-slug", "Should fail").await;
+
+    assert!(
+        result.is_err(),
+        "commit_archive should fail for nonexistent project"
+    );
+}
