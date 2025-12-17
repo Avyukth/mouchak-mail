@@ -53,18 +53,38 @@ fn serve_file(path: &str) -> Response {
                 .header(header::CONTENT_TYPE, mime)
                 .header(header::CACHE_CONTROL, cache_control)
                 .body(Body::from(content.data.into_owned()))
-                .unwrap_or_else(|_| {
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .expect("Failed to build error response")
-                })
+                .unwrap_or_else(|_| internal_server_error())
         }
-        None => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from("Not Found"))
-            .expect("Failed to build 404 response"),
+        None => not_found_response(),
     }
+}
+
+/// Create a 404 Not Found response (infallible).
+#[inline]
+fn not_found_response() -> Response {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Body::from("Not Found"))
+        .unwrap_or_else(|_| {
+            // Fallback: construct minimal response manually if builder fails
+            let mut response = Response::new(Body::from("Not Found"));
+            *response.status_mut() = StatusCode::NOT_FOUND;
+            response
+        })
+}
+
+/// Create a 500 Internal Server Error response (infallible).
+#[inline]
+fn internal_server_error() -> Response {
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .body(Body::empty())
+        .unwrap_or_else(|_| {
+            // Fallback: construct minimal response manually if builder fails
+            let mut response = Response::new(Body::empty());
+            *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+            response
+        })
 }
 
 #[cfg(test)]
