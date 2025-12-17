@@ -99,11 +99,11 @@ unsafe_code = "deny"
 unused_must_use = "deny"
 
 [workspace.lints.clippy]
-# Production safety - allow for now, enable incrementally
-# These are here as documentation of target state:
-# unwrap_used = "warn"      # TODO: Enable after fixing production code
-# expect_used = "warn"      # TODO: Enable after fixing production code
-# panic = "warn"            # TODO: Enable after fixing production code
+# Production safety - deny unwrap() to prevent panics in production code
+# Test code and doc examples are allowed via module-level #[allow]
+unwrap_used = "deny"
+expect_used = "warn"        # expect() is OK with justification message
+# panic = "warn"            # TODO: Enable after auditing panic! macro usage
 # Code quality
 unnecessary_wraps = "warn"
 # Performance

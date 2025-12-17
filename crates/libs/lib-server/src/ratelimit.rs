@@ -30,6 +30,7 @@ impl Default for RateLimitConfig {
 }
 
 impl RateLimitConfig {
+    #[allow(clippy::expect_used)] // NonZeroU32 from parsed u32 with fallback defaults; always valid
     pub fn new() -> Self {
         let enabled =
             std::env::var("RATE_LIMIT_ENABLED").unwrap_or_else(|_| "true".into()) == "true";

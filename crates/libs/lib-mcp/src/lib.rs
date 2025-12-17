@@ -88,6 +88,7 @@ pub async fn run_sse(config: McpConfig) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::expect_used)] // Signal handler setup is infallible in practice; panic is acceptable
 async fn shutdown_signal() {
     let ctrl_c = async {
         tokio::signal::ctrl_c()

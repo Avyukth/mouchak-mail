@@ -41,6 +41,7 @@ pub struct AppState {
 
 static METRICS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
 
+#[allow(clippy::expect_used)] // Metrics setup is infallible; panic acceptable during initialization
 fn setup_metrics() -> PrometheusHandle {
     METRICS_HANDLE
         .get_or_init(|| {
@@ -159,6 +160,7 @@ async fn openapi_json() -> impl IntoResponse {
     axum::Json(openapi::ApiDoc::openapi())
 }
 
+#[allow(clippy::expect_used)] // Signal handler setup is infallible in practice; panic is acceptable
 async fn shutdown_signal() {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
