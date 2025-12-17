@@ -1,7 +1,7 @@
 # MCP Agent Mail - Makefile
 # Unified build and run commands for the Rust implementation
 
-.PHONY: all build build-release build-web dev run run-all clean test help
+.PHONY: all build build-release build-web dev run run-all clean test test-fast coverage audit quality-gate help
 
 # Default target
 all: build
@@ -24,8 +24,8 @@ build-release:
 
 ## Build web UI for production
 build-web:
-	@echo "🌐 Building SvelteKit frontend..."
-	cd crates/services/web-ui && bun install && bun run build
+	@echo "🌐 Building Leptos frontend..."
+	cd crates/services/web-ui-leptos && trunk build --release
 	@echo "✅ Frontend build complete"
 
 ## Build everything for production
@@ -43,8 +43,8 @@ dev-api:
 
 ## Run web UI (development with hot reload)
 dev-web:
-	@echo "🌐 Starting SvelteKit dev server on http://localhost:5173..."
-	cd crates/services/web-ui && bun run dev
+	@echo "🌐 Starting Leptos dev server on http://localhost:8080..."
+	cd crates/services/web-ui-leptos && trunk serve --open
 
 ## Run MCP stdio server
 dev-mcp:
@@ -89,6 +89,34 @@ test:
 test-coverage:
 	@echo "🧪 Running tests with coverage..."
 	cargo tarpaulin --workspace --out Html
+
+## Run unit tests only (fast)
+test-fast:
+	@echo "🧪 Running unit tests (fast)..."
+	cargo test --workspace --lib
+	@echo "✅ Unit tests passed"
+
+## Generate coverage report
+coverage:
+	@echo "📊 Generating coverage report..."
+	cargo llvm-cov --workspace --html
+	@echo "✅ Coverage report: target/llvm-cov/html/index.html"
+
+## Run security audits
+audit:
+	@echo "🔒 Running security audits..."
+	cargo audit
+	cargo deny check
+	@echo "✅ Security audits passed"
+
+## Run all quality gates
+quality-gate:
+	@echo "🎯 Running quality gates..."
+	$(MAKE) fmt-check
+	$(MAKE) lint
+	$(MAKE) test
+	pmat analyze tdg --fail-on-violation
+	@echo "✅ All quality gates passed"
 
 ## Run clippy lints
 lint:
@@ -136,9 +164,7 @@ schema:
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
-	rm -rf crates/services/web-ui/.svelte-kit
-	rm -rf crates/services/web-ui/build
-	rm -rf crates/services/web-ui/node_modules
+	rm -rf crates/services/web-ui-leptos/dist
 	@echo "✅ Clean complete"
 
 ## Check beads ready work
@@ -169,8 +195,12 @@ help:
 	@echo ""
 	@echo "Testing:"
 	@echo "  test         Run all integration tests"
+	@echo "  test-fast    Run unit tests only (fast)"
+	@echo "  coverage     Generate coverage report"
+	@echo "  audit        Run security audits"
 	@echo "  lint         Run clippy lints"
 	@echo "  fmt          Format code"
+	@echo "  quality-gate Run all quality gates"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  tools        List all MCP tools"
