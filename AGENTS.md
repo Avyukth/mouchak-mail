@@ -1434,8 +1434,43 @@ This layer defines the workflow for autonomous multi-agent task execution with r
 | Role | Agent Name | Responsibility |
 |------|------------|----------------|
 | **Worker** | `worker-<id>` | Claims tasks from beads, implements code, runs quality gates |
-| **Reviewer** | `reviewer` | Validates implementations, fixes issues, ensures quality |
+| **Reviewer** | `reviewer` | Deep code review, logic validation, gap analysis, fixes issues |
 | **Human** | `human` | Final oversight, receives completion reports |
+
+#### Reviewer Agent Detailed Responsibilities
+
+The Reviewer is the quality gatekeeper. It performs **deep analysis** of all implementations:
+
+**1. Code Block Analysis**
+- Read every changed file completely
+- Verify logic flow matches acceptance criteria
+- Check for `todo!()`, `unimplemented!()`, placeholder comments
+- Verify error handling uses `Result<T, E>` not `unwrap()`/`expect()`
+- Check function complexity (cognitive complexity < 30)
+
+**2. Implementation Completeness**
+- Compare beads acceptance criteria vs actual code
+- Identify missing edge cases
+- Verify all paths are tested
+- Check for hardcoded values that should be configurable
+
+**3. Logic Validation**
+- Trace data flow through the implementation
+- Verify business logic correctness
+- Check boundary conditions
+- Validate error messages are actionable
+
+**4. Enhancement Gap Analysis**
+- Identify opportunities for improvement
+- Note technical debt introduced
+- Flag potential performance issues
+- Suggest refactoring if needed
+
+**5. Critical Analysis**
+- Security: SQL injection, path traversal, input validation
+- Concurrency: race conditions, deadlocks
+- Resource leaks: file handles, connections
+- API contracts: breaking changes, backward compatibility
 
 ### Workflow Overview
 
@@ -1609,15 +1644,115 @@ completion_mails = [m for m in inbox if "[COMPLETION]" in m.subject]
 
 #### 4.2 Validation Checklist
 
-The Reviewer MUST verify:
+The Reviewer MUST perform comprehensive validation:
 
-| Check | How to Verify | Fail Action |
-|-------|---------------|-------------|
-| **Not Placeholder** | Code has actual implementation, not `todo!()` or `unimplemented!()` | Fix in worktree |
-| **Meets Acceptance Criteria** | All criteria from beads marked complete | Fix in worktree |
-| **Quality Gates Pass** | Re-run quality gates on main | Fix in worktree |
-| **No Regressions** | Existing tests still pass | Fix in worktree |
-| **Code Style** | Follows BMC pattern, proper error handling | Fix in worktree |
+##### Step 1: Fetch and Read Changed Files
+
+```bash
+# Get list of changed files from completion mail
+git diff --name-only <merge-base>..HEAD
+
+# Read each changed file completely
+for file in $(git diff --name-only <merge-base>..HEAD); do
+  cat "$file"  # Reviewer reads entire file
+done
+```
+
+##### Step 2: Placeholder Detection
+
+```bash
+# Search for placeholder patterns (MUST be zero matches)
+rg -n "todo!|unimplemented!|FIXME|XXX|HACK|placeholder" <changed-files>
+rg -n "// TODO|# TODO|/* TODO" <changed-files>
+rg -n "panic!|unwrap\(\)|expect\(" <changed-files>  # Should use Result
+```
+
+| Pattern | Severity | Action |
+|---------|----------|--------|
+| `todo!()` | CRITICAL | Must implement |
+| `unimplemented!()` | CRITICAL | Must implement |
+| `unwrap()` in src/ | HIGH | Convert to `?` or `ok_or()` |
+| `expect()` without justification | MEDIUM | Add comment or use `?` |
+| `// TODO` comments | MEDIUM | Implement or create beads task |
+| `FIXME` / `XXX` / `HACK` | LOW | Document or fix |
+
+##### Step 3: Logic Validation
+
+For each function in changed files:
+
+```
+1. Read function signature
+2. Trace input → processing → output
+3. Verify:
+   - [ ] All code paths return valid values
+   - [ ] Error cases handled (not ignored)
+   - [ ] Edge cases covered (empty, null, max values)
+   - [ ] Boundary conditions tested
+   - [ ] Side effects documented
+```
+
+##### Step 4: Acceptance Criteria Mapping
+
+```markdown
+## Criteria Verification
+
+| Beads Criterion | Code Location | Status | Notes |
+|-----------------|---------------|--------|-------|
+| Criterion 1 | file.rs:42-60 | ✅ | Fully implemented |
+| Criterion 2 | file.rs:70-85 | ⚠️ | Missing edge case |
+| Criterion 3 | NOT FOUND | ❌ | Not implemented |
+```
+
+##### Step 5: Quality Gate Re-run
+
+```bash
+# MUST pass all gates
+cargo check --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo fmt --check
+cargo test --workspace --exclude e2e-tests
+```
+
+##### Step 6: Critical Analysis
+
+| Category | What to Check | Tools |
+|----------|---------------|-------|
+| **Security** | SQL injection, XSS, path traversal | `cargo audit`, manual review |
+| **Concurrency** | Race conditions, deadlocks | Look for `Mutex`, `RwLock`, `async` |
+| **Resources** | File handle leaks, connection pools | Check `Drop` impls, RAII patterns |
+| **Performance** | O(n²) loops, unnecessary clones | `cargo clippy`, manual review |
+| **API** | Breaking changes, deprecations | Compare with previous API |
+
+##### Step 7: Gap Analysis
+
+Document any gaps found:
+
+```markdown
+## Enhancement Gaps Identified
+
+### Must Fix (Blocking)
+- [ ] Missing error handling in X
+- [ ] Placeholder code in Y
+
+### Should Fix (Non-blocking)
+- [ ] Could optimize Z
+- [ ] Consider adding config for W
+
+### Future Work (Create beads)
+- [ ] Refactor: <description>
+- [ ] Enhancement: <description>
+```
+
+##### Summary: Pass/Fail Criteria
+
+| Check | Pass Criteria |
+|-------|--------------|
+| **Placeholder-Free** | Zero `todo!()`, `unimplemented!()` in src/ |
+| **Acceptance Criteria** | 100% criteria mapped to code |
+| **Quality Gates** | All cargo commands exit 0 |
+| **Logic Correctness** | No obvious bugs in traced paths |
+| **Security** | No OWASP Top 10 vulnerabilities |
+| **Resources** | No leaks identified |
 
 #### 4.3 If Review PASSES
 
