@@ -39,9 +39,52 @@ pub struct MessageForCreate {
     pub importance: Option<String>,
 }
 
+/// Backend Model Controller for Message operations.
+///
+/// Provides methods for message lifecycle including creation, retrieval,
+/// threading, and full-text search.
 pub struct MessageBmc;
 
 impl MessageBmc {
+    /// Creates a new message and sends it to one or more recipients.
+    ///
+    /// This method:
+    /// 1. Validates sender and all recipients exist
+    /// 2. Inserts message and recipient records in database
+    /// 3. Archives message to Git (async, doesn't block response)
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager providing database and Git access
+    /// * `msg_c` - Message creation data including recipients
+    ///
+    /// # Returns
+    /// The created message's database ID
+    ///
+    /// # Errors
+    /// Returns an error if sender or any recipient doesn't exist
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use lib_core::model::message::{MessageBmc, MessageForCreate};
+    /// # use lib_core::model::ModelManager;
+    /// # use lib_core::ctx::Ctx;
+    /// # async fn example(mm: &ModelManager) {
+    /// let ctx = Ctx::root_ctx();
+    /// let msg = MessageForCreate {
+    ///     project_id: 1,
+    ///     sender_id: 1,
+    ///     recipient_ids: vec![2, 3],
+    ///     cc_ids: None,
+    ///     bcc_ids: None,
+    ///     subject: "Task Update".to_string(),
+    ///     body_md: "Completed feature X".to_string(),
+    ///     thread_id: None,
+    ///     importance: None,
+    /// };
+    /// let id = MessageBmc::create(&ctx, mm, msg).await.unwrap();
+    /// # }
+    /// ```
     pub async fn create(_ctx: &Ctx, mm: &ModelManager, msg_c: MessageForCreate) -> Result<i64> {
         let db = mm.db();
 

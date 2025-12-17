@@ -29,9 +29,50 @@ pub struct AgentForCreate {
     pub task_description: String,
 }
 
+/// Backend Model Controller for Agent operations.
+///
+/// Provides stateless methods for agent lifecycle management including
+/// registration, retrieval, and profile updates.
 pub struct AgentBmc;
 
 impl AgentBmc {
+    /// Creates a new agent in the specified project.
+    ///
+    /// This method:
+    /// 1. Inserts the agent into the database
+    /// 2. Creates a profile.json file in the Git archive
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context (unused currently)
+    /// * `mm` - ModelManager providing database and Git access
+    /// * `agent_c` - Agent creation data
+    ///
+    /// # Returns
+    /// The created agent's database ID
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - Agent name already exists in the project
+    /// - Project ID is invalid
+    /// - Git operations fail
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use lib_core::model::agent::{AgentBmc, AgentForCreate};
+    /// # use lib_core::model::ModelManager;
+    /// # use lib_core::ctx::Ctx;
+    /// # async fn example(mm: &ModelManager) {
+    /// let ctx = Ctx::root_ctx();
+    /// let agent = AgentForCreate {
+    ///     project_id: 1,
+    ///     name: "claude-1".to_string(),
+    ///     program: "claude-code".to_string(),
+    ///     model: "claude-3.5-sonnet".to_string(),
+    ///     task_description: "Implement feature X".to_string(),
+    /// };
+    /// let id = AgentBmc::create(&ctx, mm, agent).await.unwrap();
+    /// # }
+    /// ```
     pub async fn create(_ctx: &Ctx, mm: &ModelManager, agent_c: AgentForCreate) -> Result<i64> {
         let db = mm.db();
 
@@ -102,6 +143,18 @@ impl AgentBmc {
         Ok(id)
     }
 
+    /// Retrieves an agent by its database ID.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager providing database access
+    /// * `id` - Agent database ID
+    ///
+    /// # Returns
+    /// The agent data including all fields
+    ///
+    /// # Errors
+    /// Returns `Error::AgentNotFound` if the ID doesn't exist
     pub async fn get(_ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<Agent> {
         let db = mm.db();
         let stmt = db.prepare(
@@ -142,6 +195,19 @@ impl AgentBmc {
         }
     }
 
+    /// Retrieves an agent by name within a project.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager providing database access
+    /// * `project_id` - Project database ID
+    /// * `name` - Agent name (unique within project)
+    ///
+    /// # Returns
+    /// The agent data
+    ///
+    /// # Errors
+    /// Returns `Error::AgentNotFound` if no agent with that name exists in the project
     pub async fn get_by_name(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -190,6 +256,15 @@ impl AgentBmc {
         }
     }
 
+    /// Lists all agents in a project, ordered by name.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager providing database access
+    /// * `project_id` - Project database ID
+    ///
+    /// # Returns
+    /// Vector of all agents in the project (may be empty)
     pub async fn list_all_for_project(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -264,6 +339,19 @@ impl AgentBmc {
         }
     }
 
+    /// Updates an agent's profile fields.
+    ///
+    /// Only non-None fields in the update struct are modified.
+    /// Automatically updates the last_active_ts timestamp.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context
+    /// * `mm` - ModelManager providing database access
+    /// * `agent_id` - Agent database ID
+    /// * `update` - Profile fields to update (partial updates)
+    ///
+    /// # Errors
+    /// Returns an error if the agent ID doesn't exist
     pub async fn update_profile(
         _ctx: &Ctx,
         mm: &ModelManager,
