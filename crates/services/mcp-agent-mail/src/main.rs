@@ -56,6 +56,12 @@ enum ServeCommands {
     Http {
         #[arg(short, long)]
         port: Option<u16>,
+        /// Serve embedded web UI (default: true if compiled with with-web-ui feature)
+        #[arg(long, default_value = "true")]
+        with_ui: bool,
+        /// Disable web UI serving (overrides --with-ui)
+        #[arg(long, conflicts_with = "with_ui")]
+        no_ui: bool,
     },
     /// Start the MCP Server (Stdio or SSE)
     Mcp {
@@ -95,10 +101,17 @@ fn load_config() -> AppConfig {
     })
 }
 
-async fn handle_serve_http(port: Option<u16>, mut config: AppConfig) -> anyhow::Result<()> {
+async fn handle_serve_http(
+    port: Option<u16>,
+    with_ui: bool,
+    no_ui: bool,
+    mut config: AppConfig,
+) -> anyhow::Result<()> {
     if let Some(p) = port {
         config.server.port = p;
     }
+    // --no-ui takes precedence, otherwise use --with-ui value
+    config.server.serve_ui = !no_ui && with_ui;
     info!("Starting HTTP Server...");
     lib_server::run(config.server).await?;
     Ok(())
@@ -166,7 +179,11 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         Commands::Serve(args) => match args.command {
-            ServeCommands::Http { port } => handle_serve_http(port, config).await?,
+            ServeCommands::Http {
+                port,
+                with_ui,
+                no_ui,
+            } => handle_serve_http(port, with_ui, no_ui, config).await?,
             ServeCommands::Mcp { transport, port } => {
                 handle_serve_mcp(transport, port, config).await?
             }
