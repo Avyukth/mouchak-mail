@@ -1500,19 +1500,21 @@ The Reviewer is the quality gatekeeper. It performs **deep analysis** of all imp
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌──────────┐  │
-│  │   BEADS     │────▶│   WORKER    │────▶│  REVIEWER   │────▶│  HUMAN   │  │
+│  │   BEADS     │────▶│   WORKER    │─ ─ ▶│  REVIEWER   │────▶│  HUMAN   │  │
 │  │  (bd ready) │     │   AGENT     │     │   AGENT     │     │  AGENT   │  │
-│  └─────────────┘     └─────────────┘     └─────────────┘     └──────────┘  │
+│  └─────────────┘     └──────┬──────┘     └─────────────┘     └──────────┘  │
 │                             │                   │                          │
-│                             │ COMPLETION_MAIL   │ REVIEW_COMPLETE_MAIL     │
+│                             │ [COMPLETION]      │ [APPROVED/FIXED]         │
+│                             │ mail (async)      │ mail to human            │
 │                             ▼                   ▼                          │
 │                      ┌─────────────┐     ┌─────────────┐                   │
-│                      │ Git Worktree│     │ Git Worktree│                   │
-│                      │ (implement) │     │ (fix if bad)│                   │
-│                      └─────────────┘     └─────────────┘                   │
+│                      │  SESSION    │     │ Git Worktree│                   │
+│                      │    ENDS     │     │ (fix if bad)│                   │
+│                      │ (no await)  │     └─────────────┘                   │
+│                      └─────────────┘                                        │
 │                                                                             │
-│  SINGLE-AGENT FALLBACK: If no Reviewer present, Worker does one-pass       │
-│  self-review and sends directly to Human.                                  │
+│  KEY: Worker sends [COMPLETION] and EXITS. Does NOT wait for [APPROVED].   │
+│       Reviewer picks up async. Single-agent fallback sends direct to Human.│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1650,6 +1652,35 @@ send_message(
 ```
 
 **Note**: Human is CCed so they see all completions even before review.
+
+#### Worker Session Complete
+
+**IMPORTANT**: After sending [COMPLETION] mail, the Worker Agent's job is DONE.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  WORKER LIFECYCLE (Fire-and-Forget)                        │
+├─────────────────────────────────────────────────────────────┤
+│  1. Claim task (bd update --status in_progress)            │
+│  2. Register agent                                          │
+│  3. Reserve files                                          │
+│  4. Implement & run quality gates                          │
+│  5. Commit & merge to main                                 │
+│  6. Send [COMPLETION] mail                                 │
+│  7. Release reservations                                   │
+│  8. ✅ SESSION ENDS — Worker does NOT await [APPROVED]     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The worker:
+- Does NOT wait for reviewer [APPROVED] message
+- Does NOT poll inbox for review results
+- Releases all file reservations after sending completion mail
+- Session terminates cleanly
+
+The Reviewer Agent asynchronously picks up [COMPLETION] mails and handles review.
+
+---
 
 ### Phase 4: Review (Reviewer Agent)
 
@@ -2042,6 +2073,8 @@ register_agent(
 **Problem**: How does Reviewer know if a task has already been reviewed?
 
 **Solution**: Use threads as state machines. All task messages share `thread_id="TASK-<beads-id>"`. Check thread history before acting.
+
+**Note**: This state machine is for REVIEWER use only. Workers do NOT poll this—they send [COMPLETION] and exit.
 
 #### State Machine (via Subject Prefixes)
 
