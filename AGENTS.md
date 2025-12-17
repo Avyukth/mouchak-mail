@@ -599,12 +599,18 @@ ubs .
 make dev-api  # Starts on :8765
 
 # 2. Register identity (MCP call)
-ensure_project(project_key="/path/to/repo", human_key="my-project")
-register_agent(project_key="/path/to/repo", agent_name="claude-1", program="claude-code")
+ensure_project(slug="/path/to/repo", human_key="my-project")
+register_agent(
+  project_slug="/path/to/repo",
+  name="claude-1",
+  program="claude-code",
+  model="claude-opus-4",
+  task_description="General development tasks"
+)
 
 # 3. Reserve files before editing (prevents conflicts)
 file_reservation_paths(
-  project_key="/path/to/repo",
+  project_slug="/path/to/repo",
   agent_name="claude-1",
   paths=["src/**/*.rs", "Cargo.toml"],
   ttl_seconds=3600,
@@ -613,7 +619,7 @@ file_reservation_paths(
 
 # 4. Communicate via threads
 send_message(
-  project_key="/path/to/repo",
+  project_slug="/path/to/repo",
   sender_name="claude-1",
   recipient_names=["claude-2"],
   subject="Found issue in auth module",
@@ -622,11 +628,11 @@ send_message(
 )
 
 # 5. Check for messages
-check_inbox(project_key="/path/to/repo", agent_name="claude-1", unread_only=true)
-acknowledge_message(project_key="/path/to/repo", message_id=123, agent_name="claude-1")
+check_inbox(project_slug="/path/to/repo", agent_name="claude-1", unread_only=true)
+acknowledge_message(project_slug="/path/to/repo", message_id=123, agent_name="claude-1")
 
 # 6. Release reservations when done
-release_reservation(project_key="/path/to/repo", reservation_id=1)
+release_reservation(project_slug="/path/to/repo", reservation_id=1)
 ```
 
 #### REST API (Alternative to MCP)
@@ -638,12 +644,12 @@ curl http://localhost:8765/api/health
 # Send message via REST
 curl -X POST http://localhost:8765/api/message/send \
   -H "Content-Type: application/json" \
-  -d '{"project_key":"/path/to/repo","sender_name":"claude-1","recipient_names":["claude-2"],"subject":"Test","body_md":"Hello"}'
+  -d '{"project_slug":"/path/to/repo","sender_name":"claude-1","recipient_names":["claude-2"],"subject":"Test","body_md":"Hello"}'
 
 # Check inbox
 curl -X POST http://localhost:8765/api/inbox \
   -H "Content-Type: application/json" \
-  -d '{"project_key":"/path/to/repo","agent_name":"claude-1"}'
+  -d '{"project_slug":"/path/to/repo","agent_name":"claude-1"}'
 ```
 
 #### Resources
@@ -1506,16 +1512,18 @@ bd ready --json
 bd update <task-id> --status in_progress --json
 
 # 3. Register as worker agent
-ensure_project(project_key="<repo-path>", human_key="mcp-agent-mail-rs")
+ensure_project(slug="<project-slug>", human_key="mcp-agent-mail-rs")
 register_agent(
-  project_key="<repo-path>",
-  agent_name="worker-<task-id>",
-  program="claude-code"
+  project_slug="<project-slug>",  # e.g., "users-amrit-documents-projects-rust-mouchak-mcp-agent-mail-rs"
+  name="worker-<task-id>",
+  program="claude-code",
+  model="claude-opus-4",
+  task_description="Working on task <task-id>: <task-title>"
 )
 
 # 4. Reserve files for exclusive access
 file_reservation_paths(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   agent_name="worker-<task-id>",
   paths=["src/**/*.rs", "Cargo.toml"],  # Based on task scope
   ttl_seconds=7200,  # 2 hours
@@ -1524,7 +1532,7 @@ file_reservation_paths(
 
 # 5. (Optional) Notify reviewer that work started
 send_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   sender_name="worker-<task-id>",
   recipient_names=["reviewer"],
   subject="[TASK_STARTED] <task-id>: <task-title>",
@@ -1616,7 +1624,7 @@ cargo test -p <affected-crate>
 
 ```python
 send_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   sender_name="worker-<task-id>",
   recipient_names=["reviewer"],  # or ["human"] if no reviewer
   cc_names=["human"],  # Human CCed for audit trail
@@ -1636,7 +1644,7 @@ send_message(
 ```python
 # Check for completion mails
 inbox = fetch_inbox(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   agent_name="reviewer",
   unread_only=true
 )
@@ -1647,7 +1655,7 @@ completion_mails = [m for m in inbox if "[COMPLETION]" in m.subject]
 # For each completion mail, check thread state before reviewing
 for mail in completion_mails:
     thread = get_thread(
-      project_key="<repo-path>",
+      project_slug="<project-slug>",
       thread_id=mail.thread_id
     )
 
@@ -1779,7 +1787,7 @@ Document any gaps found:
 ```python
 # 1. First, claim the review (sends [REVIEWING] message)
 reviewing_msg = reply_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=<completion-mail-id>,
   sender_name="reviewer",
   subject="[REVIEWING] <task-id>: <task-title>",
@@ -1793,7 +1801,7 @@ reviewing_msg = reply_message(
 
 # 3. Send approval (reply to REVIEWING message)
 reply_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=reviewing_msg.id,
   sender_name="reviewer",
   recipient_names=["worker-<task-id>"],
@@ -1825,7 +1833,7 @@ bd close <task-id> --reason "Implementation verified by reviewer"
 
 # 5. Acknowledge worker's original mail
 acknowledge_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=<completion-mail-id>,
   agent_name="reviewer"
 )
@@ -1869,7 +1877,7 @@ Then send fix completion mail (reply to REVIEWING message):
 ```python
 # Reply to the REVIEWING message with [FIXED] result
 reply_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=reviewing_msg.id,
   sender_name="reviewer",
   recipient_names=["worker-<task-id>"],
@@ -1918,7 +1926,7 @@ Human agent receives final report and can:
 ```python
 # Human acknowledges completion
 acknowledge_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=<completion-mail-id>,
   agent_name="human"
 )
@@ -1933,7 +1941,7 @@ When **no Reviewer agent is present**, Worker performs self-review:
 
 ```python
 # Check if reviewer exists
-agents = list_agents(project_key="<repo-path>")
+agents = list_agents(project_slug="<project-slug>")
 reviewer_exists = any(a.name == "reviewer" for a in agents)
 
 if not reviewer_exists:
@@ -1943,7 +1951,7 @@ if not reviewer_exists:
     # 3. Send directly to Human
 
     send_message(
-      project_key="<repo-path>",
+      project_slug="<project-slug>",
       sender_name="worker-<task-id>",
       recipient_names=["human"],  # Skip reviewer, go direct
       subject="[COMPLETION] <task-id>: <task-title> (Self-Reviewed)",
@@ -1966,31 +1974,43 @@ if not reviewer_exists:
 
 ### Agent Registration Protocol
 
-At session start, each agent type registers:
+At session start, each agent type registers with ALL required fields:
+
+**Required Fields for `register_agent`:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `project_slug` | string | Project slug (URL-safe identifier, e.g., `users-amrit-documents-projects-rust-mouchak-mcp-agent-mail-rs`) |
+| `name` | string | Agent name (unique within project) |
+| `program` | string | Program identifier (e.g., `claude-code`, `antigravity`) |
+| `model` | string | Model being used (e.g., `claude-opus-4`, `claude-sonnet-4`) |
+| `task_description` | string | Description of agent's task/responsibilities |
 
 ```python
 # Worker agent registration
 register_agent(
-  project_key="<repo-path>",
-  agent_name="worker-<session-id>",
+  project_slug="<project-slug>",  # e.g., "users-amrit-documents-projects-rust-mouchak-mcp-agent-mail-rs"
+  name="worker-<session-id>",
   program="claude-code",
-  capabilities=["code", "test", "commit"]
+  model="claude-opus-4",
+  task_description="Implements features and fixes based on beads tasks"
 )
 
 # Reviewer agent registration (persistent)
 register_agent(
-  project_key="<repo-path>",
-  agent_name="reviewer",
+  project_slug="<project-slug>",
+  name="reviewer",
   program="claude-code",
-  capabilities=["review", "fix", "approve"]
+  model="claude-opus-4",
+  task_description="Reviews implementations, validates code quality, fixes issues"
 )
 
 # Human agent registration (for notifications)
 register_agent(
-  project_key="<repo-path>",
-  agent_name="human",
-  program="human",
-  capabilities=["approve", "reject", "escalate"]
+  project_slug="<project-slug>",
+  name="human",
+  program="human-operator",
+  model="human",
+  task_description="Final oversight and approval of completed work"
 )
 ```
 
@@ -2032,7 +2052,7 @@ register_agent(
 ```python
 # Reviewer: Check if already reviewed
 thread = get_thread(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   thread_id="TASK-<task-id>"
 )
 
@@ -2073,7 +2093,7 @@ Before starting review, Reviewer sends a `[REVIEWING]` message to claim the task
 ```python
 # Step 1: Claim the review (atomic operation)
 reply_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=<completion-mail-id>,  # Reply to completion mail
   sender_name="reviewer",
   subject="[REVIEWING] <task-id>: <task-title>",
@@ -2087,7 +2107,7 @@ reply_message(
 
 # Step 3: Send result (reply to own REVIEWING message)
 reply_message(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   message_id=<reviewing-mail-id>,
   sender_name="reviewer",
   recipient_names=["worker-<task-id>"],
@@ -2148,20 +2168,20 @@ Thread: TASK-abc123
 ```python
 # Get full review history for a task
 thread = get_thread(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   thread_id="TASK-<task-id>",
   include_bodies=True
 )
 
 # Summarize thread for quick status
 summary = summarize_thread(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   thread_id="TASK-<task-id>"
 )
 
 # Search for all reviewed tasks
 reviewed = search_messages(
-  project_key="<repo-path>",
+  project_slug="<project-slug>",
   query="[APPROVED] OR [FIXED]",
   agent_name="reviewer"
 )
