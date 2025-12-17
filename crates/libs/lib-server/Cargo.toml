@@ -3,6 +3,10 @@ name = "lib-server"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+with-web-ui = ["dep:rust-embed"]
+
 [dependencies]
 # Internal
 lib-core = { path = "../lib-core" }
@@ -40,6 +44,9 @@ base64.workspace = true
 uuid.workspace = true
 sanitize-filename = "0.5.0"
 mime_guess = "2.0.5"
+
+# Embedded assets (optional, for single-binary web UI)
+rust-embed = { version = "8.9", optional = true }
 
 # Auth
 jsonwebtoken = "9.3.0"

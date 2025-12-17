@@ -3336,6 +3336,7 @@ dependencies = [
  "reqwest",
  "rmcp",
  "rsa",
+ "rust-embed",
  "sanitize-filename",
  "serde",
  "serde_json",

@@ -8,6 +8,10 @@ license = "MIT"
 keywords = ["mcp", "ai", "agents", "mail", "coordination"]
 categories = ["command-line-utilities", "web-programming"]
 
+[features]
+default = []
+with-web-ui = ["lib-server/with-web-ui"]
+
 [dependencies]
 # Internal
 lib-core = { path = "../../libs/lib-core" }
