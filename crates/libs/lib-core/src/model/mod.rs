@@ -14,16 +14,16 @@
 //!
 //! | BMC | Description |
 //! |-----|-------------|
-//! | [`agent::AgentBmc`] | AI agent registration and profiles |
-//! | [`message::MessageBmc`] | Inter-agent messaging |
-//! | [`project::ProjectBmc`] | Project management |
-//! | [`file_reservation::FileReservationBmc`] | File locking coordination |
-//! | [`build_slot::BuildSlotBmc`] | CI/CD slot management |
-//! | [`macro_def::MacroDefBmc`] | Workflow macro definitions |
-//! | [`attachment::AttachmentBmc`] | File attachments |
-//! | [`activity::ActivityBmc`] | Unified activity feed |
-//! | [`tool_metric::ToolMetricBmc`] | Tool usage analytics |
-//! | [`overseer_message::OverseerMessageBmc`] | Human escalation messages |
+//! | `agent::AgentBmc` | AI agent registration and profiles |
+//! | `message::MessageBmc` | Inter-agent messaging |
+//! | `project::ProjectBmc` | Project management |
+//! | `file_reservation::FileReservationBmc` | File locking coordination |
+//! | `build_slot::BuildSlotBmc` | CI/CD slot management |
+//! | `macro_def::MacroDefBmc` | Workflow macro definitions |
+//! | `attachment::AttachmentBmc` | File attachments |
+//! | `activity::ActivityBmc` | Unified activity feed |
+//! | `tool_metric::ToolMetricBmc` | Tool usage analytics |
+//! | `overseer_message::OverseerMessageBmc` | Human escalation messages |
 //!
 //! ## ModelManager
 //!

@@ -1,6 +1,6 @@
-//! `lib-core` contains the core domain logic and data access for the MCP Agent Mail application.
-
 //! # lib-core: Core Business Logic for MCP Agent Mail
+//!
+//! `lib-core` contains the core domain logic and data access for the MCP Agent Mail application.
 //!
 //! This crate provides the core business logic layer for the MCP Agent Mail system,
 //! following the BMC (Backend Model Controller) pattern for consistent data access.
@@ -35,11 +35,20 @@
 //! }
 //! ```
 
+/// Request context for authentication and authorization.
 pub mod ctx;
+
+/// Error types and Result alias for lib-core operations.
 pub mod error;
+
+/// Backend Model Controllers (BMC) and data models for all entities.
 pub mod model;
+
+/// Low-level storage operations for database and Git.
 pub mod store;
-pub mod utils; // Added utils module // New error module
+
+/// Utility functions and helpers.
+pub mod utils;
 
 // Re-export core types
 pub use ctx::Ctx;

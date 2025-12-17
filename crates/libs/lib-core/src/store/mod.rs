@@ -1,10 +1,76 @@
+//! Low-level storage operations for database and Git.
+//!
+//! This module provides the storage layer for lib-core, handling:
+//!
+//! - **Database connections**: SQLite via libsql with optimized settings
+//! - **Git storage**: Audit trail for entities via git2
+//!
+//! # Architecture
+//!
+//! All data is stored in two places:
+//! 1. **SQLite database** (`data/mcp_agent_mail.db`) - Primary storage for queries
+//! 2. **Git repository** - Audit log for entity changes (via `git_store` submodule)
+//!
+//! # Database Configuration
+//!
+//! The database is configured for high-concurrency scenarios:
+//! - WAL mode for concurrent reads during writes
+//! - 30-second busy timeout for lock contention
+//! - 64MB cache for reduced I/O
+//!
+//! # Example
+//!
+//! ```no_run
+//! use lib_core::store::new_db_pool;
+//!
+//! async fn setup() -> lib_core::Result<()> {
+//!     let db = new_db_pool().await?;
+//!     // Database is ready with migrations applied
+//!     Ok(())
+//! }
+//! ```
+
 use crate::Result;
 use libsql::{Builder, Connection};
 use std::path::PathBuf;
 
+/// Type alias for database connections.
+///
+/// Uses libsql's [`Connection`] for SQLite access.
 pub type Db = Connection;
-pub mod git_store; // Add this line back
 
+/// Git storage operations for audit logging.
+pub mod git_store;
+
+/// Creates a new database connection pool with migrations applied.
+///
+/// This function:
+/// 1. Creates the `data/` directory if needed
+/// 2. Opens or creates the SQLite database
+/// 3. Applies concurrency optimizations (WAL, timeouts, cache)
+/// 4. Runs all migrations
+///
+/// # Returns
+///
+/// A configured database connection ready for use.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Directory creation fails
+/// - Database cannot be opened
+/// - Migrations fail
+///
+/// # Example
+///
+/// ```no_run
+/// use lib_core::store::new_db_pool;
+///
+/// # async fn example() -> lib_core::Result<()> {
+/// let db = new_db_pool().await?;
+/// # Ok(())
+/// # }
+/// ```
 pub async fn new_db_pool() -> Result<Db> {
     // Ensure data directory exists
     let db_path = PathBuf::from("data/mcp_agent_mail.db");
@@ -43,7 +109,23 @@ pub async fn new_db_pool() -> Result<Db> {
     Ok(conn)
 }
 
-/// Helper function to get a connection for executing queries.
+/// Gets a database connection for executing queries.
+///
+/// This is a helper function for obtaining a connection to the local database.
+/// Currently uses the same local file as [`new_db_pool`].
+///
+/// # Arguments
+///
+/// * `_db_url` - Database URL (currently ignored, reserved for future Turso support)
+///
+/// # Returns
+///
+/// A database connection.
+///
+/// # Note
+///
+/// This function signature is designed for future Turso remote database support.
+/// Currently it opens the local SQLite file regardless of the URL parameter.
 pub async fn get_db_connection(_db_url: &str) -> Result<Connection> {
     // For local file, we just open it
     // This function signature might need adjustment for Turso remote later
