@@ -151,12 +151,12 @@ pub async fn get_attachment(
     let stream = tokio_util::io::ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
-    Response::builder()
+    let response = Response::builder()
         .header(header::CONTENT_TYPE, attachment.media_type)
         .header(header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", attachment.filename))
         .body(body)
         .map_err(|e| crate::ServerError::Internal(format!("Failed to build response: {}", e)))?
         .into_response();
-    
+
     Ok(response)
 }

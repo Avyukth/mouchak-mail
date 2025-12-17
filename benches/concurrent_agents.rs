@@ -6,6 +6,9 @@
 //! Usage:
 //!   cargo run --release --bin concurrent-agents-bench -- [OPTIONS]
 
+// Allow unwrap/expect/panic in benchmark code
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::atomic::{AtomicU64, Ordering};

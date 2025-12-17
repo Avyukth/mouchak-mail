@@ -108,7 +108,7 @@ async fn test_list_agents_for_project() {
     for name in &["AgentAlpha", "AgentBeta", "AgentGamma"] {
         let agent_c = AgentForCreate {
             project_id,
-            name: name.to_string(),
+            name: (*name).to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
             task_description: format!("Agent {}", name),

@@ -8,7 +8,6 @@ mod common;
 use crate::common::TestContext;
 use lib_core::model::project::ProjectBmc;
 use lib_core::model::product::ProductBmc;
-use lib_core::utils::slugify;
 
 #[tokio::test]
 async fn test_sibling_logic() {

@@ -29,3 +29,6 @@ hex = "0.4.3"
 [dev-dependencies]
 tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
 tempfile = "3.23.0"
+
+[lints]
+workspace = true

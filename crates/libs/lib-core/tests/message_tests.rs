@@ -193,7 +193,7 @@ async fn test_search_messages() {
         .expect("Search should succeed");
     
     // Verify search finds relevant messages
-    assert!(results.len() >= 1, "Should find at least one message containing 'full-text search'");
+    assert!(!results.is_empty(), "Should find at least one message containing 'full-text search'");
     assert!(results.iter().any(|m| m.subject == "Database Migration" || m.subject == "Performance"),
         "Should find messages about FTS");
 }

@@ -334,7 +334,7 @@ async fn test_builtin_macros_parameter_structure() {
     let start_session = MacroDefBmc::get_by_name(c, mm, project_id, "start_session").await.unwrap();
     assert!(start_session.steps[0].get("params").is_some(), "Steps should have params field");
     let params = start_session.steps[0]["params"].as_array().unwrap();
-    assert!(params.len() > 0, "Params should not be empty");
+    assert!(!params.is_empty(), "Params should not be empty");
 
     let prepare = MacroDefBmc::get_by_name(c, mm, project_id, "prepare_thread").await.unwrap();
     for step in &prepare.steps {

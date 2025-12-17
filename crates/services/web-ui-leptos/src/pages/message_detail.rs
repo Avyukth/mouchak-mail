@@ -48,10 +48,10 @@ pub fn MessageDetail() -> impl IntoView {
             }
 
             // Load agents for reply
-            if !project.is_empty() {
-                if let Ok(a) = client::get_agents(&project).await {
-                    agents.set(a);
-                }
+            if !project.is_empty()
+                && let Ok(a) = client::get_agents(&project).await
+            {
+                agents.set(a);
             }
         });
     });

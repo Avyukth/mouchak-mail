@@ -64,3 +64,6 @@ http-body-util = "0.1"
 
 # MCP testing deps
 rmcp.workspace = true
+
+[lints]
+workspace = true

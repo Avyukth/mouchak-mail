@@ -92,7 +92,7 @@ impl MessageBmc {
                  query.push_str("(?, ?, ?)");
                  params.push(id.into());
                  params.push((*rid).into());
-                 params.push(rtype.to_string().into());
+                 params.push((*rtype).to_string().into());
              }
 
              let stmt = db.prepare(&query).await?;

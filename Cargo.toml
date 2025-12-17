@@ -26,6 +26,9 @@ license = "MIT"
 name = "concurrent-agents-bench"
 path = "benches/concurrent_agents.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 tokio = { workspace = true }
 reqwest = { workspace = true }
@@ -80,6 +83,29 @@ clap = { version = "4.5.53", features = ["derive"] }
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 base64 = "0.22.1"
 
+# =============================================================================
+# Workspace Lints - Production Hardening
+# =============================================================================
+[workspace.lints.rust]
+# Safety
+unsafe_code = "deny"
+# Correctness
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+# Production safety - allow for now, enable incrementally
+# These are here as documentation of target state:
+# unwrap_used = "warn"      # TODO: Enable after fixing production code
+# expect_used = "warn"      # TODO: Enable after fixing production code
+# panic = "warn"            # TODO: Enable after fixing production code
+# Code quality
+unnecessary_wraps = "warn"
+# Performance
+inefficient_to_string = "deny"  # Easy to fix, prevents performance issues
+# Style consistency
+enum_glob_use = "warn"
+
+# =============================================================================
 # WASM-optimized release profile for web-ui-leptos
 [profile.release]
 lto = true

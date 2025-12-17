@@ -3,8 +3,10 @@ use jugar_probar::Browser;
 
 #[tokio::test]
 async fn test_console_errors() {
-    let mut config = TestConfig::default();
-    config.web_ui_url = "http://localhost:4090".to_string();
+    let config = TestConfig {
+        web_ui_url: "http://localhost:4090".to_string(),
+        ..Default::default()
+    };
 
     println!("Launching browser to check {}", config.web_ui_url);
 

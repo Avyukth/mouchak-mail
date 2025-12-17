@@ -15,3 +15,6 @@ tracing-subscriber.workspace = true
 
 # Internal workspace dependency
 lib-core = { path = "../../libs/lib-core" }
+
+[lints]
+workspace = true

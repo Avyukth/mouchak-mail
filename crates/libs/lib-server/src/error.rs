@@ -124,8 +124,8 @@ pub enum ServerError {
     ConfigError(String),
 
     #[allow(dead_code)]
-    #[error("Internal server error")]
-    Internal,
+    #[error("Internal server error: {0}")]
+    Internal(String),
 }
 
 #[allow(dead_code)]
@@ -319,7 +319,7 @@ impl IntoResponse for ServerError {
                 ErrorResponse::new(ErrorCode::InternalError, "File operation failed"),
             ),
 
-            ServerError::Anyhow(_) | ServerError::Internal => (
+            ServerError::Anyhow(_) | ServerError::Internal(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorResponse::new(ErrorCode::InternalError, "An internal error occurred"),
             ),

@@ -1,0 +1,47 @@
+# .clippy.toml - Clippy Configuration for MCP Agent Mail
+# https://doc.rust-lang.org/clippy/lint_configuration.html
+
+# Maximum allowed complexity for functions (cyclomatic complexity)
+cognitive-complexity-threshold = 30
+
+# Maximum allowed enum variant count
+enum-variant-size-threshold = 200
+
+# Maximum number of lines per function
+too-many-lines-threshold = 200
+
+# Maximum number of arguments per function
+too-many-arguments-threshold = 10
+
+# Maximum allowed nesting depth in control flow
+excessive-nesting-threshold = 8
+
+# Disallowed methods - patterns that indicate potential bugs
+# These will produce warnings when used
+disallowed-methods = [
+    # Production safety - commented out until codebase is ready
+    # { path = "std::option::Option::unwrap", reason = "Use `ok_or_else` or `?` instead" },
+    # { path = "std::result::Result::unwrap", reason = "Use `?` or proper error handling" },
+    # { path = "std::option::Option::expect", reason = "Use `ok_or_else` with descriptive error" },
+    # { path = "std::result::Result::expect", reason = "Use `?` with proper error context" },
+]
+
+# Disallowed types - types that should not be used
+disallowed-types = [
+    # Add types to ban here if needed
+]
+
+# Single char binding names to allow
+allowed-idents-below-min-chars = ["i", "j", "k", "n", "x", "y", "z", "_"]
+
+# Minimum identifier length (excluding allowed list above)
+min-ident-chars-threshold = 2
+
+# MSRV (Minimum Supported Rust Version) - enables version-specific lints
+# Using edition 2024 features
+msrv = "1.85"
+
+# Future additions when codebase is ready:
+# - Enable unwrap bans after refactoring production code
+# - Add stricter complexity thresholds
+# - Enable doc-valid-idents for documentation checks

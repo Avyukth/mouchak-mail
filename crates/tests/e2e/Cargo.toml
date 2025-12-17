@@ -42,3 +42,6 @@ path = "tests/walkthrough.rs"
 [[test]]
 name = "cli_tests"
 path = "tests/cli_tests.rs"
+
+[lints]
+workspace = true

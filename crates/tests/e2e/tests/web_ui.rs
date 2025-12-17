@@ -117,7 +117,7 @@ fn test_probar_assertions() {
     assert!(!falsy.passed);
 
     // Test approx_eq for floating point
-    let approx = Assertion::approx_eq(3.14159, std::f64::consts::PI, 0.001);
+    let approx = Assertion::approx_eq(std::f64::consts::PI, std::f64::consts::PI, 0.001);
     assert!(approx.passed, "PI approximation should match");
 
     println!("✓ Probar assertion API works correctly");

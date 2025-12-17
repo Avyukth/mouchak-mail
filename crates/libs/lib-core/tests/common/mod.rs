@@ -1,11 +1,13 @@
 //! Common test utilities and fixtures
 //!
 //! Provides test helpers for setting up isolated test environments.
-//! 
+//!
 //! ## Design Principles (TDD/Production Hardening)
 //! - Each test gets its own isolated database (unique file in temp dir)
 //! - Tests run with sequential test threads to avoid git locking
 //! - Cleanup happens automatically via TempDir RAII
+
+#![allow(dead_code)]
 
 use lib_core::{Ctx, ModelManager, Result};
 use std::path::PathBuf;

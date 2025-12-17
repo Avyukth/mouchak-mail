@@ -12,28 +12,25 @@ pub fn Layout() -> impl IntoView {
 
     // Initialize from localStorage and watch for changes
     Effect::new(move |_| {
-        if let Some(window) = web_sys::window() {
-            // Check localStorage for saved preference
-            if let Ok(Some(storage)) = window.local_storage() {
-                if let Ok(Some(saved)) = storage.get_item("darkMode") {
-                    if saved == "true" {
-                        set_dark_mode.set(true);
-                    }
-                }
-            }
+        if let Some(window) = web_sys::window()
+            && let Ok(Some(storage)) = window.local_storage()
+            && let Ok(Some(saved)) = storage.get_item("darkMode")
+            && saved == "true"
+        {
+            set_dark_mode.set(true);
         }
     });
 
     // Toggle dark mode class on document and save preference
     Effect::new(move |_| {
         if let Some(window) = web_sys::window() {
-            if let Some(document) = window.document() {
-                if let Some(html) = document.document_element() {
-                    if dark_mode.get() {
-                        let _ = html.class_list().add_1("dark");
-                    } else {
-                        let _ = html.class_list().remove_1("dark");
-                    }
+            if let Some(document) = window.document()
+                && let Some(html) = document.document_element()
+            {
+                if dark_mode.get() {
+                    let _ = html.class_list().add_1("dark");
+                } else {
+                    let _ = html.class_list().remove_1("dark");
                 }
             }
             // Save to localStorage

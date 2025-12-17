@@ -33,3 +33,5 @@ libsql = "0.9.29"
 lib-core = { path = "../../libs/lib-core" }
 chrono = { version = "0.4.42", features = ["serde"] }
 rmcp = { version = "0.11.0" }
+[lints]
+workspace = true
