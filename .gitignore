@@ -27,3 +27,7 @@ benchmark_*.md
 output.wav
 recordings/
 agent_mail_final.mp4defect-report-*.json
+docs/mcp-agent-mail-python-tree.md
+docs/mcp-agent-mail-python-beads-diff.md
+docs/PYTHON_PORT_PLAN_v2.md.tmp/
+.tmp/

@@ -1372,6 +1372,59 @@ This document should be updated when:
 
 ---
 
+## 🛠️ CLAUDE CODE SKILLS REFERENCE
+
+Skills are modular knowledge bases that Claude loads when needed. They provide domain-specific guidelines, best practices, and code examples.
+
+**Location**: `~/.claude/skills/` (global) or `.tmp/skills/` (project export)
+
+### Available Skills
+
+| Skill | Purpose | Use When |
+|-------|---------|----------|
+| **rust-skills** | Rust backend development with Axum, SQLx, error handling | Writing Rust code, Axum routes, database access |
+| **backend-dev-guidelines** | Node.js/Express/TypeScript patterns | Creating API routes, controllers, services |
+| **frontend-dev-guidelines** | React/TypeScript/MUI v7 patterns | Creating React components, MUI styling |
+| **production-hardening-backend** | Rust backend security, NIST SP 800-53 | Hardening production services, security review |
+| **production-hardening-frontend** | SvelteKit security, CSP, Core Web Vitals | Frontend security, performance optimization |
+| **kaizen-solaris-review** | Rust code review with Toyota Way philosophy | Code reviews, quality gates |
+| **paiml-mcp-toolkit** | PMAT, TDG, Rust Project Score | Code quality analysis, technical debt |
+| **git-workflow-mastery** | Git branching, conventional commits | Git operations, PR workflows |
+| **c4-architecture** | C4 Model architecture diagrams | System design, architecture docs |
+| **deploy-pulumi-argocd-canary** | Kubernetes deployment, GitOps | Infrastructure, deployments |
+| **error-tracking** | Sentry v8 error tracking | Adding error handling, monitoring |
+| **prd** | Product Requirements Documents | Creating PRDs, feature specs |
+| **task-master-prompts** | AI task management prompts | Task breakdown, project management |
+| **mobile-frontend-design** | PWA, responsive design | Mobile-first development |
+| **sveltekit-pwa-skills** | SvelteKit PWA patterns | Building PWAs with SvelteKit |
+| **skill-developer** | Creating new skills | Building custom skills |
+| **meta-skill** | Skill architecture guide | Understanding skill system |
+| **route-tester** | API route testing with JWT | Testing authenticated endpoints |
+| **reasoning-planner** | Planning and reasoning patterns | Complex task planning |
+
+### Skill Activation
+
+Skills auto-activate based on:
+- **Keywords** in prompts (e.g., "rust", "backend", "deploy")
+- **File patterns** (e.g., editing `*.rs` files triggers rust-skills)
+- **Content patterns** (e.g., code containing Axum imports)
+
+### Manual Invocation
+
+```bash
+# Invoke a skill directly
+/skill rust-skills
+
+# Check skill-rules.json for activation rules
+cat ~/.claude/skills/skill-rules.json | jq '.skills["rust-skills"]'
+```
+
+### Project Export
+
+Skills exported to `.tmp/skills/` for reference (gitignored).
+
+---
+
 ## 📖 RELATED DOCUMENTATION
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture
@@ -1380,6 +1433,7 @@ This document should be updated when:
 - [scripts/integrations/](scripts/integrations/) — Agent integration configs
 - [MCP Protocol](https://modelcontextprotocol.io)
 - [PMAT Book](https://paiml.github.io/pmat-book/) — pmat documentation
+- [.tmp/skills/README.md](.tmp/skills/README.md) — Skills documentation (local export)
 
 ---
 

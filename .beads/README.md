@@ -78,4 +78,16 @@ bd create "Try out Beads"
 
 ---
 
+## Project-Specific Variables
+
+This project uses path variables in issue descriptions to reference external sources without exposing absolute file paths:
+
+| Variable | Description |
+|----------|-------------|
+| `${PYTHON_SRC}` | Python mcp_agent_mail repository (sibling dir `../mcp_agent_mail` or any local clone of the original Python implementation) |
+
+These variables are documentation tokens - they indicate the source reference for porting work.
+
+---
+
 *Beads: Issue tracking that moves at the speed of thought* ⚡
