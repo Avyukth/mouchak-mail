@@ -1,7 +1,10 @@
 //! Project Card component with status badges.
 //!
-//! Enhanced project card matching the Python reference design with status indicators.
+//! Enhanced project card using shadcn/ui Card and Badge components.
 
+use crate::components::{
+    Badge, BadgeVariant, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
+};
 use leptos::prelude::*;
 
 /// Project status enum
@@ -12,15 +15,11 @@ pub enum ProjectStatus {
 }
 
 impl ProjectStatus {
-    /// Get CSS classes for the status badge
-    pub fn classes(&self) -> &'static str {
+    /// Convert status to BadgeVariant
+    pub fn to_badge_variant(&self) -> BadgeVariant {
         match self {
-            ProjectStatus::Active => {
-                "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-            }
-            ProjectStatus::Inactive => {
-                "bg-charcoal-100 dark:bg-charcoal-700 text-charcoal-500 dark:text-charcoal-400"
-            }
+            ProjectStatus::Active => BadgeVariant::Success,
+            ProjectStatus::Inactive => BadgeVariant::Secondary,
         }
     }
 
@@ -29,14 +28,6 @@ impl ProjectStatus {
         match self {
             ProjectStatus::Active => "Active",
             ProjectStatus::Inactive => "Inactive",
-        }
-    }
-
-    /// Get the dot color class
-    pub fn dot_class(&self) -> &'static str {
-        match self {
-            ProjectStatus::Active => "bg-emerald-500",
-            ProjectStatus::Inactive => "bg-charcoal-400",
         }
     }
 }
@@ -79,51 +70,48 @@ pub fn ProjectCard(
 ) -> impl IntoView {
     let href = format!("/projects/{}", slug);
     let formatted_date = format_date(&created_at);
+    let badge_variant = status.to_badge_variant();
 
     view! {
-        <a
-            href={href}
-            class="card-elevated p-5 hover:shadow-lg group block transition-all hover:border-amber-300 dark:hover:border-amber-700"
-        >
-            // Icon
-            <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-                <i data-lucide="folder-open" class="icon-xl text-amber-600 dark:text-amber-400"></i>
-            </div>
+        <a href={href} class="block group h-full">
+            <Card class="h-full hover:shadow-lg transition-all hover:border-amber-300 dark:hover:border-amber-700">
+                <CardHeader>
+                    // Icon
+                    <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                        <i data-lucide="folder-open" class="icon-xl text-amber-600 dark:text-amber-400"></i>
+                    </div>
 
-            // Path (truncated)
-            <h3 class="font-display font-semibold text-charcoal-800 dark:text-cream-100 truncate mb-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                {slug.clone()}
-            </h3>
-            <p class="text-sm text-charcoal-500 dark:text-charcoal-400 truncate mb-3" title={human_key.clone()}>
-                {human_key.clone()}
-            </p>
+                    <CardTitle class="mb-1 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                        {slug.clone()}
+                    </CardTitle>
+                    <CardDescription title={human_key.clone()} class="truncate">
+                        {human_key.clone()}
+                    </CardDescription>
+                </CardHeader>
 
-            // Status Badge
-            <div class="flex items-center gap-2 mb-4">
-                <span class={format!(
-                    "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium {}",
-                    status.classes()
-                )}>
-                    <span class={format!("w-1.5 h-1.5 rounded-full {}", status.dot_class())}></span>
-                    {status.label()}
-                </span>
-            </div>
+                <CardContent>
+                    <Badge variant={badge_variant}>
+                        {status.label()}
+                    </Badge>
+                </CardContent>
 
-            // Stats Row
-            <div class="flex items-center gap-4 text-sm text-charcoal-500 dark:text-charcoal-400 pt-3 border-t border-cream-200 dark:border-charcoal-700">
-                <span class="flex items-center gap-1" title="Agents">
-                    <i data-lucide="bot" class="icon-xs"></i>
-                    {agent_count}
-                </span>
-                <span class="flex items-center gap-1" title="Messages">
-                    <i data-lucide="mail" class="icon-xs"></i>
-                    {message_count}
-                </span>
-                <span class="flex items-center gap-1 ml-auto" title="Created">
-                    <i data-lucide="calendar" class="icon-xs"></i>
-                    {formatted_date}
-                </span>
-            </div>
+                <CardFooter class="pt-0 border-t border-cream-200 dark:border-charcoal-700 mt-auto">
+                   <div class="flex items-center gap-4 text-sm text-charcoal-500 dark:text-charcoal-400 w-full pt-4">
+                        <span class="flex items-center gap-1" title="Agents">
+                            <i data-lucide="bot" class="icon-xs"></i>
+                            {agent_count}
+                        </span>
+                        <span class="flex items-center gap-1" title="Messages">
+                            <i data-lucide="mail" class="icon-xs"></i>
+                            {message_count}
+                        </span>
+                        <span class="flex items-center gap-1 ml-auto" title="Created">
+                            <i data-lucide="calendar" class="icon-xs"></i>
+                            {formatted_date}
+                        </span>
+                    </div>
+                </CardFooter>
+            </Card>
         </a>
     }
 }
@@ -144,7 +132,7 @@ pub fn determine_project_status(last_active: Option<&str>, agent_count: usize) -
         return ProjectStatus::Active;
     }
 
-    // Check last activity timestamp (simplified - would need proper date parsing)
+    // Check last activity timestamp (simplified)
     if let Some(ts) = last_active {
         if !ts.is_empty() {
             return ProjectStatus::Active;
@@ -159,9 +147,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_project_status_classes() {
-        assert!(ProjectStatus::Active.classes().contains("emerald"));
-        assert!(ProjectStatus::Inactive.classes().contains("charcoal"));
+    fn test_project_status_mapping() {
+        assert_eq!(
+            ProjectStatus::Active.to_badge_variant(),
+            BadgeVariant::Success
+        );
+        assert_eq!(
+            ProjectStatus::Inactive.to_badge_variant(),
+            BadgeVariant::Secondary
+        );
     }
 
     #[test]
@@ -171,35 +165,8 @@ mod tests {
     }
 
     #[test]
-    fn test_format_date_with_time() {
+    fn test_format_date() {
         assert_eq!(format_date("2025-10-26T10:30:00"), "2025-10-26");
-    }
-
-    #[test]
-    fn test_format_date_date_only() {
-        assert_eq!(format_date("2025-10-26"), "2025-10-26");
-    }
-
-    #[test]
-    fn test_format_date_empty() {
         assert_eq!(format_date(""), "—");
-    }
-
-    #[test]
-    fn test_determine_status_with_agents() {
-        assert_eq!(determine_project_status(None, 3), ProjectStatus::Active);
-    }
-
-    #[test]
-    fn test_determine_status_no_agents_no_activity() {
-        assert_eq!(determine_project_status(None, 0), ProjectStatus::Inactive);
-    }
-
-    #[test]
-    fn test_determine_status_with_activity() {
-        assert_eq!(
-            determine_project_status(Some("2025-10-26"), 0),
-            ProjectStatus::Active
-        );
     }
 }

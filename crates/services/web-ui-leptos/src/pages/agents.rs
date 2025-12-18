@@ -2,7 +2,7 @@
 //! Digital Correspondence design with Lucide icons.
 
 use crate::api::client::{self, Agent, Project};
-use crate::components::{AgentAvatar, AvatarSize, Select, SelectOption};
+use crate::components::{AgentAvatar, AvatarSize, Input, Select, SelectOption};
 use leptos::prelude::*;
 
 /// Agent with project slug for display.
@@ -110,13 +110,12 @@ pub fn Agents() -> impl IntoView {
                     // Search
                     <div class="flex-1">
                         <div class="relative">
-                            <i data-lucide="search" class="icon-sm absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400"></i>
-                            <input
-                                type="text"
-                                prop:value=move || search_query.get()
-                                on:input=move |ev| search_query.set(event_target_value(&ev))
-                                placeholder="Search by name, program, model, or task..."
-                                class="input pl-10"
+                            <i data-lucide="search" class="icon-sm absolute left-3 top-1/2 -translate-y-1/2 text-charcoal-400 z-10"></i>
+                            <Input
+                                id="agentSearch".to_string()
+                                value=search_query
+                                placeholder="Search by name, program, model, or task...".to_string()
+                                class="pl-10".to_string()
                             />
                         </div>
                     </div>

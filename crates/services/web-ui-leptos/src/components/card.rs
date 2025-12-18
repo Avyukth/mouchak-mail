@@ -62,6 +62,7 @@ pub fn CardTitle(
 #[component]
 pub fn CardDescription(
     #[prop(optional, into)] class: Option<String>,
+    #[prop(optional, into)] title: Option<String>,
     children: Children,
 ) -> impl IntoView {
     let final_class = match class {
@@ -70,7 +71,7 @@ pub fn CardDescription(
     };
 
     view! {
-        <p class={final_class}>
+        <p class={final_class} title={title}>
             {children()}
         </p>
     }

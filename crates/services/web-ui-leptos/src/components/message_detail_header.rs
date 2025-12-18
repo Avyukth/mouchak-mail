@@ -3,7 +3,7 @@
 //! Displays message subject, sender/recipient info with avatars,
 //! project and timestamp, plus action buttons.
 
-use crate::components::{AgentAvatar, AvatarSize};
+use crate::components::{AgentAvatar, AvatarSize, Button, ButtonVariant};
 use leptos::prelude::*;
 
 /// Format a timestamp for display
@@ -173,9 +173,9 @@ pub fn MessageDetailHeader(
 
             // Action Buttons
             <div class="flex gap-2">
-                <button
-                    class="btn-secondary flex items-center gap-2 text-sm"
-                    on:click=copy_link
+                <Button
+                    variant=ButtonVariant::Secondary
+                    on_click=Callback::new(copy_link)
                 >
                     {move || if copied.get() {
                         view! { <i data-lucide="check" class="icon-sm text-green-500"></i> }.into_any()
@@ -183,7 +183,7 @@ pub fn MessageDetailHeader(
                         view! { <i data-lucide="copy" class="icon-sm"></i> }.into_any()
                     }}
                     {move || if copied.get() { "Copied!" } else { "Copy Link" }}
-                </button>
+                </Button>
 
                 <a
                     href={project_link_button}

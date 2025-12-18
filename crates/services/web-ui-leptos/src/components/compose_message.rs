@@ -166,12 +166,12 @@ pub fn ComposeMessage(
 
                 // Recipients
                 <div>
-                    <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <span class="block text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-1">
                         "To *"
                     </span>
                     {if available_recipients.is_empty() {
                         view! {
-                            <p class="text-sm text-gray-500 dark:text-gray-400 italic">
+                            <p class="text-sm text-charcoal-500 dark:text-charcoal-400 italic">
                                 "No other agents in this project. Register more agents to send messages."
                             </p>
                         }.into_any()
@@ -188,9 +188,9 @@ pub fn ComposeMessage(
                                             on:click=move |_| toggle(name.clone())
                                             class=move || {
                                                 if recipients.get().contains(&name_display) {
-                                                    "px-3 py-1.5 rounded-full text-sm transition-colors bg-primary-600 text-white"
+                                                    "px-3 py-1.5 rounded-full text-sm transition-colors bg-amber-600 text-white"
                                                 } else {
-                                                    "px-3 py-1.5 rounded-full text-sm transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                                                    "px-3 py-1.5 rounded-full text-sm transition-colors bg-charcoal-100 dark:bg-charcoal-700 text-charcoal-700 dark:text-charcoal-300 hover:bg-charcoal-200 dark:hover:bg-charcoal-600"
                                                 }
                                             }
                                         >
@@ -203,7 +203,7 @@ pub fn ComposeMessage(
                                 let recips = recipients.get();
                                 if !recips.is_empty() {
                                     Some(view! {
-                                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        <p class="mt-2 text-sm text-charcoal-500 dark:text-charcoal-400">
                                             "Selected: " {recips.join(", ")}
                                         </p>
                                     })
@@ -267,7 +267,7 @@ pub fn ComposeMessage(
                 <div class="flex flex-wrap gap-4">
                     // Importance
                     <div class="w-40">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        <label class="block text-sm font-medium text-charcoal-700 dark:text-charcoal-300 mb-1">
                             "Importance"
                         </label>
                         <Select
@@ -290,9 +290,9 @@ pub fn ComposeMessage(
                                 type="checkbox"
                                 prop:checked=move || ack_required.get()
                                 on:change=move |ev| ack_required.set(event_target_checked(&ev))
-                                class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                                class="w-4 h-4 text-amber-600 border-charcoal-300 rounded focus:ring-amber-500"
                             />
-                            <span class="text-sm text-gray-700 dark:text-gray-300">
+                            <span class="text-sm text-charcoal-700 dark:text-charcoal-300">
                                 "Require acknowledgment"
                             </span>
                         </label>

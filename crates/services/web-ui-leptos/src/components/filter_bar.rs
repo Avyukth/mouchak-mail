@@ -194,14 +194,6 @@ pub fn FilterBar(
         val
     });
 
-    // Search input handler
-    let on_search_input = move |ev: web_sys::Event| {
-        let target = event_target::<web_sys::HtmlInputElement>(&ev);
-        let value = target.value();
-        search_value.set(value.clone());
-        filter_state.update(|s| s.query = value);
-    };
-
     // View mode toggle
     let set_list_view = move |_| {
         filter_state.update(|s| s.view_mode = "list".to_string());
