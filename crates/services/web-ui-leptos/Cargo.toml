@@ -13,6 +13,7 @@ crate-type = ["cdylib", "rlib"]
 # Leptos framework
 leptos = { version = "0.8.14", features = ["csr"] }
 leptos_router = "0.8.10"
+leptos-use = { version = "0.15", default-features = false, features = ["use_debounce_fn"] }
 
 # WASM essentials
 console_error_panic_hook = "0.1.7"

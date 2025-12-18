@@ -5,6 +5,7 @@
 
 use super::{Button, ButtonVariant, Input, Select, SelectOption};
 use leptos::prelude::*;
+use leptos_use::use_debounce_fn;
 
 /// Filter state for the inbox
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -140,13 +141,16 @@ pub fn FilterBar(
     let importance_value = RwSignal::new(String::new());
     let search_value = RwSignal::new(String::new());
 
-    // Sync from filter_state on mount
-    Effect::new(move |_| {
-        let state = filter_state.get();
-        project_value.set(state.project.clone().unwrap_or_default());
-        sender_value.set(state.sender.clone().unwrap_or_default());
-        importance_value.set(state.importance.clone().unwrap_or_default());
-        search_value.set(state.query.clone());
+    // Sync from filter_state on mount ONLY (use get_untracked to avoid re-running on changes)
+    Effect::new(move |prev: Option<()>| {
+        // Only run once on initial mount
+        if prev.is_none() {
+            let state = filter_state.get_untracked();
+            project_value.set(state.project.clone().unwrap_or_default());
+            sender_value.set(state.sender.clone().unwrap_or_default());
+            importance_value.set(state.importance.clone().unwrap_or_default());
+            search_value.set(state.query.clone());
+        }
     });
 
     // Sync project changes to filter_state
@@ -190,6 +194,23 @@ pub fn FilterBar(
                     Some(val.clone())
                 };
             });
+        }
+        val
+    });
+
+    // Sync search changes to filter_state with debounce (300ms) to prevent UI freeze
+    let debounced_search_update = use_debounce_fn(
+        move || {
+            let val = search_value.get_untracked();
+            filter_state.update(|s| s.query = val);
+        },
+        300.0, // 300ms debounce
+    );
+
+    Effect::new(move |prev: Option<String>| {
+        let val = search_value.get();
+        if prev.is_some() {
+            debounced_search_update();
         }
         val
     });
@@ -248,8 +269,7 @@ pub fn FilterBar(
                         aria_label="Search messages".to_string()
                         class="pl-10".to_string()
                         on_input=Callback::new(move |v: String| {
-                            search_value.set(v.clone());
-                            filter_state.update(|s| s.query = v);
+                            search_value.set(v);
                         })
                     />
                 </div>
@@ -302,24 +322,34 @@ pub fn FilterBar(
                     }
                 }}
 
-                // View Mode Toggle
+                // View Mode Toggle (reactive to view_mode changes)
                 <div class="flex items-center gap-1 border-l border-cream-200 dark:border-charcoal-600 pl-3">
-                    <Button
-                        variant={if filter_state.get().view_mode == "list" { ButtonVariant::Secondary } else { ButtonVariant::Ghost }}
-                        size=super::ButtonSize::Icon
-                        on_click=Callback::new(set_list_view)
-                        title="List view"
-                    >
-                        <i data-lucide="list" class="icon-sm"></i>
-                    </Button>
-                    <Button
-                        variant={if filter_state.get().view_mode == "grid" { ButtonVariant::Secondary } else { ButtonVariant::Ghost }}
-                        size=super::ButtonSize::Icon
-                        on_click=Callback::new(set_grid_view)
-                        title="Grid view"
-                    >
-                        <i data-lucide="grid" class="icon-sm"></i>
-                    </Button>
+                    {move || {
+                        let is_list = filter_state.get().view_mode == "list";
+                        view! {
+                            <Button
+                                variant={if is_list { ButtonVariant::Secondary } else { ButtonVariant::Ghost }}
+                                size=super::ButtonSize::Icon
+                                on_click=Callback::new(set_list_view)
+                                title="List view"
+                            >
+                                <i data-lucide="list" class="icon-sm"></i>
+                            </Button>
+                        }
+                    }}
+                    {move || {
+                        let is_grid = filter_state.get().view_mode == "grid";
+                        view! {
+                            <Button
+                                variant={if is_grid { ButtonVariant::Secondary } else { ButtonVariant::Ghost }}
+                                size=super::ButtonSize::Icon
+                                on_click=Callback::new(set_grid_view)
+                                title="Grid view"
+                            >
+                                <i data-lucide="grid" class="icon-sm"></i>
+                            </Button>
+                        }
+                    }}
                 </div>
 
                 // Message Count Badge
@@ -340,8 +370,7 @@ pub fn FilterBar(
                         aria_label="Search messages".to_string()
                         class="pl-10".to_string()
                         on_input=Callback::new(move |v: String| {
-                            search_value.set(v.clone());
-                            filter_state.update(|s| s.query = v);
+                            search_value.set(v);
                         })
                     />
                 </div>

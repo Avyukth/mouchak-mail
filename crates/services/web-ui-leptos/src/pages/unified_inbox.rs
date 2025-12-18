@@ -33,6 +33,12 @@ pub fn UnifiedInbox() -> impl IntoView {
 
             match client::get_unified_inbox(None, Some(100)).await {
                 Ok(msgs) => {
+                    // Auto-select first message if nothing selected
+                    if selected_id.get_untracked().is_none() {
+                        if let Some(first) = msgs.first() {
+                            selected_id.set(Some(first.id));
+                        }
+                    }
                     all_messages.set(msgs.clone());
                     messages.set(msgs);
                     loading.set(false);
@@ -81,9 +87,29 @@ pub fn UnifiedInbox() -> impl IntoView {
                     }
                 }
 
+                // Project filter
+                if let Some(ref project) = filter.project {
+                    if msg.project_id.to_string() != *project {
+                        return false;
+                    }
+                }
+
                 true
             })
             .collect();
+
+        // If current selection is no longer visible, select first filtered message
+        if let Some(current_id) = selected_id.get_untracked() {
+            let still_visible = filtered.iter().any(|m| m.id == current_id);
+            if !still_visible {
+                if let Some(first) = filtered.first() {
+                    selected_id.set(Some(first.id));
+                }
+            }
+        } else if let Some(first) = filtered.first() {
+            // No selection, select first
+            selected_id.set(Some(first.id));
+        }
 
         messages.set(filtered);
     });
@@ -98,6 +124,18 @@ pub fn UnifiedInbox() -> impl IntoView {
         senders.sort();
         senders.dedup();
         senders
+    });
+
+    // Extract unique project IDs for filter dropdown
+    let projects = Signal::derive(move || {
+        let mut projects: Vec<String> = all_messages
+            .get()
+            .iter()
+            .map(|m| m.project_id.to_string())
+            .collect();
+        projects.sort();
+        projects.dedup();
+        projects
     });
 
     // Message count for FilterBar
@@ -158,6 +196,7 @@ pub fn UnifiedInbox() -> impl IntoView {
                     <FilterBar
                         filter_state=filter_state
                         message_count=message_count
+                        projects=projects.get()
                         senders=senders.get()
                     />
                 }
