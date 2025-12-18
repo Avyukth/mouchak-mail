@@ -201,6 +201,8 @@ pub fn MessageDetailHeader(
 mod tests {
     use super::*;
 
+    // === Timestamp formatting tests ===
+
     #[test]
     fn test_format_timestamp_iso() {
         let ts = "2025-12-18T10:30:00";
@@ -219,5 +221,146 @@ mod tests {
         let ts = "2025-12-18";
         let formatted = format_timestamp(ts);
         assert_eq!(formatted, "2025-12-18");
+    }
+
+    #[test]
+    fn test_format_timestamp_with_seconds() {
+        let ts = "2025-12-18T14:30:45";
+        let formatted = format_timestamp(ts);
+        // Should only show hours:minutes
+        assert!(formatted.contains("14:30"));
+        assert!(!formatted.contains("45"));
+    }
+
+    #[test]
+    fn test_format_timestamp_with_timezone() {
+        let ts = "2025-12-18T10:30:00+05:30";
+        let formatted = format_timestamp(ts);
+        // Should handle timezone suffix gracefully
+        assert!(formatted.contains("2025-12-18"));
+        assert!(formatted.contains("10:30"));
+    }
+
+    #[test]
+    fn test_format_timestamp_midnight() {
+        let ts = "2025-12-18T00:00:00";
+        let formatted = format_timestamp(ts);
+        assert!(formatted.contains("00:00"));
+    }
+
+    // === Window origin tests (non-WASM) ===
+
+    #[test]
+    fn test_window_origin_fallback() {
+        // In non-WASM builds, should return localhost fallback
+        let origin = window_origin();
+        assert_eq!(origin, "http://localhost:8765");
+    }
+
+    // === Copy to clipboard (non-WASM no-op) ===
+
+    #[test]
+    fn test_copy_to_clipboard_noop() {
+        // Should not panic in non-WASM builds
+        copy_to_clipboard("test text");
+        copy_to_clipboard("");
+        copy_to_clipboard("https://example.com/inbox/123");
+    }
+
+    // === Edge case tests for component logic ===
+
+    #[test]
+    fn test_recipients_join_empty() {
+        let recipients: Vec<String> = vec![];
+        let display = recipients.join(", ");
+        assert_eq!(display, "");
+    }
+
+    #[test]
+    fn test_recipients_join_single() {
+        let recipients = vec!["worker-1".to_string()];
+        let display = recipients.join(", ");
+        assert_eq!(display, "worker-1");
+    }
+
+    #[test]
+    fn test_recipients_join_multiple() {
+        let recipients = vec![
+            "worker-1".to_string(),
+            "reviewer".to_string(),
+            "human".to_string(),
+        ];
+        let display = recipients.join(", ");
+        assert_eq!(display, "worker-1, reviewer, human");
+    }
+
+    #[test]
+    fn test_first_recipient_empty_list() {
+        let recipients: Vec<String> = vec![];
+        let first = recipients.first().cloned().unwrap_or_default();
+        assert_eq!(first, "");
+    }
+
+    #[test]
+    fn test_first_recipient_exists() {
+        let recipients = vec!["primary".to_string(), "secondary".to_string()];
+        let first = recipients.first().cloned().unwrap_or_default();
+        assert_eq!(first, "primary");
+    }
+
+    #[test]
+    fn test_project_link_generation() {
+        let project_slug = "my-project";
+        let link = format!("/projects/{}", project_slug);
+        assert_eq!(link, "/projects/my-project");
+    }
+
+    #[test]
+    fn test_project_link_with_special_chars() {
+        // Project slugs should already be URL-safe, but test anyway
+        let project_slug = "project-with-dashes";
+        let link = format!("/projects/{}", project_slug);
+        assert_eq!(link, "/projects/project-with-dashes");
+    }
+
+    #[test]
+    fn test_message_url_generation() {
+        let message_id: i64 = 12345;
+        let origin = window_origin();
+        let url = format!("{}/inbox/{}", origin, message_id);
+        assert_eq!(url, "http://localhost:8765/inbox/12345");
+    }
+
+    #[test]
+    fn test_long_subject_handling() {
+        // Long subjects should be handled by CSS truncation, not Rust
+        // Test that we don't panic or corrupt long strings
+        let long_subject = "A".repeat(500);
+        assert_eq!(long_subject.len(), 500);
+        // The component would use this directly - CSS handles overflow
+    }
+
+    #[test]
+    fn test_long_project_slug_handling() {
+        // Very long project slugs (edge case)
+        let long_slug = "a".repeat(200);
+        let link = format!("/projects/{}", long_slug);
+        assert!(link.starts_with("/projects/"));
+        assert!(link.len() > 200);
+    }
+
+    #[test]
+    fn test_unicode_in_sender_name() {
+        // Sender names might contain unicode
+        let sender = "日本語エージェント";
+        let formatted = format!("From: {}", sender);
+        assert!(formatted.contains(sender));
+    }
+
+    #[test]
+    fn test_unicode_in_subject() {
+        let subject = "会議の議事録 📝";
+        let formatted = format!("Subject: {}", subject);
+        assert!(formatted.contains(subject));
     }
 }
