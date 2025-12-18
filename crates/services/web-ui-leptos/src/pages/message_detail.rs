@@ -133,7 +133,7 @@ pub fn MessageDetail() -> impl IntoView {
                                 sent_at={created.clone()}
                                 message_id={msg_id}
                             />
-                            
+
                             // Badges and Reply button
                             <div class="px-6 py-3 border-b border-cream-200 dark:border-charcoal-700 flex flex-wrap items-center justify-between gap-2">
                                 <div class="flex flex-wrap items-center gap-2 text-sm">
