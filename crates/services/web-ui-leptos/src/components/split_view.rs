@@ -68,7 +68,7 @@ pub fn MessageListItemView(
                 },
                 if unread { "font-semibold" } else { "" }
             )}
-            on:click=move |_| on_click.call(id)
+            on:click=move |_| on_click.run(id)
         >
             <div class="flex items-start justify-between gap-2">
                 <div class="flex-1 min-w-0">
@@ -164,7 +164,7 @@ pub fn SplitViewLayout(
                         None => 0,
                         _ => return,
                     };
-                    on_select_keyboard.call(messages_for_keyboard[next_idx].id);
+                    on_select_keyboard.run(messages_for_keyboard[next_idx].id);
                 }
                 "ArrowUp" => {
                     let prev_idx = match current_idx {
@@ -172,7 +172,7 @@ pub fn SplitViewLayout(
                         None => messages_for_keyboard.len() - 1,
                         _ => return,
                     };
-                    on_select_keyboard.call(messages_for_keyboard[prev_idx].id);
+                    on_select_keyboard.run(messages_for_keyboard[prev_idx].id);
                 }
                 "Enter" => {
                     // Enter already handled by selection
