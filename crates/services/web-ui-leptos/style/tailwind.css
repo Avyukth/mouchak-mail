@@ -136,6 +136,52 @@
     --ring: 37 91% 55%;
 }
 
+/* =================================
+   Touch Target & Focus Ring Patterns
+   (WCAG 2.1 AA Compliance)
+   ================================= */
+
+/* Touch Target Enforcement - minimum 44×44px */
+button:not(.skip-link),
+[role="button"],
+input[type="checkbox"],
+input[type="radio"],
+.select-trigger {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* Interactive links get minimum height */
+a:not(.skip-link):not(.nav-link) {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Touch-friendly button group spacing */
+.button-group>*+* {
+    margin-left: 0.5rem;
+}
+
+/* Focus Ring Pattern */
+.focus-ring {
+    outline: none;
+}
+
+.focus-ring:focus-visible {
+    outline: 2px solid var(--accent-amber);
+    outline-offset: 2px;
+}
+
+/* High Contrast Focus Mode */
+@media (prefers-contrast: high) {
+
+    *:focus-visible {
+        outline: 3px solid currentColor !important;
+        outline-offset: 2px !important;
+    }
+}
+
 /* Base Styles */
 html {
     scroll-behavior: smooth;
