@@ -471,3 +471,48 @@ h6 {
 .glow-amber {
     box-shadow: var(--shadow-glow);
 }
+
+/* =================================
+   Accessibility Support
+   ================================= */
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Skip Link - Hidden until focused */
+.skip-link {
+    position: absolute;
+    top: -60px;
+    left: 1rem;
+    background: var(--accent-amber);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    z-index: 9999;
+    font-weight: 500;
+    text-decoration: none;
+    box-shadow: var(--shadow-md);
+    transition: top 0.2s ease-in-out;
+}
+
+.skip-link:focus {
+    top: 1rem;
+    outline: 2px solid var(--accent-amber);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skip-link {
+        transition: none;
+    }
+}

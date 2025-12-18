@@ -43,11 +43,19 @@ pub fn Layout() -> impl IntoView {
 
     view! {
         <div class="min-h-screen bg-cream-100 dark:bg-charcoal-900 transition-colors flex flex-col">
+            // Skip link for keyboard accessibility
+            <a
+                href="#main-content"
+                class="skip-link"
+            >
+                "Skip to main content"
+            </a>
+
             // Gradient mesh background overlay
             <div class="fixed inset-0 bg-gradient-mesh pointer-events-none" aria-hidden="true"></div>
 
             // Navigation header with glassmorphism
-            <nav class="sticky top-0 z-50 glass border-b border-cream-300/50 dark:border-charcoal-700/50">
+            <nav class="sticky top-0 z-50 glass border-b border-cream-300/50 dark:border-charcoal-700/50" role="navigation" aria-label="Main navigation">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div class="flex justify-between h-16 items-center">
                         // Logo / Brand
@@ -82,6 +90,7 @@ pub fn Layout() -> impl IntoView {
                                 on:click=move |_| set_dark_mode.update(|v| *v = !*v)
                                 class="p-2.5 rounded-xl bg-cream-200/50 dark:bg-charcoal-700/50 hover:bg-amber-100 dark:hover:bg-amber-900/30 border border-cream-300 dark:border-charcoal-600 hover:border-amber-300 dark:hover:border-amber-700 transition-all group"
                                 title="Toggle dark mode"
+                                aria-label={move || if dark_mode.get() { "Switch to light mode" } else { "Switch to dark mode" }}
                             >
                                 {move || if dark_mode.get() {
                                     // Sun icon (shown in dark mode)
@@ -131,7 +140,7 @@ pub fn Layout() -> impl IntoView {
             // Mobile navigation drawer (future enhancement)
 
             // Main content area
-            <main class="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex-1 w-full">
+            <main id="main-content" tabindex="-1" class="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex-1 w-full" role="main">
                 <div class="animate-fade-in">
                     <Outlet />
                 </div>

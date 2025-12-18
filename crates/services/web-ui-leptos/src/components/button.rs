@@ -29,9 +29,7 @@ impl ButtonVariant {
             ButtonVariant::Default => {
                 "bg-gradient-to-r from-amber-600 to-amber-500 text-white hover:from-amber-700 hover:to-amber-600 shadow-sm"
             }
-            ButtonVariant::Destructive => {
-                "bg-red-600 text-white hover:bg-red-700"
-            }
+            ButtonVariant::Destructive => "bg-red-600 text-white hover:bg-red-700",
             ButtonVariant::Outline => {
                 "border border-charcoal-300 dark:border-charcoal-600 bg-transparent hover:bg-charcoal-100 dark:hover:bg-charcoal-800"
             }
