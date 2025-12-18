@@ -1,8 +1,16 @@
 //! Unified Inbox page - Gmail-style view of ALL messages across ALL projects.
 //! Uses the /mail/api/unified-inbox API from s0j task.
+//!
+//! Features:
+//! - SplitViewLayout for Gmail-style two-column view on desktop
+//! - FilterBar with search, project, sender, importance filters
+//! - InlineMessageDetail for viewing messages without navigation
+//! - Mobile fallback with card-based list
 
 use crate::api::client::{self, UnifiedInboxMessage};
-use crate::components::{AgentAvatar, FilterBar, FilterState};
+use crate::components::{
+    EmptyDetailPanel, FilterBar, FilterState, InlineMessageDetail, MessageListItem, SplitViewLayout,
+};
 use leptos::prelude::*;
 
 /// Unified Inbox page component.
@@ -14,6 +22,7 @@ pub fn UnifiedInbox() -> impl IntoView {
     let loading = RwSignal::new(true);
     let error = RwSignal::new(Option::<String>::None);
     let filter_state = RwSignal::new(FilterState::new());
+    let selected_id = RwSignal::new(Option::<i64>::None);
 
     // Load all messages once on mount
     Effect::new(move |_| {
@@ -93,6 +102,42 @@ pub fn UnifiedInbox() -> impl IntoView {
     // Message count for FilterBar
     let message_count = Signal::derive(move || messages.get().len());
 
+    // Convert messages to MessageListItem format for SplitViewLayout
+    let message_list_items = Signal::derive(move || {
+        messages
+            .get()
+            .iter()
+            .map(|msg| MessageListItem {
+                id: msg.id,
+                sender: msg.sender_name.clone(),
+                subject: msg.subject.clone(),
+                timestamp: format_date(&msg.created_ts),
+                unread: false, // TODO: Track read state
+                importance: msg.importance.clone(),
+                project_slug: msg.project_id.to_string(), // Use project_id as identifier
+            })
+            .collect::<Vec<_>>()
+    });
+
+    // Get project ID for selected message (used for InlineMessageDetail)
+    let selected_project = Signal::derive(move || {
+        if let Some(id) = selected_id.get() {
+            messages
+                .get()
+                .iter()
+                .find(|m| m.id == id)
+                .map(|m| m.project_id.to_string())
+                .unwrap_or_default()
+        } else {
+            String::new()
+        }
+    });
+
+    // Handle message selection
+    let on_select = Callback::new(move |id: i64| {
+        selected_id.set(Some(id));
+    });
+
     view! {
         <div class="space-y-6">
             // Header
@@ -145,93 +190,31 @@ pub fn UnifiedInbox() -> impl IntoView {
                 }
             }}
 
-            // Messages List
+            // SplitViewLayout - Gmail-style two-column view
             {move || {
-                let msgs = messages.get();
-                if !loading.get() && msgs.is_empty() {
+                if !loading.get() {
+                    let items = message_list_items.get();
+                    let selected_signal: Signal<Option<i64>> = selected_id.into();
                     Some(view! {
-                        <div class="card-elevated p-12 text-center">
-                            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-cream-200 dark:bg-charcoal-700 mb-6">
-                                <i data-lucide="inbox" class="icon-2xl text-charcoal-400"></i>
-                            </div>
-                            <h3 class="font-display text-xl font-semibold text-charcoal-800 dark:text-cream-100 mb-2">"No messages"</h3>
-                            <p class="text-charcoal-500 dark:text-charcoal-400">
-                                "Your unified inbox is empty."
-                            </p>
-                        </div>
-                    }.into_any())
-                } else if !msgs.is_empty() {
-                    Some(view! {
-                        <div class="space-y-3">
-                            {msgs.into_iter().map(|msg| {
-                                let id = msg.id;
-                                let subject = msg.subject.clone();
-                                let sender = msg.sender_name.clone();
-                                let importance = msg.importance.clone();
-                                let created = msg.created_ts.clone();
-                                let thread_id = msg.thread_id.clone();
-
-                                let sender_for_avatar = sender.clone();
-                                view! {
-                                    <a
-                                        href={format!("/inbox/{}?project={}", id, msg.project_id)}
-                                        class="block card-elevated p-4 hover:shadow-lg transition-all duration-200 group"
-                                    >
-                                        <div class="flex items-start gap-4">
-                                            // Sender Avatar
-                                            <div class="flex-shrink-0 relative">
-                                                <AgentAvatar name=sender_for_avatar size="md" />
-                                                {if importance == "high" {
-                                                    Some(view! {
-                                                        <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-charcoal-800"></span>
-                                                    })
-                                                } else {
-                                                    None
-                                                }}
-                                            </div>
-
-                                            // Content
-                                            <div class="flex-1 min-w-0">
-                                                <div class="flex items-center justify-between gap-2 mb-1">
-                                                    <span class="font-medium text-charcoal-800 dark:text-cream-100 truncate group-hover:text-amber-600">
-                                                        {subject}
-                                                    </span>
-                                                    {if importance == "high" {
-                                                        Some(view! {
-                                                            <span class="badge badge-red flex-shrink-0">
-                                                                <i data-lucide="alert-circle" class="icon-xs"></i>
-                                                                "High"
-                                                            </span>
-                                                        })
-                                                    } else {
-                                                        None
-                                                    }}
-                                                </div>
-                                                <div class="flex items-center gap-3 text-sm text-charcoal-500 dark:text-charcoal-400">
-                                                    <span class="flex items-center gap-1">
-                                                        {sender}
-                                                    </span>
-                                                    <span class="flex items-center gap-1">
-                                                        <i data-lucide="calendar" class="icon-xs"></i>
-                                                        {format_date(&created)}
-                                                    </span>
-                                                    {thread_id.map(|tid| view! {
-                                                        <span class="flex items-center gap-1">
-                                                            <i data-lucide="git-branch" class="icon-xs"></i>
-                                                            {tid}
-                                                        </span>
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            // Arrow
-                                            <i data-lucide="chevron-right" class="icon-lg text-charcoal-300 group-hover:text-amber-500 transition-colors"></i>
-                                        </div>
-                                    </a>
+                        <SplitViewLayout
+                            messages=items
+                            selected_id=selected_signal
+                            on_select=on_select
+                        >
+                            {move || {
+                                if let Some(id) = selected_id.get() {
+                                    view! {
+                                        <InlineMessageDetail
+                                            message_id=Signal::derive(move || id)
+                                            project_slug=selected_project
+                                        />
+                                    }.into_any()
+                                } else {
+                                    view! { <EmptyDetailPanel /> }.into_any()
                                 }
-                            }).collect::<Vec<_>>()}
-                        </div>
-                    }.into_any())
+                            }}
+                        </SplitViewLayout>
+                    })
                 } else {
                     None
                 }
