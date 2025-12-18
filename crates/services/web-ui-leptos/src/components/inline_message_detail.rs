@@ -4,17 +4,11 @@
 //! embedded in a split view panel.
 
 use crate::api::client::{self, Message};
-use crate::components::MessageDetailHeader;
+use crate::components::{
+    Alert, AlertDescription, AlertTitle, AlertVariant, Badge, BadgeVariant, MessageDetailHeader,
+    Skeleton,
+};
 use leptos::prelude::*;
-
-/// Get badge class for importance level
-fn get_importance_badge(importance: &str) -> &'static str {
-    match importance {
-        "high" => "badge-red",
-        "low" => "bg-charcoal-100 dark:bg-charcoal-700 text-charcoal-600 dark:text-charcoal-400",
-        _ => "badge-teal",
-    }
-}
 
 /// Inline message detail component for embedding in split view.
 ///
@@ -71,11 +65,11 @@ pub fn InlineMessageDetail(
             // Error
             {move || {
                 error.get().map(|e| view! {
-                    <div class="m-4 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-                        <div class="flex items-start gap-3">
-                            <i data-lucide="triangle-alert" class="icon-lg text-red-500"></i>
-                            <p class="text-red-700 dark:text-red-400">{e}</p>
-                        </div>
+                    <div class="p-4">
+                        <Alert variant=AlertVariant::Destructive>
+                            <AlertTitle>"Error loading message"</AlertTitle>
+                            <AlertDescription>{e}</AlertDescription>
+                        </Alert>
                     </div>
                 })
             }}
@@ -84,10 +78,18 @@ pub fn InlineMessageDetail(
             {move || {
                 if loading.get() {
                     Some(view! {
-                        <div class="flex-1 flex items-center justify-center">
-                            <div class="flex flex-col items-center gap-4">
-                                <i data-lucide="loader-2" class="icon-2xl text-amber-500 animate-spin"></i>
-                                <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">"Loading message..."</p>
+                        <div class="flex-1 p-6 space-y-6">
+                            <div class="flex items-start gap-4">
+                                <Skeleton class="w-12 h-12 rounded-full" />
+                                <div class="space-y-2 flex-1">
+                                    <Skeleton class="h-6 w-3/4" />
+                                    <Skeleton class="h-4 w-1/2" />
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <Skeleton class="h-4 w-full" />
+                                <Skeleton class="h-4 w-full" />
+                                <Skeleton class="h-4 w-2/3" />
                             </div>
                         </div>
                     })
@@ -125,31 +127,31 @@ pub fn InlineMessageDetail(
                                 // Badges
                                 <div class="px-6 py-3 border-b border-cream-200 dark:border-charcoal-700 flex flex-wrap items-center gap-2">
                                     {if importance != "normal" {
-                                        let badge_class = get_importance_badge(&importance);
+                                        let variant = if importance == "high" { BadgeVariant::Destructive } else { BadgeVariant::Secondary };
                                         Some(view! {
-                                            <span class={format!("badge {}", badge_class)}>
+                                            <Badge variant=variant class="flex items-center gap-1">
                                                 <i data-lucide={if importance == "high" { "alert-circle" } else { "minus-circle" }} class="icon-xs"></i>
                                                 {importance.clone()} " priority"
-                                            </span>
+                                            </Badge>
                                         })
                                     } else {
                                         None
                                     }}
                                     {if ack_required {
                                         Some(view! {
-                                            <span class="badge badge-amber flex items-center gap-1">
+                                            <Badge variant=BadgeVariant::Warning class="flex items-center gap-1">
                                                 <i data-lucide="check-circle" class="icon-xs"></i>
                                                 "Ack required"
-                                            </span>
+                                            </Badge>
                                         })
                                     } else {
                                         None
                                     }}
-                                    {thread_id.as_ref().map(|tid| view! {
-                                        <span class="badge badge-violet flex items-center gap-1">
+                                    {thread_id.clone().map(|tid| view! {
+                                        <Badge variant=BadgeVariant::Outline class="flex items-center gap-1">
                                             <i data-lucide="git-branch" class="icon-xs"></i>
-                                            {tid.clone()}
-                                        </span>
+                                            {tid}
+                                        </Badge>
                                     })}
                                 </div>
 
@@ -190,30 +192,5 @@ pub fn InlineMessageDetail(
                 }
             }}
         </div>
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_importance_badge_high() {
-        assert_eq!(get_importance_badge("high"), "badge-red");
-    }
-
-    #[test]
-    fn test_get_importance_badge_low() {
-        assert!(get_importance_badge("low").contains("charcoal"));
-    }
-
-    #[test]
-    fn test_get_importance_badge_normal() {
-        assert_eq!(get_importance_badge("normal"), "badge-teal");
-    }
-
-    #[test]
-    fn test_get_importance_badge_unknown() {
-        assert_eq!(get_importance_badge("unknown"), "badge-teal");
     }
 }

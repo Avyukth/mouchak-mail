@@ -9,7 +9,8 @@
 
 use crate::api::client::{self, UnifiedInboxMessage};
 use crate::components::{
-    EmptyDetailPanel, FilterBar, FilterState, InlineMessageDetail, MessageListItem, SplitViewLayout,
+    Alert, AlertDescription, AlertTitle, AlertVariant, EmptyDetailPanel, FilterBar, FilterState,
+    InlineMessageDetail, MessageListItem, Skeleton, SplitViewLayout,
 };
 use leptos::prelude::*;
 
@@ -165,12 +166,10 @@ pub fn UnifiedInbox() -> impl IntoView {
             // Error
             {move || {
                 error.get().map(|e| view! {
-                    <div class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
-                        <div class="flex items-start gap-3">
-                            <i data-lucide="triangle-alert" class="icon-lg text-red-500"></i>
-                            <p class="text-red-700 dark:text-red-400">{e}</p>
-                        </div>
-                    </div>
+                    <Alert variant=AlertVariant::Destructive>
+                        <AlertTitle>"Error loading messages"</AlertTitle>
+                        <AlertDescription>{e}</AlertDescription>
+                    </Alert>
                 })
             }}
 
@@ -178,10 +177,13 @@ pub fn UnifiedInbox() -> impl IntoView {
             {move || {
                 if loading.get() {
                     Some(view! {
-                        <div class="flex items-center justify-center py-16">
-                            <div class="flex flex-col items-center gap-4">
-                                <i data-lucide="loader-2" class="icon-2xl text-amber-500 animate-spin"></i>
-                                <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">"Loading messages..."</p>
+                        <div class="space-y-4">
+                            <div class="h-16 w-full">
+                                <Skeleton class="h-full w-full" />
+                            </div>
+                            <div class="flex flex-col lg:flex-row gap-4 h-[calc(100vh-14rem)]">
+                                <Skeleton class="h-full w-full lg:w-[35%]" />
+                                <Skeleton class="hidden lg:block h-full w-[65%]" />
                             </div>
                         </div>
                     })

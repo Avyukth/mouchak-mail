@@ -3,6 +3,7 @@
 //! Provides a two-column layout with message list (35%) and detail panel (65%).
 //! Responsive design with mobile single-column fallback.
 
+use crate::components::{AgentAvatar, AvatarSize};
 use leptos::prelude::*;
 
 /// Props for message list items
@@ -70,34 +71,38 @@ pub fn MessageListItemView(
             )}
             on:click=move |_| on_click.run(id)
         >
-            <div class="flex items-start justify-between gap-2">
+            <div class="flex items-start gap-3">
+                <AgentAvatar name={sender.clone()} size=AvatarSize::Sm />
+
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        {if unread {
-                            Some(view! {
-                                <span class="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></span>
-                            })
-                        } else {
-                            None
-                        }}
-                        <span class="truncate text-charcoal-700 dark:text-cream-200">
-                            {sender}
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            {if unread {
+                                Some(view! {
+                                    <span class="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0" title="Unread"></span>
+                                })
+                            } else {
+                                None
+                            }}
+                            <span class="truncate text-charcoal-700 dark:text-cream-200 text-sm font-medium">
+                                {sender}
+                            </span>
+                            {if importance == "high" {
+                                Some(view! {
+                                    <i data-lucide="alert-circle" class="icon-xs text-rose-500 flex-shrink-0" title="High Importance"></i>
+                                })
+                            } else {
+                                None
+                            }}
+                        </div>
+                        <span class="text-xs text-charcoal-400 dark:text-charcoal-500 whitespace-nowrap flex-shrink-0">
+                            {timestamp}
                         </span>
-                        {if importance == "high" {
-                            Some(view! {
-                                <i data-lucide="alert-circle" class="icon-xs text-rose-500 flex-shrink-0"></i>
-                            })
-                        } else {
-                            None
-                        }}
                     </div>
-                    <p class="text-sm text-charcoal-600 dark:text-charcoal-300 truncate mt-1">
+                    <p class="text-sm text-charcoal-600 dark:text-charcoal-300 truncate mt-0.5">
                         {subject}
                     </p>
                 </div>
-                <span class="text-xs text-charcoal-400 dark:text-charcoal-500 whitespace-nowrap">
-                    {timestamp}
-                </span>
             </div>
         </button>
     }
