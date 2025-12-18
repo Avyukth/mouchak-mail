@@ -2392,3 +2392,167 @@ pub async fn list_project_siblings(
 
     Ok(Json(responses).into_response())
 }
+
+// --- list_pending_reviews ---
+// Single-call API for LLM agents to retrieve messages awaiting acknowledgment
+
+#[derive(Deserialize)]
+pub struct ListPendingReviewsQuery {
+    /// Filter by project slug (optional)
+    pub project: Option<String>,
+    /// Filter by sender agent name (optional)
+    pub sender: Option<String>,
+    /// Maximum results (default: 5, max: 50)
+    #[serde(default = "default_pending_reviews_limit")]
+    pub limit: i64,
+}
+
+fn default_pending_reviews_limit() -> i64 {
+    5
+}
+
+#[derive(Serialize)]
+pub struct SenderInfo {
+    pub id: i64,
+    pub name: String,
+}
+
+#[derive(Serialize)]
+pub struct ProjectInfo {
+    pub id: i64,
+    pub slug: String,
+    pub name: String,
+}
+
+#[derive(Serialize)]
+pub struct ThreadInfo {
+    pub id: String,
+    pub message_count: i64,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RecipientStatus {
+    pub agent_id: i64,
+    pub agent_name: String,
+    pub recipient_type: String,
+    #[serde(default)]
+    pub status: String,
+    pub read_ts: Option<String>,
+    pub ack_ts: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct PendingReview {
+    pub message_id: i64,
+    pub subject: String,
+    pub body_md: String,
+    pub importance: String,
+    pub created_ts: String,
+    pub attachments: Vec<serde_json::Value>,
+    pub sender: SenderInfo,
+    pub project: ProjectInfo,
+    pub thread: Option<ThreadInfo>,
+    pub recipients: Vec<RecipientStatus>,
+    pub pending_count: usize,
+    pub read_count: usize,
+}
+
+#[derive(Serialize)]
+pub struct PendingReviewsResponse {
+    pub pending_reviews: Vec<PendingReview>,
+    pub total_count: usize,
+}
+
+pub async fn list_pending_reviews(
+    State(app_state): State<AppState>,
+    Query(params): Query<ListPendingReviewsQuery>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    // Resolve project_id from slug if provided
+    let project_id = if let Some(ref slug) = params.project {
+        let project =
+            lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, slug).await?;
+        Some(project.id)
+    } else {
+        None
+    };
+
+    // Resolve sender_id from name if provided (requires project context)
+    let sender_id = if let Some(ref sender_name) = params.sender {
+        if let Some(pid) = project_id {
+            let agent =
+                lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, pid, sender_name).await?;
+            Some(agent.id)
+        } else {
+            // If no project specified, we can't resolve sender by name
+            None
+        }
+    } else {
+        None
+    };
+
+    let rows = lib_core::model::message::MessageBmc::list_pending_reviews(
+        &ctx,
+        mm,
+        project_id,
+        sender_id,
+        params.limit,
+    )
+    .await?;
+
+    // Transform rows into response structs
+    let pending_reviews: Vec<PendingReview> = rows
+        .into_iter()
+        .map(|row| {
+            // Parse recipients JSON
+            let recipients: Vec<RecipientStatus> =
+                serde_json::from_str(&row.recipients_json).unwrap_or_default();
+
+            // Parse attachments
+            let attachments: Vec<serde_json::Value> =
+                serde_json::from_str(&row.attachments).unwrap_or_default();
+
+            // Calculate counts
+            let pending_count = recipients.iter().filter(|r| r.ack_ts.is_none()).count();
+            let read_count = recipients.iter().filter(|r| r.read_ts.is_some()).count();
+
+            // Build thread info if present
+            let thread = row.thread_id.as_ref().map(|tid| ThreadInfo {
+                id: tid.clone(),
+                message_count: row.thread_count,
+            });
+
+            PendingReview {
+                message_id: row.message_id,
+                subject: row.subject,
+                body_md: row.body_md,
+                importance: row.importance,
+                created_ts: row.created_ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
+                attachments,
+                sender: SenderInfo {
+                    id: row.sender_id,
+                    name: row.sender_name,
+                },
+                project: ProjectInfo {
+                    id: row.project_id,
+                    slug: row.project_slug,
+                    name: row.project_name,
+                },
+                thread,
+                recipients,
+                pending_count,
+                read_count,
+            }
+        })
+        .collect();
+
+    let total_count = pending_reviews.len();
+
+    Ok(Json(PendingReviewsResponse {
+        pending_reviews,
+        total_count,
+    })
+    .into_response())
+}

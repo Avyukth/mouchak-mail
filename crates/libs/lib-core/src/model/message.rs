@@ -103,6 +103,25 @@ pub struct MessageForCreate {
     pub importance: Option<String>,
 }
 
+/// Raw row from list_pending_reviews query with all nested data
+#[derive(Debug, Clone, Serialize)]
+pub struct PendingReviewRow {
+    pub message_id: i64,
+    pub subject: String,
+    pub body_md: String,
+    pub importance: String,
+    pub created_ts: NaiveDateTime,
+    pub attachments: String, // JSON string
+    pub thread_id: Option<String>,
+    pub sender_id: i64,
+    pub sender_name: String,
+    pub project_id: i64,
+    pub project_slug: String,
+    pub project_name: String,
+    pub thread_count: i64,
+    pub recipients_json: String, // JSON array string
+}
+
 /// Backend Model Controller for Message operations.
 ///
 /// Provides methods for message lifecycle including creation, retrieval,
@@ -744,6 +763,133 @@ impl MessageBmc {
             });
         }
         Ok(messages)
+    }
+
+    /// List messages requiring acknowledgment that haven't been fully acknowledged.
+    ///
+    /// Returns complete message details including sender info, project context,
+    /// thread info, and per-recipient status. This is designed for a single-call
+    /// retrieval of all pending reviews with full context.
+    ///
+    /// # Arguments
+    /// * `_ctx` - Request context (for future ACL)
+    /// * `mm` - ModelManager providing database access
+    /// * `project_id` - Optional filter by project
+    /// * `sender_id` - Optional filter by sender
+    /// * `limit` - Maximum results (clamped to 1-50)
+    ///
+    /// # Returns
+    /// Vector of PendingReviewRow with all nested data
+    pub async fn list_pending_reviews(
+        _ctx: &Ctx,
+        mm: &ModelManager,
+        project_id: Option<i64>,
+        sender_id: Option<i64>,
+        limit: i64,
+    ) -> Result<Vec<PendingReviewRow>> {
+        let db = mm.db();
+        let limit_clamped = limit.clamp(1, 50);
+
+        // Build query with optional filters
+        let mut query = String::from(
+            r#"
+            SELECT
+                m.id as message_id,
+                m.subject,
+                m.body_md,
+                m.importance,
+                m.created_ts,
+                m.attachments,
+                m.thread_id,
+                m.sender_id,
+                sender.name as sender_name,
+                p.id as project_id,
+                p.slug as project_slug,
+                p.human_key as project_name,
+                (SELECT COUNT(*) FROM messages m2
+                 WHERE m2.thread_id = m.thread_id AND m.thread_id IS NOT NULL) as thread_count,
+                (
+                    SELECT json_group_array(json_object(
+                        'agent_id', mr.agent_id,
+                        'agent_name', a.name,
+                        'recipient_type', mr.recipient_type,
+                        'read_ts', mr.read_ts,
+                        'ack_ts', mr.ack_ts
+                    ))
+                    FROM message_recipients mr
+                    JOIN agents a ON mr.agent_id = a.id
+                    WHERE mr.message_id = m.id
+                ) as recipients_json
+            FROM messages m
+            JOIN agents sender ON m.sender_id = sender.id
+            JOIN projects p ON m.project_id = p.id
+            WHERE
+                m.ack_required = TRUE
+                AND EXISTS (
+                    SELECT 1 FROM message_recipients mr2
+                    WHERE mr2.message_id = m.id AND mr2.ack_ts IS NULL
+                )
+            "#,
+        );
+
+        let mut params: Vec<libsql::Value> = Vec::new();
+
+        if let Some(pid) = project_id {
+            query.push_str(" AND m.project_id = ?");
+            params.push(pid.into());
+        }
+
+        if let Some(sid) = sender_id {
+            query.push_str(" AND m.sender_id = ?");
+            params.push(sid.into());
+        }
+
+        query.push_str(" ORDER BY m.created_ts DESC LIMIT ?");
+        params.push(limit_clamped.into());
+
+        let stmt = db.prepare(&query).await?;
+        let mut rows = stmt
+            .query(libsql::params::Params::Positional(params))
+            .await?;
+
+        let mut results = Vec::new();
+        while let Some(row) = rows.next().await? {
+            let message_id: i64 = row.get(0)?;
+            let subject: String = row.get(1)?;
+            let body_md: String = row.get(2)?;
+            let importance: String = row.get(3)?;
+            let created_ts_str: String = row.get(4)?;
+            let created_ts = NaiveDateTime::parse_from_str(&created_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+            let attachments_str: String = row.get(5)?;
+            let thread_id: Option<String> = row.get(6)?;
+            let sender_id: i64 = row.get(7)?;
+            let sender_name: String = row.get(8)?;
+            let project_id: i64 = row.get(9)?;
+            let project_slug: String = row.get(10)?;
+            let project_name: String = row.get(11)?;
+            let thread_count: i64 = row.get(12)?;
+            let recipients_json: String = row.get(13)?;
+
+            results.push(PendingReviewRow {
+                message_id,
+                subject,
+                body_md,
+                importance,
+                created_ts,
+                attachments: attachments_str,
+                thread_id,
+                sender_id,
+                sender_name,
+                project_id,
+                project_slug,
+                project_name,
+                thread_count,
+                recipients_json,
+            });
+        }
+
+        Ok(results)
     }
 
     /// List messages across ALL projects (unified inbox)

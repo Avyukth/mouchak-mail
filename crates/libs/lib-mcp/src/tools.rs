@@ -939,6 +939,32 @@ pub fn get_tool_schemas() -> Vec<ToolSchema> {
                 },
             ],
         },
+        ToolSchema {
+            name: "list_pending_reviews".into(),
+            description:
+                "List messages requiring acknowledgment that haven't been fully acknowledged."
+                    .into(),
+            parameters: vec![
+                ParameterSchema {
+                    name: "project_slug".into(),
+                    param_type: "string".into(),
+                    required: false,
+                    description: "Filter by project slug".into(),
+                },
+                ParameterSchema {
+                    name: "sender_name".into(),
+                    param_type: "string".into(),
+                    required: false,
+                    description: "Filter by sender agent name (requires project_slug)".into(),
+                },
+                ParameterSchema {
+                    name: "limit".into(),
+                    param_type: "integer".into(),
+                    required: false,
+                    description: "Maximum results (default 5, max 50)".into(),
+                },
+            ],
+        },
     ]
 }
 
@@ -1842,6 +1868,16 @@ pub struct ListActivityParams {
     /// Project ID
     pub project_id: i64,
     /// Maximum number of results
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ListPendingReviewsParams {
+    /// Filter by project slug (optional)
+    pub project_slug: Option<String>,
+    /// Filter by sender agent name (optional, requires project_slug)
+    pub sender_name: Option<String>,
+    /// Maximum results (default: 5, max: 50)
     pub limit: Option<i64>,
 }
 
@@ -4270,6 +4306,52 @@ exit 0
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
         let json_str = serde_json::to_string_pretty(&items)
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+        Ok(CallToolResult::success(vec![Content::text(json_str)]))
+    }
+
+    /// List messages requiring acknowledgment that haven't been fully acknowledged
+    #[tool(
+        description = "List messages requiring acknowledgment that haven't been fully acknowledged. Returns complete message details, sender info, project context, and per-recipient status in a single call."
+    )]
+    async fn list_pending_reviews(
+        &self,
+        params: Parameters<ListPendingReviewsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let ctx = self.ctx();
+        let p = params.0;
+
+        // Resolve project_id from slug if provided
+        let project_id = if let Some(ref slug) = p.project_slug {
+            let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, slug)
+                .await
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            Some(project.id)
+        } else {
+            None
+        };
+
+        // Resolve sender_id from name if provided (requires project context)
+        let sender_id = if let Some(ref sender_name) = p.sender_name {
+            if let Some(pid) = project_id {
+                let agent = AgentBmc::get_by_name(&ctx, &self.mm, pid, sender_name)
+                    .await
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                Some(agent.id)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let limit = p.limit.unwrap_or(5);
+        let rows = MessageBmc::list_pending_reviews(&ctx, &self.mm, project_id, sender_id, limit)
+            .await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+        let json_str = serde_json::to_string_pretty(&rows)
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
         Ok(CallToolResult::success(vec![Content::text(json_str)]))

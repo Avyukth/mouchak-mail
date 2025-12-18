@@ -56,6 +56,12 @@ pub fn routes() -> Router<AppState> {
         .route("/api/acknowledge_message", post(tools::acknowledge_message)) // Python alias
         .route("/api/messages/search", post(tools::search_messages))
         .route("/api/search_messages", post(tools::search_messages)) // Python alias
+        // Pending Reviews (ack_required messages awaiting acknowledgment)
+        .route(
+            "/api/messages/pending-reviews",
+            get(tools::list_pending_reviews),
+        )
+        .route("/api/pending_reviews", get(tools::list_pending_reviews)) // Python alias
         .route("/api/inbox", post(tools::list_inbox))
         .route("/api/fetch_inbox", post(tools::list_inbox)) // Python alias
         .route("/api/list_inbox", post(tools::list_inbox)) // Python alias
