@@ -1,6 +1,6 @@
+use axum::http::header::{HeaderName, HeaderValue};
 use axum::routing::get;
 use axum::{Router, extract::State, http::StatusCode, response::IntoResponse};
-use axum::http::header::{HeaderName, HeaderValue};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use std::net::SocketAddr;
 use std::sync::OnceLock;
@@ -125,7 +125,9 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
         // 5. Security Headers (Hardening CSP/XSS Protection)
         .layer(SetResponseHeaderLayer::overriding(
             HeaderName::from_static("content-security-policy"),
-            HeaderValue::from_static("script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'"),
+            HeaderValue::from_static(
+                "script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'",
+            ),
         ))
         .layer(SetResponseHeaderLayer::overriding(
             HeaderName::from_static("x-frame-options"),
