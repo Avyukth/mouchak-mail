@@ -160,6 +160,12 @@ pub enum Error {
     /// The contained i64 is the build slot ID that was not found.
     #[error("Build slot not found: {0}")]
     BuildSlotNotFound(i64),
+
+    /// Lock acquisition timeout.
+    ///
+    /// Returned when a file lock cannot be acquired within the timeout period.
+    #[error("Lock timeout on {path}, held by PID {owner_pid}")]
+    LockTimeout { path: String, owner_pid: u32 },
 }
 
 /// A specialized [`Result`] type for lib-core operations.

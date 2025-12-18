@@ -111,6 +111,9 @@ pub mod git_store;
 /// LRU cache for repository handles (PORT-2.1, SC-5 DoS protection).
 pub mod repo_cache;
 
+/// Stale lock cleanup for archive operations (PORT-2.2, AU-9 audit protection).
+pub mod archive_lock;
+
 /// Creates a new database connection pool with migrations applied.
 ///
 /// This function:
