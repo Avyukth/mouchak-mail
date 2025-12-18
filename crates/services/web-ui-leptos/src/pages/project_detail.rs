@@ -2,6 +2,7 @@
 //! Digital Correspondence design with Lucide icons.
 
 use crate::api::client::{self, Agent};
+use crate::components::{Breadcrumb, BreadcrumbItem};
 use leptos::prelude::*;
 use leptos_router::hooks::use_params_map;
 
@@ -110,15 +111,11 @@ pub fn ProjectDetail() -> impl IntoView {
 
     view! {
         <div class="space-y-6">
-            // Breadcrumb
-            <nav class="flex items-center gap-2 text-sm text-charcoal-500 dark:text-charcoal-400">
-                <a href="/projects" class="flex items-center gap-1 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
-                    <i data-lucide="folder-open" class="icon-sm"></i>
-                    "Projects"
-                </a>
-                <i data-lucide="chevron-right" class="icon-xs text-charcoal-400"></i>
-                <span class="text-charcoal-800 dark:text-cream-100 font-medium">{slug}</span>
-            </nav>
+            // Breadcrumb using reusable component
+            <Breadcrumb items={vec![
+                BreadcrumbItem::new("Projects", "/projects"),
+                BreadcrumbItem::new(slug(), ""),
+            ]} />
 
             // Header
             <div class="flex items-center justify-between">
@@ -129,13 +126,22 @@ pub fn ProjectDetail() -> impl IntoView {
                     </h1>
                     <p class="text-charcoal-500 dark:text-charcoal-400">"Agents in this project"</p>
                 </div>
-                <button
-                    on:click=move |_| show_new_form.update(|v| *v = !*v)
-                    class="btn-primary flex items-center gap-2"
-                >
-                    <i data-lucide="user-plus" class="icon-sm"></i>
-                    <span>"Register Agent"</span>
-                </button>
+                <div class="flex items-center gap-3">
+                    <a
+                        href={move || format!("/projects/{}/file-reservations", slug())}
+                        class="btn-secondary flex items-center gap-2"
+                    >
+                        <i data-lucide="shield" class="icon-sm"></i>
+                        "File Reservations"
+                    </a>
+                    <button
+                        on:click=move |_| show_new_form.update(|v| *v = !*v)
+                        class="btn-primary flex items-center gap-2"
+                    >
+                        <i data-lucide="user-plus" class="icon-sm"></i>
+                        <span>"Register Agent"</span>
+                    </button>
+                </div>
             </div>
 
             // New Agent Form

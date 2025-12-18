@@ -438,3 +438,43 @@ pub async fn search_messages(project_slug: &str, query: &str) -> Result<Vec<Mess
         })
     }
 }
+
+/// File reservation response from API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileReservationResponse {
+    pub id: i64,
+    pub agent_name: String,
+    pub path_pattern: String,
+    pub exclusive: bool,
+    pub reason: Option<String>,
+    pub created_ts: String,
+    pub expires_ts: Option<String>,
+    #[serde(default)]
+    pub expired: bool,
+}
+
+/// Get file reservations for a project.
+pub async fn get_file_reservations(
+    project_slug: &str,
+) -> Result<Vec<FileReservationResponse>, ApiError> {
+    let url = format!("{}/api/file_reservations/list", API_BASE_URL);
+
+    #[derive(Serialize)]
+    struct Payload<'a> {
+        project_slug: &'a str,
+    }
+
+    let response = Request::post(&url)
+        .header("Content-Type", "application/json")
+        .json(&Payload { project_slug })?
+        .send()
+        .await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to get reservations: {}", response.status()),
+        })
+    }
+}
