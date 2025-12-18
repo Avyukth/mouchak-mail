@@ -15,6 +15,7 @@ pub mod layout;
 pub mod message_detail_header;
 pub mod project_card;
 pub mod select;
+pub mod separator;
 pub mod skeleton;
 pub mod split_view;
 
@@ -37,5 +38,6 @@ pub use layout::Layout;
 pub use message_detail_header::MessageDetailHeader;
 pub use project_card::{ProjectCard, ProjectStatus, determine_project_status};
 pub use select::{Select, SelectOption};
+pub use separator::{Orientation, Separator};
 pub use skeleton::Skeleton;
 pub use split_view::{EmptyDetailPanel, MessageListItem, SplitViewLayout};
