@@ -7,6 +7,7 @@ pub mod breadcrumb;
 pub mod button;
 pub mod card;
 pub mod compose_message;
+pub mod dialog;
 pub mod filter_bar;
 pub mod inline_message_detail;
 pub mod input;
@@ -24,6 +25,11 @@ pub use breadcrumb::{Breadcrumb, BreadcrumbItem};
 pub use button::{Button, ButtonSize, ButtonVariant};
 pub use card::{Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle};
 pub use compose_message::{ComposeMessage, ComposeProps, ReplyTo};
+pub use dialog::{
+    Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    DialogTrigger,
+};
+
 pub use filter_bar::{FilterBar, FilterState};
 pub use inline_message_detail::InlineMessageDetail;
 pub use input::Input;
