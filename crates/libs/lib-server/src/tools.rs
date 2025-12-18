@@ -167,8 +167,8 @@ pub struct SendMessagePayload {
     pub body_md: String,
     pub thread_id: Option<String>,
     pub importance: Option<String>,
+    /// Whether recipients must acknowledge this message (default: false)
     #[serde(default)]
-    #[allow(dead_code)]
     pub ack_required: bool,
 }
 
@@ -244,6 +244,7 @@ pub async fn send_message(
         body_md: payload.body_md,
         thread_id: payload.thread_id,
         importance: payload.importance,
+        ack_required: payload.ack_required,
     };
 
     let message_id = lib_core::model::message::MessageBmc::create(&ctx, mm, msg_c).await?;
@@ -992,6 +993,7 @@ pub async fn reply_message(
         body_md: payload.body_md,
         thread_id,
         importance: payload.importance,
+        ack_required: false, // Replies don't require ack by default
     };
 
     let message_id = lib_core::model::message::MessageBmc::create(&ctx, mm, msg_c).await?;

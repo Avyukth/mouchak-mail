@@ -76,6 +76,7 @@ async fn setup_test_data(mm: &ModelManager) -> (i64, i64, i64) {
         body_md: "First message in thread 1".to_string(),
         thread_id: Some("THREAD-001".to_string()),
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&ctx, mm, msg1).await.unwrap();
 
@@ -89,6 +90,7 @@ async fn setup_test_data(mm: &ModelManager) -> (i64, i64, i64) {
         body_md: "Reply in thread 1".to_string(),
         thread_id: Some("THREAD-001".to_string()),
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&ctx, mm, msg2).await.unwrap();
 
@@ -102,6 +104,7 @@ async fn setup_test_data(mm: &ModelManager) -> (i64, i64, i64) {
         body_md: "Message in thread 2".to_string(),
         thread_id: Some("THREAD-002".to_string()),
         importance: Some("high".to_string()),
+        ack_required: false,
     };
     MessageBmc::create(&ctx, mm, msg3).await.unwrap();
 

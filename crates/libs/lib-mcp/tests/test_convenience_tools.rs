@@ -111,6 +111,7 @@ async fn test_quick_standup_sends_to_all_agents() {
         body_md: "What are you working on?".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
@@ -162,6 +163,7 @@ async fn test_quick_handoff_sends_message() {
         body_md: "Taking over feature X development.\n\nFiles: src/main.rs".to_string(),
         thread_id: Some("HANDOFF-FEATURE-X".to_string()),
         importance: Some("high".to_string()),
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&ctx, &mm, handoff_msg).await.unwrap();
@@ -228,6 +230,7 @@ async fn test_quick_review_reserves_files_and_sends_message() {
         body_md: "Please review src/main.rs\n\nDescription: Added new feature".to_string(),
         thread_id: Some("REVIEW-MAIN-RS".to_string()),
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&ctx, &mm, review_msg).await.unwrap();

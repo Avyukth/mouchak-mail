@@ -66,6 +66,7 @@ async fn test_send_message() {
         body_md: "Hello, this is a test message.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
@@ -93,6 +94,7 @@ async fn test_get_message() {
         body_md: "This is important content.".to_string(),
         thread_id: None,
         importance: Some("high".to_string()),
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
@@ -124,6 +126,7 @@ async fn test_message_threading() {
         body_md: "Starting a thread".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     let initial_id = MessageBmc::create(&tc.ctx, &tc.mm, initial_msg_c)
         .await
@@ -143,6 +146,7 @@ async fn test_message_threading() {
         body_md: "This is a reply".to_string(),
         thread_id: initial.thread_id.clone(),
         importance: None,
+        ack_required: false,
     };
     let reply_id = MessageBmc::create(&tc.ctx, &tc.mm, reply_msg_c)
         .await
@@ -175,6 +179,7 @@ async fn test_search_messages() {
         body_md: "We need to implement FTS5 full-text search for messages.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
 
@@ -188,6 +193,7 @@ async fn test_search_messages() {
         body_md: "The REST API should follow JSON:API spec.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
@@ -201,6 +207,7 @@ async fn test_search_messages() {
         body_md: "Full-text search queries should be fast.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg3_c).await.unwrap();
 
@@ -241,6 +248,7 @@ async fn test_mark_message_read() {
         body_md: "This message should be marked as read.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
 
@@ -272,6 +280,7 @@ async fn test_acknowledge_message() {
         body_md: "Please acknowledge this message.".to_string(),
         thread_id: None,
         importance: Some("high".to_string()),
+        ack_required: false,
     };
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
 
@@ -303,6 +312,7 @@ async fn test_list_threads() {
         body_md: "Starting thread A".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     let msg1_id = MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
     let msg1 = MessageBmc::get(&tc.ctx, &tc.mm, msg1_id).await.unwrap();
@@ -318,6 +328,7 @@ async fn test_list_threads() {
         body_md: "Reply in thread A".to_string(),
         thread_id: msg1.thread_id.clone(),
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, reply_c).await.unwrap();
 
@@ -332,6 +343,7 @@ async fn test_list_threads() {
         body_md: "Starting thread B".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
@@ -368,6 +380,7 @@ async fn test_list_outbox() {
         body_md: "First message from sender".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
 
@@ -381,6 +394,7 @@ async fn test_list_outbox() {
         body_md: "Second message from sender".to_string(),
         thread_id: None,
         importance: Some("high".to_string()),
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
@@ -481,6 +495,7 @@ async fn test_outbox_project_filtering() {
         body_md: "Message in project 1".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
 
@@ -495,6 +510,7 @@ async fn test_outbox_project_filtering() {
         body_md: "Message in project 2".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
@@ -543,6 +559,7 @@ async fn test_outbox_pagination() {
             body_md: format!("Body of message {}", i),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
     }
@@ -632,6 +649,7 @@ async fn test_outbox_with_multiple_recipients() {
         body_md: "This message has multiple recipients".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
 
@@ -740,6 +758,7 @@ async fn test_multiple_to_recipients() {
         body_md: "Testing batch insert with multiple TO recipients".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
         .await
@@ -768,6 +787,284 @@ async fn test_multiple_to_recipients() {
         .await
         .expect("Should list outbox");
     assert_eq!(outbox.len(), 1, "Sender should have 1 message in outbox");
+}
+
+// ============================================================================
+// ACK_REQUIRED TESTS (TDD - RED PHASE)
+// ============================================================================
+
+/// Test that ack_required flag is persisted when creating a message
+#[tokio::test]
+async fn test_ack_required_persisted() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let (project_id, sender_id, recipient_id) = setup_messaging(&tc).await;
+
+    // Create message with ack_required = true
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Review Required".to_string(),
+        body_md: "Please review and acknowledge.".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+
+    let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
+        .await
+        .expect("Should create message");
+
+    // Verify ack_required is persisted
+    let message = MessageBmc::get(&tc.ctx, &tc.mm, msg_id).await.unwrap();
+    assert!(
+        message.ack_required,
+        "ack_required should be true after creation"
+    );
+}
+
+/// Test that ack_required defaults to false when not specified
+#[tokio::test]
+async fn test_ack_required_defaults_false() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let (project_id, sender_id, recipient_id) = setup_messaging(&tc).await;
+
+    // Create message without specifying ack_required (should default to false)
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Normal Message".to_string(),
+        body_md: "No acknowledgment needed.".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: false,
+    };
+
+    let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
+        .await
+        .expect("Should create message");
+
+    let message = MessageBmc::get(&tc.ctx, &tc.mm, msg_id).await.unwrap();
+    assert!(
+        !message.ack_required,
+        "ack_required should default to false"
+    );
+}
+
+/// Test list_pending_reviews returns messages with ack_required=true and unacked recipients
+#[tokio::test]
+async fn test_list_pending_reviews_returns_ack_required_messages() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let (project_id, sender_id, recipient_id) = setup_messaging(&tc).await;
+
+    // Create message WITH ack_required
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "[COMPLETION] Task Done".to_string(),
+        body_md: "Task completed, please review.".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
+        .await
+        .expect("Should create message");
+
+    // List pending reviews
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project_id), None, 10)
+        .await
+        .expect("Should list pending reviews");
+
+    // Should find our message
+    assert_eq!(pending.len(), 1, "Should have 1 pending review");
+    assert_eq!(pending[0].message_id, msg_id);
+    assert_eq!(pending[0].subject, "[COMPLETION] Task Done");
+}
+
+/// Test that messages with ack_required=false don't appear in pending reviews
+#[tokio::test]
+async fn test_list_pending_reviews_excludes_non_ack_required() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let (project_id, sender_id, recipient_id) = setup_messaging(&tc).await;
+
+    // Create message WITHOUT ack_required
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Regular Update".to_string(),
+        body_md: "Just an FYI, no action needed.".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: false,
+    };
+    MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
+        .await
+        .expect("Should create message");
+
+    // List pending reviews
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project_id), None, 10)
+        .await
+        .expect("Should list pending reviews");
+
+    // Should NOT find our message (ack_required = false)
+    assert_eq!(pending.len(), 0, "Should have no pending reviews");
+}
+
+/// Test that acknowledged messages are removed from pending reviews
+#[tokio::test]
+async fn test_list_pending_reviews_excludes_acknowledged() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let (project_id, sender_id, recipient_id) = setup_messaging(&tc).await;
+
+    // Create message with ack_required
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Review Request".to_string(),
+        body_md: "Please acknowledge when reviewed.".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
+        .await
+        .expect("Should create message");
+
+    // Before acknowledge: should appear in pending
+    let pending_before =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project_id), None, 10)
+            .await
+            .unwrap();
+    assert_eq!(pending_before.len(), 1, "Should have 1 pending before ack");
+
+    // Acknowledge the message
+    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, recipient_id)
+        .await
+        .expect("Should acknowledge");
+
+    // After acknowledge: should NOT appear in pending
+    let pending_after =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project_id), None, 10)
+            .await
+            .unwrap();
+    assert_eq!(
+        pending_after.len(),
+        0,
+        "Should have 0 pending after all recipients acked"
+    );
+}
+
+/// Test pending reviews with multiple recipients - partial acknowledgment
+#[tokio::test]
+async fn test_list_pending_reviews_partial_ack() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let human_key = "/pending/partial-ack";
+    let slug = slugify(human_key);
+
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .expect("Failed to create project");
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    // Create sender and 2 recipients
+    let sender_c = AgentForCreate {
+        project_id: project.id,
+        name: "PartialSender".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Sender".to_string(),
+    };
+    let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
+
+    let r1_c = AgentForCreate {
+        project_id: project.id,
+        name: "Reviewer1".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Reviewer 1".to_string(),
+    };
+    let r1_id = AgentBmc::create(&tc.ctx, &tc.mm, r1_c).await.unwrap();
+
+    let r2_c = AgentForCreate {
+        project_id: project.id,
+        name: "Reviewer2".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Reviewer 2".to_string(),
+    };
+    let r2_id = AgentBmc::create(&tc.ctx, &tc.mm, r2_c).await.unwrap();
+
+    // Create message requiring ack from both reviewers
+    let msg_c = MessageForCreate {
+        project_id: project.id,
+        sender_id,
+        recipient_ids: vec![r1_id, r2_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Dual Review Required".to_string(),
+        body_md: "Both reviewers must acknowledge.".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
+        .await
+        .expect("Should create message");
+
+    // Before any ack: pending count = 1
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
+        .await
+        .unwrap();
+    assert_eq!(pending.len(), 1);
+
+    // First reviewer acknowledges
+    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, r1_id)
+        .await
+        .expect("R1 should ack");
+
+    // Still pending (r2 hasn't acked)
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
+        .await
+        .unwrap();
+    assert_eq!(pending.len(), 1, "Should still be pending - partial ack");
+
+    // Second reviewer acknowledges
+    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, r2_id)
+        .await
+        .expect("R2 should ack");
+
+    // Now fully acked - should be removed from pending
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
+        .await
+        .unwrap();
+    assert_eq!(pending.len(), 0, "Should be empty after all acked");
 }
 
 /// Test message with multiple recipients across all types (TO, CC, BCC)
@@ -846,6 +1143,7 @@ async fn test_batch_mixed_recipient_types() {
         body_md: "Testing batch insert with 6 total recipients".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
         .await

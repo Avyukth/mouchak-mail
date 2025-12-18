@@ -603,6 +603,12 @@ ubs .
 | BCC | `bcc` (comma-separated string) | `bcc_names` (array) |
 | Agent name | `name` (register_agent) | `name` |
 | Project | `project_slug` | `project_slug` |
+| Ack Required | `ack_required` (boolean, optional) | `ack_required` (boolean, default: false) |
+
+**`ack_required` Field**: When set to `true`, recipients must explicitly acknowledge the message. Messages with `ack_required=true` appear in the `list_pending_reviews` API until all recipients acknowledge. Use for:
+- Task completion reports requiring review
+- Handoff requests requiring confirmation
+- Code review requests
 
 **Note**: `reply_message` is simpler—it only takes `message_id`, `sender_name`, `body_md`. Recipients and thread are auto-derived from the original message.
 
@@ -1761,7 +1767,8 @@ send_message(
   subject="[COMPLETION] <task-id>: <task-title>",
   body_md="<markdown report above>",
   thread_id="TASK-<task-id>",
-  importance="high"  # Options: low, normal, high, urgent
+  importance="high",  # Options: low, normal, high, urgent
+  ack_required=True  # Requires reviewer acknowledgment
 )
 ```
 

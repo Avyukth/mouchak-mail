@@ -1365,6 +1365,9 @@ pub struct SendMessageParams {
     pub importance: Option<String>,
     /// Thread ID to continue existing conversation
     pub thread_id: Option<String>,
+    /// Whether recipients must acknowledge this message (default: false)
+    #[serde(default)]
+    pub ack_required: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -2059,6 +2062,7 @@ impl AgentMailService {
             body_md: p.body_md,
             thread_id: p.thread_id,
             importance: p.importance,
+            ack_required: p.ack_required.unwrap_or(false),
         };
 
         let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
@@ -2530,6 +2534,7 @@ impl AgentMailService {
             body_md: p.body_md,
             thread_id: original_msg.thread_id.clone(),
             importance: p.importance,
+            ack_required: false, // Replies don't require ack by default
         };
 
         let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
@@ -3293,6 +3298,7 @@ impl AgentMailService {
             body_md: question,
             thread_id: Some("STANDUP".to_string()),
             importance: Some("normal".to_string()),
+            ack_required: false,
         };
 
         let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
@@ -3348,6 +3354,7 @@ impl AgentMailService {
             body_md: format!("Taking over: {}{}", p.task_description, files_text),
             thread_id: Some(format!("HANDOFF-{}", p.task_description.replace(" ", "-"))),
             importance: Some("high".to_string()),
+            ack_required: true, // Handoffs should be acknowledged
         };
 
         let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
@@ -3417,6 +3424,7 @@ impl AgentMailService {
             ),
             thread_id: Some("CODE-REVIEW".to_string()),
             importance: Some("normal".to_string()),
+            ack_required: true, // Review requests should be acknowledged
         };
 
         let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
@@ -4423,6 +4431,7 @@ mod tests {
             body_md: "Body".into(),
             importance: None,
             thread_id: None,
+            ack_required: None,
         };
 
         // We invoke the handler directly
@@ -4456,6 +4465,7 @@ mod tests {
             body_md: "Body".into(),
             importance: None,
             thread_id: None,
+            ack_required: None,
         };
         let result = service.send_message(Parameters(params2)).await;
         assert!(result.is_ok());
@@ -4575,6 +4585,7 @@ mod tests {
             body_md: "Body".into(),
             importance: None,
             thread_id: None,
+            ack_required: None,
         };
 
         // Invoke
@@ -4656,6 +4667,7 @@ mod tests {
             body_md: "Body".into(),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
 

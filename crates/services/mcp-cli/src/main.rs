@@ -100,6 +100,7 @@ async fn handle_send_message(
         body_md: body,
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let id = lib_core::model::message::MessageBmc::create(ctx, mm, msg_c).await?;

@@ -34,6 +34,7 @@
 //!     body_md: "Please review PR #42".to_string(),
 //!     thread_id: None,
 //!     importance: Some("high".to_string()),
+//!     ack_required: false,
 //! };
 //! let id = MessageBmc::create(&ctx, &mm, msg).await?;
 //! # Ok(())
@@ -101,6 +102,9 @@ pub struct MessageForCreate {
     pub body_md: String,
     pub thread_id: Option<String>,
     pub importance: Option<String>,
+    /// Whether recipients must acknowledge this message (default: false)
+    #[serde(default)]
+    pub ack_required: bool,
 }
 
 /// Raw row from list_pending_reviews query with all nested data
@@ -164,6 +168,7 @@ impl MessageBmc {
     ///     body_md: "Completed feature X".to_string(),
     ///     thread_id: None,
     ///     importance: None,
+    ///     ack_required: false,
     /// };
     /// let id = MessageBmc::create(&ctx, mm, msg).await.unwrap();
     /// # }
@@ -182,8 +187,8 @@ impl MessageBmc {
 
         let stmt = db.prepare(
             r#"
-            INSERT INTO messages (project_id, sender_id, thread_id, subject, body_md, importance, attachments)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO messages (project_id, sender_id, thread_id, subject, body_md, importance, attachments, ack_required)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
             "#
         ).await?;
@@ -197,6 +202,7 @@ impl MessageBmc {
                 msg_c.body_md.as_str(),
                 importance.as_str(),
                 attachments_json,
+                msg_c.ack_required,
             ))
             .await?;
 

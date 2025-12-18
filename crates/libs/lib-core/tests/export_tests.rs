@@ -57,6 +57,7 @@ async fn setup_project_with_messages(tc: &TestContext, suffix: &str) -> (i64, St
             body_md: format!("This is the body of message {}.", i),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&tc.ctx, &tc.mm, msg)
             .await

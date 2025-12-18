@@ -71,6 +71,7 @@ async fn test_list_unified_inbox_returns_all_projects() {
         body_md: "Message from project 1".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
 
@@ -85,6 +86,7 @@ async fn test_list_unified_inbox_returns_all_projects() {
         body_md: "Message from project 2".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
@@ -125,6 +127,7 @@ async fn test_list_unified_inbox_filters_by_high_importance() {
         body_md: "This is urgent".to_string(),
         thread_id: None,
         importance: Some("high".to_string()),
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, high_msg).await.unwrap();
 
@@ -139,6 +142,7 @@ async fn test_list_unified_inbox_filters_by_high_importance() {
         body_md: "Normal update".to_string(),
         thread_id: None,
         importance: Some("normal".to_string()),
+        ack_required: false,
     };
     MessageBmc::create(&tc.ctx, &tc.mm, normal_msg)
         .await
@@ -179,6 +183,7 @@ async fn test_list_unified_inbox_respects_limit() {
             body_md: format!("Body {}", i),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&tc.ctx, &tc.mm, msg).await.unwrap();
     }

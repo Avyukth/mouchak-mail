@@ -116,6 +116,7 @@ async fn test_send_message_with_cc() {
         body_md: "This message has a CC recipient.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
@@ -171,6 +172,7 @@ async fn test_send_message_with_bcc() {
         body_md: "This message has a BCC recipient.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
@@ -226,6 +228,7 @@ async fn test_send_message_with_cc_and_bcc() {
         body_md: "This message has both CC and BCC recipients.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c)
@@ -292,6 +295,7 @@ async fn test_cc_recipient_can_see_message() {
         body_md: "CC recipient should see this.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
@@ -338,6 +342,7 @@ async fn test_bcc_recipient_can_see_message() {
         body_md: "BCC recipient should see this but others shouldn't know.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
@@ -411,6 +416,7 @@ async fn test_multiple_cc_recipients() {
         body_md: "This has multiple CC recipients.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
@@ -479,6 +485,7 @@ async fn test_multiple_bcc_recipients() {
         body_md: "This has multiple BCC recipients.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
@@ -535,6 +542,7 @@ async fn test_cc_recipient_mark_as_read() {
         body_md: "CC recipient can mark as read.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
@@ -566,6 +574,7 @@ async fn test_bcc_recipient_acknowledge() {
         body_md: "BCC recipient can acknowledge.".to_string(),
         thread_id: None,
         importance: Some("high".to_string()),
+        ack_required: false,
     };
 
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();

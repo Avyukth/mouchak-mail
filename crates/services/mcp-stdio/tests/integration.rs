@@ -513,6 +513,7 @@ mod tools_tests {
             body_md: "This message should appear in the export.".to_string(),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
 
@@ -579,6 +580,7 @@ mod tools_tests {
             body_md: "Content to be archived".to_string(),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
 

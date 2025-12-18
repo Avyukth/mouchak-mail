@@ -70,6 +70,7 @@ mod tests {
             body_md: "Body".into(),
             thread_id: None,
             importance: None,
+            ack_required: false,
         };
         MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
 

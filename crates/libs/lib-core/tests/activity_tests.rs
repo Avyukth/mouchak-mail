@@ -69,6 +69,7 @@ async fn test_list_activity_with_messages() {
         body_md: "This is a test message for activity feed.".to_string(),
         thread_id: None,
         importance: None,
+        ack_required: false,
     };
 
     MessageBmc::create(&tc.ctx, &tc.mm, msg)
