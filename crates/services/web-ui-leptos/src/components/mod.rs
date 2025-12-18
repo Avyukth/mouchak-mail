@@ -7,6 +7,7 @@ pub mod filter_bar;
 pub mod info_banner;
 pub mod layout;
 pub mod message_detail_header;
+pub mod project_card;
 pub mod select;
 pub mod split_view;
 
@@ -17,5 +18,6 @@ pub use filter_bar::{FilterBar, FilterState};
 pub use info_banner::{BannerVariant, InfoBanner};
 pub use layout::Layout;
 pub use message_detail_header::MessageDetailHeader;
+pub use project_card::{determine_project_status, ProjectCard, ProjectStatus};
 pub use select::{Select, SelectOption};
 pub use split_view::{EmptyDetailPanel, MessageListItem, SplitViewLayout};
