@@ -9,4 +9,3 @@ pub use avatar::AgentAvatar;
 pub use compose_message::{ComposeMessage, ComposeProps, ReplyTo};
 pub use layout::Layout;
 pub use select::{Select, SelectOption};
-
