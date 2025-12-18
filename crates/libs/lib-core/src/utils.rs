@@ -34,3 +34,9 @@ use slug;
 pub fn slugify(text: &str) -> String {
     slug::slugify(text)
 }
+
+/// Input validation including names, paths, and TTLs.
+pub mod validation;
+
+/// Agent mistake detection helpers (PORT-1.3).
+pub mod mistake_detection;

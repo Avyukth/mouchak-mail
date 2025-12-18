@@ -744,12 +744,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "276a59bf2b2c967788139340c9f0c5b12d7fd6630315c15c217e559de85d2609"
 
 [[package]]
-name = "cargo-husky"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b02b629252fe8ef6460461409564e2c21d0c8e77e0944f3d189ff06c4e932ad"
-
-[[package]]
 name = "cassowary"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1609,6 +1603,27 @@ checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
 dependencies = [
  "proc-macro2",
  "quote",
+ "syn",
+]
+
+[[package]]
+name = "derive_more"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10b768e943bed7bf2cab53df09f4bc34bfd217cdb57d971e769874c9a6710618"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d286bfdaf75e988b4a78e013ecd79c581e06399ab53fbacd2d916c2f904f30b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rustc_version",
  "syn",
 ]
 
@@ -3474,13 +3489,17 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "csv",
+ "derive_more",
  "git2",
  "hex",
+ "lazy_static",
  "libsql",
+ "regex",
  "serde",
  "serde_json",
  "sha1",
  "slug",
+ "strsim",
  "strum_macros 0.27.2",
  "tempfile",
  "thiserror 2.0.17",
@@ -3925,7 +3944,6 @@ name = "mcp-agent-mail-benches"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cargo-husky",
  "chrono",
  "reqwest",
  "serde",
