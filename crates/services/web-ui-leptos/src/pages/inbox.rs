@@ -2,7 +2,7 @@
 //! Digital Correspondence design - envelope-style message cards.
 
 use crate::api::client::{self, Agent, InboxMessage, Project};
-use crate::components::{Select, SelectOption};
+use crate::components::{AgentAvatar, Select, SelectOption};
 use leptos::prelude::*;
 use leptos_router::hooks::use_query_map;
 
@@ -407,15 +407,16 @@ pub fn Inbox() -> impl IntoView {
                                         let sender = msg.sender_name.clone();
                                         let created = msg.created_ts.clone();
 
+                                        let sender_for_avatar = sender.clone();
                                         view! {
                                             <li class="group">
                                                 <a
                                                     href=href
                                                     class="flex items-start gap-4 px-6 py-4 hover:bg-cream-50 dark:hover:bg-charcoal-800/50 transition-colors"
                                                 >
-                                                    // Envelope icon
-                                                    <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center group-hover:scale-105 transition-transform">
-                                                        <i data-lucide="mail" class="icon-lg text-amber-600 dark:text-amber-400"></i>
+                                                    // Sender Avatar
+                                                    <div class="flex-shrink-0 group-hover:scale-105 transition-transform">
+                                                        <AgentAvatar name=sender_for_avatar size="md" />
                                                     </div>
 
                                                     // Content
@@ -428,8 +429,7 @@ pub fn Inbox() -> impl IntoView {
                                                                 {format_date(&created)}
                                                             </span>
                                                         </div>
-                                                        <p class="text-sm text-charcoal-500 dark:text-charcoal-400 flex items-center gap-1.5">
-                                                            <i data-lucide="user" class="icon-xs"></i>
+                                                        <p class="text-sm text-charcoal-500 dark:text-charcoal-400">
                                                             <span>{sender}</span>
                                                         </p>
                                                     </div>

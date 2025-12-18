@@ -2,7 +2,7 @@
 //! Uses the /mail/api/unified-inbox API from s0j task.
 
 use crate::api::client::{self, UnifiedInboxMessage};
-use crate::components::{Select, SelectOption};
+use crate::components::{AgentAvatar, FilterBar, FilterState};
 use leptos::prelude::*;
 
 /// Unified Inbox page component.
@@ -10,26 +10,20 @@ use leptos::prelude::*;
 pub fn UnifiedInbox() -> impl IntoView {
     // State
     let messages = RwSignal::new(Vec::<UnifiedInboxMessage>::new());
+    let all_messages = RwSignal::new(Vec::<UnifiedInboxMessage>::new()); // Unfiltered for extracting options
     let loading = RwSignal::new(true);
     let error = RwSignal::new(Option::<String>::None);
-    let importance_filter = RwSignal::new(String::new()); // "", "high", "normal"
+    let filter_state = RwSignal::new(FilterState::new());
 
-    // Load messages effect
+    // Load all messages once on mount
     Effect::new(move |_| {
-        let importance = importance_filter.get();
-
         leptos::task::spawn_local(async move {
             loading.set(true);
             error.set(None);
 
-            let imp = if importance.is_empty() {
-                None
-            } else {
-                Some(importance.as_str())
-            };
-
-            match client::get_unified_inbox(imp, Some(100)).await {
+            match client::get_unified_inbox(None, Some(100)).await {
                 Ok(msgs) => {
+                    all_messages.set(msgs.clone());
                     messages.set(msgs);
                     loading.set(false);
                 }
@@ -41,46 +35,87 @@ pub fn UnifiedInbox() -> impl IntoView {
         });
     });
 
-    // Importance filter options
-    let importance_options = vec![
-        SelectOption {
-            value: "".to_string(),
-            label: "All Messages".to_string(),
-        },
-        SelectOption {
-            value: "high".to_string(),
-            label: "High Priority".to_string(),
-        },
-        SelectOption {
-            value: "normal".to_string(),
-            label: "Normal Priority".to_string(),
-        },
-    ];
+    // Apply filters reactively
+    Effect::new(move |_| {
+        let filter = filter_state.get();
+        let all = all_messages.get();
+
+        let filtered: Vec<UnifiedInboxMessage> = all
+            .into_iter()
+            .filter(|msg| {
+                // Search query filter
+                if !filter.query.is_empty() {
+                    let q = filter.query.to_lowercase();
+                    let matches = msg.subject.to_lowercase().contains(&q)
+                        || msg.sender_name.to_lowercase().contains(&q)
+                        || msg
+                            .thread_id
+                            .as_ref()
+                            .map_or(false, |t| t.to_lowercase().contains(&q));
+                    if !matches {
+                        return false;
+                    }
+                }
+
+                // Importance filter
+                if let Some(ref imp) = filter.importance {
+                    if msg.importance != *imp {
+                        return false;
+                    }
+                }
+
+                // Sender filter
+                if let Some(ref sender) = filter.sender {
+                    if msg.sender_name != *sender {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .collect();
+
+        messages.set(filtered);
+    });
+
+    // Extract unique senders for filter dropdown
+    let senders = Signal::derive(move || {
+        let mut senders: Vec<String> = all_messages
+            .get()
+            .iter()
+            .map(|m| m.sender_name.clone())
+            .collect();
+        senders.sort();
+        senders.dedup();
+        senders
+    });
+
+    // Message count for FilterBar
+    let message_count = Signal::derive(move || messages.get().len());
 
     view! {
         <div class="space-y-6">
             // Header
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100 flex items-center gap-3">
-                        <i data-lucide="inbox" class="icon-xl text-amber-500"></i>
-                        "Unified Inbox"
-                    </h1>
-                    <p class="text-sm text-charcoal-500 dark:text-charcoal-400 mt-1">
-                        "All messages across all projects"
-                    </p>
-                </div>
-
-                // Filter
-                <div class="flex items-center gap-3">
-                    <Select
-                        id="importance-filter".to_string()
-                        value=importance_filter
-                        options=importance_options
-                        placeholder="Filter by importance".to_string()
-                    />
-                </div>
+            <div class="mb-2">
+                <h1 class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100 flex items-center gap-3">
+                    <i data-lucide="inbox" class="icon-xl text-amber-500"></i>
+                    "Unified Inbox"
+                </h1>
+                <p class="text-sm text-charcoal-500 dark:text-charcoal-400 mt-1">
+                    "All messages across all projects"
+                </p>
             </div>
+
+            // Filter Bar
+            {move || {
+                view! {
+                    <FilterBar
+                        filter_state=filter_state
+                        message_count=message_count
+                        senders=senders.get()
+                    />
+                }
+            }}
 
             // Error
             {move || {
@@ -136,31 +171,23 @@ pub fn UnifiedInbox() -> impl IntoView {
                                 let created = msg.created_ts.clone();
                                 let thread_id = msg.thread_id.clone();
 
+                                let sender_for_avatar = sender.clone();
                                 view! {
                                     <a
                                         href={format!("/inbox/{}?project={}", id, msg.project_id)}
                                         class="block card-elevated p-4 hover:shadow-lg transition-all duration-200 group"
                                     >
                                         <div class="flex items-start gap-4">
-                                            // Icon
-                                            <div class="flex-shrink-0">
-                                                <div class={format!(
-                                                    "w-10 h-10 rounded-xl flex items-center justify-center {}",
-                                                    if importance == "high" {
-                                                        "bg-red-100 dark:bg-red-900/30"
-                                                    } else {
-                                                        "bg-cream-200 dark:bg-charcoal-700"
-                                                    }
-                                                )}>
-                                                    <i data-lucide="mail" class={format!(
-                                                        "icon-lg {}",
-                                                        if importance == "high" {
-                                                            "text-red-500"
-                                                        } else {
-                                                            "text-charcoal-400"
-                                                        }
-                                                    )}></i>
-                                                </div>
+                                            // Sender Avatar
+                                            <div class="flex-shrink-0 relative">
+                                                <AgentAvatar name=sender_for_avatar size="md" />
+                                                {if importance == "high" {
+                                                    Some(view! {
+                                                        <span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-charcoal-800"></span>
+                                                    })
+                                                } else {
+                                                    None
+                                                }}
                                             </div>
 
                                             // Content
@@ -182,7 +209,6 @@ pub fn UnifiedInbox() -> impl IntoView {
                                                 </div>
                                                 <div class="flex items-center gap-3 text-sm text-charcoal-500 dark:text-charcoal-400">
                                                     <span class="flex items-center gap-1">
-                                                        <i data-lucide="user" class="icon-xs"></i>
                                                         {sender}
                                                     </span>
                                                     <span class="flex items-center gap-1">

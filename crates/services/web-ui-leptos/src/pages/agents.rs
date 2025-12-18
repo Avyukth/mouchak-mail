@@ -2,7 +2,7 @@
 //! Digital Correspondence design with Lucide icons.
 
 use crate::api::client::{self, Agent, Project};
-use crate::components::{Select, SelectOption};
+use crate::components::{AgentAvatar, Select, SelectOption};
 use leptos::prelude::*;
 
 /// Agent with project slug for display.
@@ -237,12 +237,13 @@ pub fn Agents() -> impl IntoView {
                                         let project_link = format!("/projects/{}", project_slug);
                                         let inbox_link = format!("/inbox?project={}&agent={}", project_slug, name);
 
+                                        let name_for_avatar = name.clone();
                                         view! {
                                             <div class="card-elevated p-6 group hover:border-amber-300 dark:hover:border-amber-700 transition-all">
                                                 <div class="flex items-start justify-between mb-4">
                                                     <div class="flex items-center gap-3">
-                                                        <div class="w-10 h-10 bg-violet-100 dark:bg-violet-900/50 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                                                            <i data-lucide="bot" class="icon-lg text-violet-600 dark:text-violet-400"></i>
+                                                        <div class="group-hover:scale-105 transition-transform">
+                                                            <AgentAvatar name=name_for_avatar size="lg" />
                                                         </div>
                                                         <div>
                                                             <h3 class="font-display font-semibold text-charcoal-800 dark:text-cream-100">{name.clone()}</h3>
