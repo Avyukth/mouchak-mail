@@ -166,6 +166,27 @@ pub enum Error {
     /// Returned when a file lock cannot be acquired within the timeout period.
     #[error("Lock timeout on {path}, held by PID {owner_pid}")]
     LockTimeout { path: String, owner_pid: u32 },
+
+    /// Structured validation error with actionable suggestion.
+    ///
+    /// Wraps [`crate::utils::validation::ValidationError`] to provide
+    /// detailed error information including field, provided value,
+    /// reason, and suggestion for recovery.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lib_core::Error;
+    /// use lib_core::utils::validation::validate_agent_name;
+    ///
+    /// let result = validate_agent_name("invalid-name");
+    /// if let Err(ve) = result {
+    ///     let err: Error = ve.into();
+    ///     assert!(err.to_string().contains("agent name"));
+    /// }
+    /// ```
+    #[error("Validation error: {0}")]
+    Validation(#[from] crate::utils::validation::ValidationError),
 }
 
 /// A specialized [`Result`] type for lib-core operations.

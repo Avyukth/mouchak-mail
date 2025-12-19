@@ -1984,9 +1984,18 @@ impl AgentMailService {
         params: Parameters<EnsureProjectParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::project::ProjectBmc;
+        use lib_core::utils::validation::validate_project_key;
 
         let ctx = self.ctx();
         let p = params.0;
+
+        // Validate inputs
+        validate_project_key(&p.slug).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
 
         // Check if project exists
         match ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.slug).await {
@@ -2020,9 +2029,25 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::{AgentBmc, AgentForCreate};
         use lib_core::model::project::ProjectBmc;
+        use lib_core::utils::validation::{validate_agent_name, validate_project_key};
 
         let ctx = self.ctx();
         let p = params.0;
+
+        // Validate inputs
+        validate_project_key(&p.project_slug).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
+
+        validate_agent_name(&p.name).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
 
         // Get project
         let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug)
@@ -2415,9 +2440,43 @@ impl AgentMailService {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
         use lib_core::model::project::ProjectBmc;
+        use lib_core::utils::validation::{
+            validate_agent_name, validate_project_key, validate_reservation_path, validate_ttl,
+        };
 
         let ctx = self.ctx();
         let p = params.0;
+
+        // Validate inputs
+        validate_project_key(&p.project_slug).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
+
+        validate_agent_name(&p.agent_name).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
+
+        validate_reservation_path(&p.path_pattern).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
+
+        if let Some(ttl) = p.ttl_seconds {
+            validate_ttl(ttl as u64).map_err(|e| {
+                McpError::invalid_params(
+                    format!("{}", e),
+                    Some(serde_json::json!({ "details": e.context() })),
+                )
+            })?;
+        }
 
         let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug)
             .await
@@ -4048,9 +4107,46 @@ impl AgentMailService {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
         use lib_core::model::project::ProjectBmc;
+        use lib_core::utils::validation::{
+            validate_agent_name, validate_project_key, validate_reservation_path, validate_ttl,
+        };
 
         let ctx = self.ctx();
         let p = params.0;
+
+        // Validate inputs
+        validate_project_key(&p.project_slug).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
+
+        validate_agent_name(&p.agent_name).map_err(|e| {
+            McpError::invalid_params(
+                format!("{}", e),
+                Some(serde_json::json!({ "details": e.context() })),
+            )
+        })?;
+
+        // Validate all paths
+        for path in &p.paths {
+            validate_reservation_path(path).map_err(|e| {
+                McpError::invalid_params(
+                    format!("{}", e),
+                    Some(serde_json::json!({ "details": e.context() })),
+                )
+            })?;
+        }
+
+        if let Some(ttl) = p.ttl_seconds {
+            validate_ttl(ttl as u64).map_err(|e| {
+                McpError::invalid_params(
+                    format!("{}", e),
+                    Some(serde_json::json!({ "details": e.context() })),
+                )
+            })?;
+        }
 
         let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_slug)
             .await
