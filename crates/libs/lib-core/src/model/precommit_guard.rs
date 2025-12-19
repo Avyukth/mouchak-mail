@@ -98,6 +98,105 @@ pub fn worktrees_active() -> bool {
 /// Pre-commit guard for file reservation checks
 pub struct PrecommitGuardBmc;
 
+/// Render the pre-push hook script content.
+///
+/// The script:
+/// 1. Reads ref tuples from stdin (local_ref local_sha remote_ref remote_sha)
+/// 2. Skips if AGENT_NAME not set or WORKTREES_ENABLED/GIT_IDENTITY_ENABLED not set
+/// 3. Attempts to call the agent-mail server's check-push endpoint
+/// 4. Gracefully degrades if server is unreachable (exits 0)
+///
+/// # Arguments
+/// * `server_url` - Base URL for the agent-mail server (e.g., "http://localhost:8080")
+pub fn render_prepush_script(server_url: &str) -> String {
+    format!(
+        r#"#!/bin/sh
+# MCP Agent Mail - Pre-push Guard
+# Checks file reservations before allowing push
+#
+# Reads stdin for ref tuples: <local_ref> <local_sha> <remote_ref> <remote_sha>
+# Calls server endpoint for push validation
+
+SERVER_URL="{server_url}"
+
+# Gate: Check if worktrees are enabled
+check_gate() {{
+    # Check WORKTREES_ENABLED or GIT_IDENTITY_ENABLED
+    case "${{WORKTREES_ENABLED:-0}}${{GIT_IDENTITY_ENABLED:-0}}" in
+        *1*|*true*|*TRUE*|*yes*|*YES*|*y*|*Y*|*t*|*T*)
+            return 0
+            ;;
+    esac
+    return 1
+}}
+
+# Gate: Skip if not enabled
+if ! check_gate; then
+    exit 0
+fi
+
+# Bypass mode: Skip all checks
+case "${{AGENT_MAIL_BYPASS:-0}}" in
+    1|true|TRUE|yes|YES|y|Y|t|T)
+        echo "[pre-push] bypass enabled via AGENT_MAIL_BYPASS=1" >&2
+        exit 0
+        ;;
+esac
+
+# Check if AGENT_NAME is set
+if [ -z "$AGENT_NAME" ]; then
+    echo "Warning: AGENT_NAME not set, skipping push check" >&2
+    exit 0
+fi
+
+# Read ref tuples from stdin
+# Format: <local_ref> <local_sha> <remote_ref> <remote_sha>
+refs=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+    if [ -n "$local_ref" ] && [ -n "$local_sha" ]; then
+        refs="$refs$local_ref $local_sha $remote_ref $remote_sha\n"
+    fi
+done
+
+# If no refs to push, exit
+if [ -z "$refs" ]; then
+    exit 0
+fi
+
+# Try to call server endpoint for push validation
+# Gracefully degrade if server is unreachable
+if command -v curl >/dev/null 2>&1; then
+    response=$(printf "%b" "$refs" | curl -s --connect-timeout 2 --max-time 5 \
+        -X POST "$SERVER_URL/api/guard/check-push" \
+        -H "Content-Type: application/json" \
+        -H "X-Agent-Name: $AGENT_NAME" \
+        -d @- 2>/dev/null) || true
+
+    # Check response (if server returned an error)
+    case "$response" in
+        *"error"*|*"blocked"*)
+            echo "[pre-push] Push blocked by agent-mail guard:" >&2
+            echo "$response" >&2
+            # Check advisory mode
+            case "${{AGENT_MAIL_GUARD_MODE:-block}}" in
+                warn|WARN|advisory|ADVISORY|adv|ADV)
+                    echo "[pre-push] Advisory mode - allowing push despite conflicts" >&2
+                    exit 0
+                    ;;
+                *)
+                    exit 1
+                    ;;
+            esac
+            ;;
+    esac
+fi
+
+# Server unreachable or no curl - gracefully allow
+exit 0
+"#
+    )
+}
+
 impl PrecommitGuardBmc {
     /// Check if pre-commit guard should run.
     ///
@@ -174,22 +273,57 @@ impl PrecommitGuardBmc {
         Ok(None)
     }
 
-    /// Install pre-commit hook in git repository
-    pub async fn install(_ctx: &Ctx, _mm: &ModelManager, git_repo_path: &Path) -> Result<String> {
+    /// Install pre-commit and pre-push hooks in git repository.
+    ///
+    /// # Arguments
+    /// * `ctx` - Request context
+    /// * `mm` - Model manager
+    /// * `git_repo_path` - Path to the git repository root
+    /// * `server_url` - Optional server URL for pre-push validation (default: http://localhost:8080)
+    pub async fn install(
+        _ctx: &Ctx,
+        _mm: &ModelManager,
+        git_repo_path: &Path,
+        server_url: Option<&str>,
+    ) -> Result<String> {
         let hooks_dir = git_repo_path.join(".git").join("hooks");
-        let hook_path = hooks_dir.join("pre-commit");
 
         // Create hooks directory if it doesn't exist
         tokio::fs::create_dir_all(&hooks_dir).await?;
 
-        // Hook script content
-        let hook_script = r#"#!/bin/sh
+        // Install pre-commit hook
+        let precommit_path = hooks_dir.join("pre-commit");
+        let precommit_script = r#"#!/bin/sh
 # MCP Agent Mail - Pre-commit Guard
 # Checks file reservations before allowing commit
 
+# Gate: Check if worktrees are enabled
+check_gate() {
+    # Check WORKTREES_ENABLED or GIT_IDENTITY_ENABLED
+    case "${WORKTREES_ENABLED:-0}${GIT_IDENTITY_ENABLED:-0}" in
+        *1*|*true*|*TRUE*|*yes*|*YES*|*y*|*Y*|*t*|*T*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+# Gate: Skip if not enabled
+if ! check_gate; then
+    exit 0
+fi
+
+# Bypass mode: Skip all checks
+case "${AGENT_MAIL_BYPASS:-0}" in
+    1|true|TRUE|yes|YES|y|Y|t|T)
+        echo "[pre-commit] bypass enabled via AGENT_MAIL_BYPASS=1" >&2
+        exit 0
+        ;;
+esac
+
 # Check if AGENT_NAME is set
 if [ -z "$AGENT_NAME" ]; then
-    echo "Warning: AGENT_NAME not set, skipping reservation check"
+    echo "Warning: AGENT_NAME not set, skipping reservation check" >&2
     exit 0
 fi
 
@@ -198,30 +332,58 @@ fi
 exit 0
 "#;
 
-        // Write hook file
-        tokio::fs::write(&hook_path, hook_script).await?;
+        tokio::fs::write(&precommit_path, precommit_script).await?;
+        Self::make_executable(&precommit_path).await?;
 
-        // Make executable (Unix only)
+        // Install pre-push hook
+        let prepush_path = hooks_dir.join("pre-push");
+        let server = server_url.unwrap_or("http://localhost:8080");
+        let prepush_script = render_prepush_script(server);
+
+        tokio::fs::write(&prepush_path, prepush_script).await?;
+        Self::make_executable(&prepush_path).await?;
+
+        Ok(format!(
+            "Hooks installed: pre-commit at {:?}, pre-push at {:?}",
+            precommit_path, prepush_path
+        ))
+    }
+
+    /// Make a file executable (Unix only).
+    #[allow(unused_variables)]
+    async fn make_executable(path: &Path) -> Result<()> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            let mut perms = tokio::fs::metadata(&hook_path).await?.permissions();
+            let mut perms = tokio::fs::metadata(path).await?.permissions();
             perms.set_mode(0o755);
-            tokio::fs::set_permissions(&hook_path, perms).await?;
+            tokio::fs::set_permissions(path, perms).await?;
         }
-
-        Ok(format!("Pre-commit hook installed at {:?}", hook_path))
+        Ok(())
     }
 
-    /// Uninstall pre-commit hook from git repository
+    /// Uninstall pre-commit and pre-push hooks from git repository.
     pub async fn uninstall(_ctx: &Ctx, _mm: &ModelManager, git_repo_path: &Path) -> Result<String> {
-        let hook_path = git_repo_path.join(".git").join("hooks").join("pre-commit");
+        let hooks_dir = git_repo_path.join(".git").join("hooks");
+        let precommit_path = hooks_dir.join("pre-commit");
+        let prepush_path = hooks_dir.join("pre-push");
 
-        if hook_path.exists() {
-            tokio::fs::remove_file(&hook_path).await?;
-            Ok(format!("Pre-commit hook removed from {:?}", hook_path))
+        let mut removed = Vec::new();
+
+        if precommit_path.exists() {
+            tokio::fs::remove_file(&precommit_path).await?;
+            removed.push("pre-commit");
+        }
+
+        if prepush_path.exists() {
+            tokio::fs::remove_file(&prepush_path).await?;
+            removed.push("pre-push");
+        }
+
+        if removed.is_empty() {
+            Ok("No hooks found".to_string())
         } else {
-            Ok("No pre-commit hook found".to_string())
+            Ok(format!("Removed hooks: {}", removed.join(", ")))
         }
     }
 }
@@ -623,11 +785,11 @@ mod tests {
     }
 
     // ============================================================================
-    // EXISTING TESTS
+    // HOOK INSTALLATION TESTS (PORT-3.3)
     // ============================================================================
 
     #[tokio::test]
-    async fn test_install_uninstall_precommit_guard() {
+    async fn test_install_uninstall_both_hooks() {
         let temp_dir = TempDir::new().unwrap();
         let git_dir = temp_dir.path().join("test_repo");
 
@@ -643,14 +805,134 @@ mod tests {
             ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
         };
 
-        // Test install
-        let result = PrecommitGuardBmc::install(&ctx, &dummy_mm, &git_dir).await;
+        // Test install (both hooks)
+        let result = PrecommitGuardBmc::install(&ctx, &dummy_mm, &git_dir, None).await;
         assert!(result.is_ok());
-        assert!(git_dir.join(".git/hooks/pre-commit").exists());
+        assert!(
+            git_dir.join(".git/hooks/pre-commit").exists(),
+            "pre-commit hook should be installed"
+        );
+        assert!(
+            git_dir.join(".git/hooks/pre-push").exists(),
+            "pre-push hook should be installed"
+        );
 
-        // Test uninstall
+        // Verify pre-push hook is executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let perms = std::fs::metadata(git_dir.join(".git/hooks/pre-push"))
+                .unwrap()
+                .permissions();
+            assert!(
+                perms.mode() & 0o111 != 0,
+                "pre-push hook should be executable"
+            );
+        }
+
+        // Test uninstall (both hooks)
         let result = PrecommitGuardBmc::uninstall(&ctx, &dummy_mm, &git_dir).await;
         assert!(result.is_ok());
-        assert!(!git_dir.join(".git/hooks/pre-commit").exists());
+        assert!(
+            !git_dir.join(".git/hooks/pre-commit").exists(),
+            "pre-commit hook should be removed"
+        );
+        assert!(
+            !git_dir.join(".git/hooks/pre-push").exists(),
+            "pre-push hook should be removed"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_install_with_custom_server_url() {
+        let temp_dir = TempDir::new().unwrap();
+        let git_dir = temp_dir.path().join("test_repo");
+        std::fs::create_dir_all(git_dir.join(".git/hooks")).unwrap();
+
+        let ctx = Ctx::root_ctx();
+        let dummy_mm = {
+            use libsql::Builder;
+            let db_path = temp_dir.path().join("test.db");
+            let db = Builder::new_local(&db_path).build().await.unwrap();
+            let conn = db.connect().unwrap();
+            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+        };
+
+        // Install with custom server URL
+        let custom_url = "http://custom-server:9999";
+        let result = PrecommitGuardBmc::install(&ctx, &dummy_mm, &git_dir, Some(custom_url)).await;
+        assert!(result.is_ok());
+
+        // Read pre-push hook and verify it contains custom URL
+        let prepush_content = std::fs::read_to_string(git_dir.join(".git/hooks/pre-push")).unwrap();
+        assert!(
+            prepush_content.contains(custom_url),
+            "pre-push hook should contain custom server URL"
+        );
+    }
+
+    #[test]
+    fn test_render_prepush_script_content() {
+        let script = render_prepush_script("http://test:8080");
+
+        // Verify script starts with shebang
+        assert!(
+            script.starts_with("#!/bin/sh"),
+            "Script should start with shebang"
+        );
+
+        // Verify gate check
+        assert!(
+            script.contains("WORKTREES_ENABLED"),
+            "Script should check WORKTREES_ENABLED"
+        );
+        assert!(
+            script.contains("GIT_IDENTITY_ENABLED"),
+            "Script should check GIT_IDENTITY_ENABLED"
+        );
+
+        // Verify bypass mode handling
+        assert!(
+            script.contains("AGENT_MAIL_BYPASS"),
+            "Script should check AGENT_MAIL_BYPASS"
+        );
+
+        // Verify stdin reading for ref tuples
+        assert!(
+            script.contains("read -r local_ref local_sha remote_ref remote_sha"),
+            "Script should read ref tuples from stdin"
+        );
+
+        // Verify server URL
+        assert!(
+            script.contains("http://test:8080"),
+            "Script should contain server URL"
+        );
+
+        // Verify graceful degradation
+        assert!(
+            script.contains("exit 0"),
+            "Script should exit 0 on graceful degradation"
+        );
+
+        // Verify advisory mode handling
+        assert!(
+            script.contains("AGENT_MAIL_GUARD_MODE"),
+            "Script should check advisory mode"
+        );
+    }
+
+    #[test]
+    fn test_render_prepush_script_reads_stdin() {
+        let script = render_prepush_script("http://localhost:8080");
+
+        // Verify the script has a while loop to read stdin
+        assert!(
+            script.contains("while read"),
+            "Script should have while read loop"
+        );
+
+        // Verify it collects refs
+        assert!(script.contains("refs="), "Script should collect refs");
     }
 }
