@@ -46,6 +46,9 @@ enum Commands {
     /// Install shell alias and configuration
     Install(InstallArgs),
 
+    /// Manage the background service
+    Service(ServiceArgs),
+
     /// Show version info
     Version,
 }
@@ -63,6 +66,34 @@ enum InstallCommands {
         /// Force overwrite existing alias
         #[arg(long)]
         force: bool,
+    },
+}
+
+#[derive(Args)]
+struct ServiceArgs {
+    #[command(subcommand)]
+    command: ServiceCommands,
+}
+
+#[derive(Subcommand)]
+enum ServiceCommands {
+    /// Stop the running server on the specified port
+    Stop {
+        /// Port to stop the server on
+        #[arg(short, long, default_value = "8765")]
+        port: u16,
+    },
+    /// Check if server is running
+    Status {
+        /// Port to check
+        #[arg(short, long, default_value = "8765")]
+        port: u16,
+    },
+    /// Restart the server (stop then start)
+    Restart {
+        /// Port to restart
+        #[arg(short, long, default_value = "8765")]
+        port: u16,
     },
 }
 
@@ -439,6 +470,107 @@ fn handle_install_alias(force: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
+// ============================================================================
+// Service Command Handlers (PORT-6.2)
+// ============================================================================
+
+/// Find the PID of the process listening on a given port.
+/// Uses lsof on macOS/Linux.
+fn find_pid_on_port(port: u16) -> Option<u32> {
+    let output = std::process::Command::new("lsof")
+        .args(["-ti", &format!(":{}", port)])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // lsof -ti returns PIDs, one per line
+        stdout
+            .lines()
+            .next()
+            .and_then(|s| s.trim().parse::<u32>().ok())
+    } else {
+        None
+    }
+}
+
+/// Kill a process by PID.
+fn kill_process(pid: u32) -> std::io::Result<()> {
+    let status = std::process::Command::new("kill")
+        .args(["-TERM", &pid.to_string()])
+        .status()?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!(
+            "Failed to kill process {}",
+            pid
+        )))
+    }
+}
+
+/// Handle the 'service stop' command.
+fn handle_service_stop(port: u16) -> anyhow::Result<()> {
+    println!("Stopping server on port {}...", port);
+
+    if let Some(pid) = find_pid_on_port(port) {
+        println!("Found process {} on port {}", pid, port);
+        kill_process(pid)?;
+        println!("✓ Stopped server (PID {})", pid);
+    } else {
+        println!("No server running on port {}", port);
+    }
+
+    Ok(())
+}
+
+/// Handle the 'service status' command.
+async fn handle_service_status(port: u16) -> anyhow::Result<()> {
+    // Try to connect to health endpoint
+    let health_url = format!("http://127.0.0.1:{}/health", port);
+
+    match reqwest::get(&health_url).await {
+        Ok(resp) if resp.status().is_success() => {
+            let body = resp.text().await.unwrap_or_default();
+            println!("✓ Server RUNNING on port {}", port);
+            println!("  Health: {}", body);
+
+            if let Some(pid) = find_pid_on_port(port) {
+                println!("  PID: {}", pid);
+            }
+        }
+        _ => {
+            if let Some(pid) = find_pid_on_port(port) {
+                println!("⚠ Process {} is on port {} but not responding to health checks", pid, port);
+            } else {
+                println!("✗ No server running on port {}", port);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Handle the 'service restart' command.
+async fn handle_service_restart(port: u16, config: AppConfig) -> anyhow::Result<()> {
+    println!("Restarting server on port {}...", port);
+
+    // Stop existing server
+    if let Some(pid) = find_pid_on_port(port) {
+        println!("Stopping existing server (PID {})...", pid);
+        kill_process(pid)?;
+        // Wait a moment for the port to be released
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    // Start new server
+    println!("Starting server on port {}...", port);
+    handle_serve_http(Some(port), true, false, config).await?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -461,6 +593,11 @@ async fn main() -> anyhow::Result<()> {
         Commands::Tools => handle_tools(),
         Commands::Install(args) => match args.command {
             InstallCommands::Alias { force } => handle_install_alias(force)?,
+        },
+        Commands::Service(args) => match args.command {
+            ServiceCommands::Stop { port } => handle_service_stop(port)?,
+            ServiceCommands::Status { port } => handle_service_status(port).await?,
+            ServiceCommands::Restart { port } => handle_service_restart(port, config).await?,
         },
         Commands::Version => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
     }

@@ -3503,6 +3503,7 @@ dependencies = [
  "chrono",
  "csv",
  "derive_more",
+ "futures",
  "git2",
  "hex",
  "hostname",
