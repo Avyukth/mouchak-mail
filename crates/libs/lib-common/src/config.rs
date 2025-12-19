@@ -119,6 +119,7 @@ impl AppConfig {
 }
 
 #[cfg(test)]
+#[allow(unsafe_code)]
 mod tests {
     use super::*;
 
@@ -126,25 +127,37 @@ mod tests {
     fn test_parse_bool_env_truthy() {
         // These should all return true
         for (key, val) in [("TEST_1", "1"), ("TEST_T", "true"), ("TEST_Y", "yes")] {
-            std::env::set_var(key, val);
+            // SAFETY: Test code only, single-threaded test execution
+            unsafe { std::env::set_var(key, val) };
             assert!(parse_bool_env(key), "Expected true for {}={}", key, val);
-            std::env::remove_var(key);
+            unsafe { std::env::remove_var(key) };
         }
     }
 
     #[test]
     fn test_parse_bool_env_falsy() {
         // These should all return false
-        std::env::set_var("TEST_F", "0");
+        // SAFETY: Test code only, single-threaded test execution
+        unsafe {
+            std::env::set_var("TEST_F", "0");
+        }
         assert!(!parse_bool_env("TEST_F"));
-        std::env::set_var("TEST_F", "false");
+        unsafe {
+            std::env::set_var("TEST_F", "false");
+        }
         assert!(!parse_bool_env("TEST_F"));
-        std::env::set_var("TEST_F", "no");
+        unsafe {
+            std::env::set_var("TEST_F", "no");
+        }
         assert!(!parse_bool_env("TEST_F"));
-        std::env::remove_var("TEST_F");
+        unsafe {
+            std::env::remove_var("TEST_F");
+        }
 
         // Unset should return false
-        std::env::remove_var("NOT_SET_VAR");
+        unsafe {
+            std::env::remove_var("NOT_SET_VAR");
+        }
         assert!(!parse_bool_env("NOT_SET_VAR"));
     }
 
