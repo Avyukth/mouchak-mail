@@ -1,6 +1,81 @@
 use crate::{Result, ctx::Ctx, model::ModelManager};
 use std::path::Path;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
+
+/// Guard execution mode for pre-commit checks.
+///
+/// Controls how the guard behaves when file reservation conflicts are detected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GuardMode {
+    /// Block commits with conflicts (default behavior).
+    /// Returns an error when conflicts are detected.
+    #[default]
+    Enforce,
+
+    /// Warn about conflicts but allow the commit.
+    /// Logs warnings and returns Ok with conflict details.
+    Warn,
+
+    /// Skip all checks entirely.
+    /// Used for emergency bypass situations.
+    Bypass,
+}
+
+impl GuardMode {
+    /// Parse guard mode from environment variables.
+    ///
+    /// Checks in order:
+    /// 1. `AGENT_MAIL_BYPASS=1` → Bypass mode
+    /// 2. `AGENT_MAIL_GUARD_MODE=warn|advisory|adv` → Warn mode
+    /// 3. Otherwise → Enforce mode (default)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use lib_core::model::precommit_guard::GuardMode;
+    /// // With no env vars set, defaults to Enforce
+    /// // With AGENT_MAIL_BYPASS=1, returns Bypass
+    /// // With AGENT_MAIL_GUARD_MODE=warn, returns Warn
+    /// ```
+    pub fn from_env() -> Self {
+        // Check bypass first (highest priority)
+        if parse_bool_env("AGENT_MAIL_BYPASS") {
+            info!("Pre-commit guard bypass enabled via AGENT_MAIL_BYPASS=1");
+            return Self::Bypass;
+        }
+
+        // Check guard mode
+        if let Ok(mode) = std::env::var("AGENT_MAIL_GUARD_MODE") {
+            match mode.to_lowercase().trim() {
+                "warn" | "advisory" | "adv" => {
+                    debug!(mode = %mode, "Pre-commit guard in advisory mode");
+                    return Self::Warn;
+                }
+                "block" | "enforce" | "" => {
+                    // Explicit enforce or default
+                }
+                other => {
+                    warn!(
+                        mode = %other,
+                        "Unknown AGENT_MAIL_GUARD_MODE value, defaulting to enforce"
+                    );
+                }
+            }
+        }
+
+        Self::Enforce
+    }
+
+    /// Check if this mode should skip all checks.
+    pub fn is_bypass(&self) -> bool {
+        matches!(self, Self::Bypass)
+    }
+
+    /// Check if this mode allows commits with warnings.
+    pub fn is_advisory(&self) -> bool {
+        matches!(self, Self::Warn)
+    }
+}
 
 /// Parse boolean environment variable with truthy value detection.
 ///
@@ -43,8 +118,8 @@ impl PrecommitGuardBmc {
 
     /// Check file reservations before commit.
     ///
-    /// Early returns with `Ok(None)` if worktrees are not enabled.
-    /// Returns `Ok(Some(violations))` if there are reservation violations,
+    /// Early returns with `Ok(None)` if worktrees are not enabled or bypass mode is active.
+    /// Returns `Ok(Some(violations))` if there are reservation violations in warn mode,
     /// or `Ok(None)` if all checks pass.
     ///
     /// # Arguments
@@ -56,8 +131,14 @@ impl PrecommitGuardBmc {
     ///
     /// # Returns
     ///
-    /// * `Ok(None)` - No violations or worktrees not enabled
-    /// * `Ok(Some(Vec<String>))` - List of violation messages
+    /// * `Ok(None)` - No violations, worktrees not enabled, or bypass mode
+    /// * `Ok(Some(Vec<String>))` - List of violation messages (warn mode with conflicts)
+    ///
+    /// # Guard Modes
+    ///
+    /// * **Enforce** (default): Block on conflicts
+    /// * **Warn**: Allow with warnings
+    /// * **Bypass**: Skip all checks
     pub async fn check_reservations(
         _ctx: &Ctx,
         _mm: &ModelManager,
@@ -70,14 +151,26 @@ impl PrecommitGuardBmc {
             return Ok(None);
         }
 
+        // Check guard mode
+        let mode = GuardMode::from_env();
+
+        // Bypass mode: skip all checks
+        if mode.is_bypass() {
+            return Ok(None);
+        }
+
         debug!(
             agent = _agent_name,
             files_count = _files.len(),
+            mode = ?mode,
             "Checking file reservations"
         );
 
         // TODO: Implement actual reservation checking against database
         // For now, pass through with no violations
+        // When conflicts are detected:
+        // - Enforce mode: return Err with conflict details
+        // - Warn mode: log warning and return Ok(Some(warnings))
         Ok(None)
     }
 
@@ -359,6 +452,171 @@ mod tests {
                     assert!(result.is_ok());
                     // Currently returns None (no violations) as check is TODO
                     assert!(result.unwrap().is_none());
+                });
+            },
+        );
+    }
+
+    // ============================================================================
+    // GUARD MODE TESTS (PORT-3.2)
+    // ============================================================================
+
+    #[test]
+    fn test_guard_mode_default_is_enforce() {
+        assert_eq!(GuardMode::default(), GuardMode::Enforce);
+    }
+
+    #[test]
+    fn test_guard_mode_is_bypass() {
+        assert!(!GuardMode::Enforce.is_bypass());
+        assert!(!GuardMode::Warn.is_bypass());
+        assert!(GuardMode::Bypass.is_bypass());
+    }
+
+    #[test]
+    fn test_guard_mode_is_advisory() {
+        assert!(!GuardMode::Enforce.is_advisory());
+        assert!(GuardMode::Warn.is_advisory());
+        assert!(!GuardMode::Bypass.is_advisory());
+    }
+
+    #[test]
+    #[serial]
+    fn test_guard_mode_from_env_defaults_to_enforce() {
+        temp_env::with_vars_unset(["AGENT_MAIL_BYPASS", "AGENT_MAIL_GUARD_MODE"], || {
+            assert_eq!(GuardMode::from_env(), GuardMode::Enforce);
+        });
+    }
+
+    #[test]
+    #[serial]
+    fn test_guard_mode_from_env_bypass_truthy_values() {
+        let truthy = ["1", "true", "TRUE", "yes", "YES", "t", "T", "y", "Y"];
+        for val in truthy {
+            temp_env::with_vars(
+                [
+                    ("AGENT_MAIL_BYPASS", Some(val)),
+                    ("AGENT_MAIL_GUARD_MODE", None::<&str>),
+                ],
+                || {
+                    assert_eq!(
+                        GuardMode::from_env(),
+                        GuardMode::Bypass,
+                        "Expected Bypass for AGENT_MAIL_BYPASS={}",
+                        val
+                    );
+                },
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_guard_mode_from_env_bypass_takes_priority() {
+        // Even with AGENT_MAIL_GUARD_MODE=warn, bypass should win
+        temp_env::with_vars(
+            [
+                ("AGENT_MAIL_BYPASS", Some("1")),
+                ("AGENT_MAIL_GUARD_MODE", Some("warn")),
+            ],
+            || {
+                assert_eq!(GuardMode::from_env(), GuardMode::Bypass);
+            },
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_guard_mode_from_env_warn_modes() {
+        let warn_values = ["warn", "WARN", "advisory", "ADVISORY", "adv", "ADV"];
+        for val in warn_values {
+            temp_env::with_vars(
+                [
+                    ("AGENT_MAIL_BYPASS", None::<&str>),
+                    ("AGENT_MAIL_GUARD_MODE", Some(val)),
+                ],
+                || {
+                    assert_eq!(
+                        GuardMode::from_env(),
+                        GuardMode::Warn,
+                        "Expected Warn for AGENT_MAIL_GUARD_MODE={}",
+                        val
+                    );
+                },
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_guard_mode_from_env_enforce_modes() {
+        let enforce_values = ["block", "BLOCK", "enforce", "ENFORCE", ""];
+        for val in enforce_values {
+            temp_env::with_vars(
+                [
+                    ("AGENT_MAIL_BYPASS", None::<&str>),
+                    ("AGENT_MAIL_GUARD_MODE", Some(val)),
+                ],
+                || {
+                    assert_eq!(
+                        GuardMode::from_env(),
+                        GuardMode::Enforce,
+                        "Expected Enforce for AGENT_MAIL_GUARD_MODE={}",
+                        val
+                    );
+                },
+            );
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_guard_mode_from_env_unknown_defaults_to_enforce() {
+        temp_env::with_vars(
+            [
+                ("AGENT_MAIL_BYPASS", None::<&str>),
+                ("AGENT_MAIL_GUARD_MODE", Some("unknown_value")),
+            ],
+            || {
+                assert_eq!(GuardMode::from_env(), GuardMode::Enforce);
+            },
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_check_reservations_bypass_mode_skips() {
+        temp_env::with_vars(
+            [
+                ("WORKTREES_ENABLED", Some("1")),
+                ("AGENT_MAIL_BYPASS", Some("1")),
+            ],
+            || {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(async {
+                    let temp_dir = TempDir::new().unwrap();
+                    let ctx = Ctx::root_ctx();
+                    let dummy_mm = {
+                        use libsql::Builder;
+                        let db_path = temp_dir.path().join("test.db");
+                        let db = Builder::new_local(&db_path).build().await.unwrap();
+                        let conn = db.connect().unwrap();
+                        ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+                    };
+
+                    let result = PrecommitGuardBmc::check_reservations(
+                        &ctx,
+                        &dummy_mm,
+                        "test_agent",
+                        &["src/main.rs".to_string()],
+                    )
+                    .await;
+
+                    assert!(result.is_ok());
+                    assert!(
+                        result.unwrap().is_none(),
+                        "Bypass mode should skip checks and return None"
+                    );
                 });
             },
         );
