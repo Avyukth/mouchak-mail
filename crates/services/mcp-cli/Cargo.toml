@@ -16,5 +16,10 @@ tracing-subscriber.workspace = true
 # Internal workspace dependency
 lib-core = { path = "../../libs/lib-core" }
 
+[dev-dependencies]
+assert_cmd = "2.0.16"
+predicates = "3.1.2"
+tempfile = "3.10.1"
+
 [lints]
 workspace = true

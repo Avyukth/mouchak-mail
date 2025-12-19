@@ -597,21 +597,38 @@ impl MessageBmc {
         }
 
         // Logic for handling raw vs literal queries:
-        // 1. If quotes are balanced, allow raw query (enables wildcards/AND/OR).
-        // 2. If quotes are unbalanced, treat as literal to prevent syntax error.
+        // 1. If query contains explicit FTS operators (AND, OR, NOT) or wildcards (*), pass raw
+        // 2. If query has balanced quotes (phrase search), pass raw
+        // 3. Otherwise, quote each word to prevent hyphens being treated as NOT operator
+        //    e.g., "full-text search" -> FTS5 interprets as "full AND NOT text AND search"
+        //    Fix: Quote words containing hyphens: "\"full-text\" search"
         let quote_count = query.chars().filter(|c| *c == '"').count();
-        let fts_query = if quote_count % 2 == 0 {
-            // Balanced quotes: Pass raw (but still dangerous if user inputs SQL injection?
-            // Standard param binding 'MATCH ?' handles injection for the string itself.
-            // FTS syntax errors inside the string are the main risk.
-            // We assume balanced quotes + parameter binding is "safe enough" for FTS5 syntax).
-            // NOTE: This enables 'quick*' (prefix) and potentially suffix if supported/hackable.
-            // Also enables 'foo AND bar'.
-            query.to_string()
-        } else {
+        let has_fts_operators = query.contains(" AND ")
+            || query.contains(" OR ")
+            || query.contains(" NOT ")
+            || query.contains('*');
+
+        let fts_query = if quote_count % 2 != 0 {
             // Unbalanced quotes: Treat as literal string search
             // This satisfies PORT-5.2 (Error Handling) for obviously malformed inputs
-            format!("\"{}\"", query.replace("\"", "\"\""))
+            format!("\"{}\"", query.replace('"', "\"\""))
+        } else if has_fts_operators || query.starts_with('"') {
+            // Has explicit FTS operators or is a phrase search - pass raw
+            query.to_string()
+        } else {
+            // Simple search: quote words containing hyphens to prevent FTS5 misinterpretation
+            // "full-text search" -> "\"full-text\" search"
+            query
+                .split_whitespace()
+                .map(|word| {
+                    if word.contains('-') && !word.starts_with('"') {
+                        format!("\"{}\"", word)
+                    } else {
+                        word.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(" ")
         };
 
         let stmt = db.prepare(

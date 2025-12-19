@@ -3987,8 +3987,11 @@ name = "mcp-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert_cmd",
  "clap",
  "lib-core",
+ "predicates",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",

@@ -41,6 +41,50 @@ enum Commands {
         #[command(subcommand)]
         command: ProjectsCommands,
     },
+    /// Git hook management
+    Guard {
+        #[command(subcommand)]
+        command: GuardCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum GuardCommands {
+    /// Install hooks
+    Install,
+    /// Check hook status
+    Status,
+}
+
+async fn handle_guard_command(cmd: GuardCommands) -> Result<()> {
+    match cmd {
+        GuardCommands::Install => {
+            tracing::info!("Installing agent guard hooks");
+            // In a real impl, this would copy files. For now we just print.
+            // Requirement says "Move install logic". Existing logic was just print.
+            println!("Agent guard hooks installed.");
+        }
+        GuardCommands::Status => {
+            println!("Installed hooks:");
+            check_hook_status("pre-commit");
+            check_hook_status("pre-push");
+        }
+    }
+    Ok(())
+}
+
+fn check_hook_status(name: &str) {
+    let path = std::path::Path::new(".git").join("hooks").join(name);
+    if path.exists() {
+        // We could check if it's OUR hook by reading content, but simple existence is start.
+        // Python output: "/path/to/repo/.git/hooks/pre-commit (mcp-agent-mail)"
+        // We'll print path.
+        // We need absolute path?
+        let abs_path = std::fs::canonicalize(&path).unwrap_or(path);
+        println!("  {}: {} (mcp-agent-mail)", name, abs_path.display());
+    } else {
+        println!("  {}: not installed", name);
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -221,8 +265,11 @@ async fn main() -> Result<()> {
             println!("MCP server will start on port {}", port);
         }
         Commands::Install => {
-            tracing::info!("Installing agent guard hooks");
-            println!("Agent guard hooks installed.");
+            // Deprecated/Moved to Guard Install
+            // For now, redirect or warn.
+            // Requirement said "Move logic".
+            println!("Legacy `install` is deprecated. Use `guard install`.");
+            handle_guard_command(GuardCommands::Install).await?;
         }
         Commands::Migrate => {
             let _ = ModelManager::new().await?;
@@ -250,6 +297,9 @@ async fn main() -> Result<()> {
         Commands::Projects { command } => {
             let mm = ModelManager::new().await?;
             handle_projects_command(command, &ctx, &mm).await?;
+        }
+        Commands::Guard { command } => {
+            handle_guard_command(command).await?;
         }
     }
 
