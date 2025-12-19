@@ -5,6 +5,7 @@
 
 use super::{Button, ButtonVariant, Input, Select, SelectOption};
 use leptos::prelude::*;
+use leptos_router::params::ParamsMap;
 use leptos_use::use_debounce_fn;
 
 /// Filter state for the inbox
@@ -44,6 +45,18 @@ impl FilterState {
                 .get("view")
                 .cloned()
                 .unwrap_or_else(|| "list".to_string()),
+        }
+    }
+
+    /// Create FilterState from a Leptos ParamsMap
+    pub fn from_params_map(params: &ParamsMap) -> Self {
+        Self {
+            query: params.get("q").unwrap_or_default(),
+            project: params.get("project").filter(|s| !s.is_empty()),
+            sender: params.get("sender").filter(|s| !s.is_empty()),
+            importance: params.get("importance").filter(|s| !s.is_empty()),
+            threaded: params.get("threaded").is_some_and(|v| v == "true"),
+            view_mode: params.get("view").unwrap_or_else(|| "list".to_string()),
         }
     }
 
@@ -726,6 +739,26 @@ mod tests {
         params3.insert("threaded".to_string(), "1".to_string());
         let state3 = FilterState::from_query_params(&params3);
         assert!(!state3.threaded);
+    }
+
+    #[test]
+    fn test_from_params_map() {
+        let mut params = ParamsMap::new();
+        params.insert("q", "search term".to_string());
+        params.insert("project", "my-project".to_string());
+        params.insert("sender", "agent-1".to_string());
+        params.insert("importance", "normal".to_string());
+        params.insert("threaded", "true".to_string());
+        params.insert("view", "grid".to_string());
+
+        let state = FilterState::from_params_map(&params);
+
+        assert_eq!(state.query, "search term");
+        assert_eq!(state.project.as_deref(), Some("my-project"));
+        assert_eq!(state.sender.as_deref(), Some("agent-1"));
+        assert_eq!(state.importance.as_deref(), Some("normal"));
+        assert!(state.threaded);
+        assert_eq!(state.view_mode, "grid");
     }
 
     // === Importance Options Tests ===

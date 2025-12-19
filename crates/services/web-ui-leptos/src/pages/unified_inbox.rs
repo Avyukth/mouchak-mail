@@ -26,7 +26,7 @@ pub fn UnifiedInbox() -> impl IntoView {
     let loading = RwSignal::new(true);
     let error = RwSignal::new(Option::<String>::None);
     let filter_state =
-        RwSignal::new(query.with_untracked(|params| FilterState::from_query_params(params)));
+        RwSignal::new(query.with_untracked(|params| FilterState::from_params_map(params)));
     let selected_id = RwSignal::new(Option::<i64>::None);
 
     // Load all messages once on mount
@@ -155,7 +155,7 @@ pub fn UnifiedInbox() -> impl IntoView {
                 sender: msg.sender_name.clone(),
                 subject: msg.subject.clone(),
                 timestamp: format_date(&msg.created_ts),
-                unread: false, // TODO: Track read state
+                unread: false, // Read state not yet tracked.
                 importance: msg.importance.clone(),
                 project_slug: msg.project_slug.clone(),
             })
