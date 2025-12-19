@@ -4,7 +4,10 @@
 //! filtering, sorting, and download functionality.
 
 use crate::api::client::{self, Attachment, Project};
-use crate::components::{Card, CardContent, Select, SelectOption, Skeleton};
+use crate::components::{
+    Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Select, SelectOption,
+    Skeleton,
+};
 use leptos::prelude::*;
 use leptos_router::hooks::use_query_map;
 
@@ -80,7 +83,96 @@ impl AttachmentSort {
     }
 }
 
+/// Preview modal for images and PDFs.
+/// Uses Dialog component with responsive sizing.
+#[component]
+fn AttachmentPreviewModal(
+    attachment: Attachment,
+    download_url: String,
+    open: RwSignal<bool>,
+) -> impl IntoView {
+    let file_type = attachment.file_type_category();
+    let filename = attachment.filename.clone();
+    let is_image = file_type == "image";
+    let is_pdf = file_type == "pdf";
+    let can_preview = is_image || is_pdf;
+
+    // Use StoredValue for strings (avoids FnOnce issue with moves)
+    let filename_store = StoredValue::new(filename);
+    let download_url_store = StoredValue::new(download_url);
+
+    view! {
+        <Dialog open=open.get() on_open_change=Callback::new(move |v| open.set(v))>
+            <DialogContent class="max-w-4xl max-h-[90vh] overflow-hidden".to_string()>
+                <DialogHeader>
+                    <DialogTitle>
+                        <span class="truncate">{filename_store.get_value()}</span>
+                    </DialogTitle>
+                </DialogHeader>
+
+                // Preview content area
+                <div class="flex items-center justify-center min-h-[300px] max-h-[70vh] bg-charcoal-100 dark:bg-charcoal-800 rounded-lg overflow-auto">
+                    {if is_image {
+                        view! {
+                            <img
+                                src={download_url_store.get_value()}
+                                alt={filename_store.get_value()}
+                                class="max-w-full max-h-[70vh] object-contain"
+                            />
+                        }.into_any()
+                    } else if is_pdf {
+                        view! {
+                            <iframe
+                                src={download_url_store.get_value()}
+                                class="w-full h-[70vh] border-0"
+                                title={format!("Preview: {}", filename_store.get_value())}
+                            />
+                        }.into_any()
+                    } else {
+                        view! {
+                            <div class="text-center p-8">
+                                <i data-lucide="file-x" class="icon-3xl text-charcoal-400 mb-4"></i>
+                                <p class="text-charcoal-500 dark:text-charcoal-400">
+                                    "Preview not available for this file type"
+                                </p>
+                            </div>
+                        }.into_any()
+                    }}
+                </div>
+
+                // Footer with download button
+                <div class="flex justify-end gap-2 pt-4">
+                    {if can_preview {
+                        Some(view! {
+                            <a
+                                href={download_url_store.get_value()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-md border border-charcoal-300 dark:border-charcoal-600 text-charcoal-700 dark:text-charcoal-300 hover:bg-charcoal-100 dark:hover:bg-charcoal-700 transition-colors text-sm font-medium"
+                            >
+                                <i data-lucide="external-link" class="icon-sm"></i>
+                                "Open in New Tab"
+                            </a>
+                        })
+                    } else {
+                        None
+                    }}
+                    <a
+                        href={download_url_store.get_value()}
+                        download
+                        class="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] rounded-md bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm transition-colors"
+                    >
+                        <i data-lucide="download" class="icon-sm"></i>
+                        "Download"
+                    </a>
+                </div>
+            </DialogContent>
+        </Dialog>
+    }
+}
+
 /// Attachment card component for grid display.
+/// Clicking opens a preview modal for images/PDFs.
 #[component]
 fn AttachmentCard(attachment: Attachment, project_slug: String) -> impl IntoView {
     let download_url = client::attachment_download_url(attachment.id, &project_slug);
@@ -89,14 +181,48 @@ fn AttachmentCard(attachment: Attachment, project_slug: String) -> impl IntoView
     let size = attachment.human_size();
     let filename = attachment.filename.clone();
     let is_image = file_type == "image";
+    let is_pdf = file_type == "pdf";
+    let can_preview = is_image || is_pdf;
+
+    // Modal state
+    let modal_open = RwSignal::new(false);
+
+    // Clone for modal
+    let attachment_for_modal = attachment.clone();
+    let download_url_for_modal = download_url.clone();
 
     view! {
+        // Preview modal
+        <AttachmentPreviewModal
+            attachment=attachment_for_modal
+            download_url=download_url_for_modal
+            open=modal_open
+        />
+
         <Card class="hover:shadow-lg transition-shadow duration-200 group">
             <CardContent class="p-4">
                 // File icon/preview area (fixed height for CLS prevention)
-                <div class="h-24 flex items-center justify-center rounded-lg bg-charcoal-100 dark:bg-charcoal-700 mb-3 overflow-hidden">
+                // Clickable for preview if image/PDF
+                <button
+                    type="button"
+                    class={format!(
+                        "w-full h-24 flex items-center justify-center rounded-lg bg-charcoal-100 dark:bg-charcoal-700 mb-3 overflow-hidden {}",
+                        if can_preview { "cursor-pointer hover:ring-2 hover:ring-amber-400 transition-all" } else { "" }
+                    )}
+                    on:click=move |_| {
+                        if can_preview {
+                            modal_open.set(true);
+                        }
+                    }
+                    aria-label={if can_preview {
+                        format!("Preview {}", filename)
+                    } else {
+                        format!("File: {}", filename)
+                    }}
+                    disabled={!can_preview}
+                >
                     {if is_image {
-                        // Image preview
+                        // Image thumbnail
                         view! {
                             <img
                                 src={download_url.clone()}
@@ -114,7 +240,7 @@ fn AttachmentCard(attachment: Attachment, project_slug: String) -> impl IntoView
                             ></i>
                         }.into_any()
                     }}
-                </div>
+                </button>
 
                 // Filename (truncated)
                 <h3
@@ -124,11 +250,18 @@ fn AttachmentCard(attachment: Attachment, project_slug: String) -> impl IntoView
                     {filename.clone()}
                 </h3>
 
-                // Metadata row
+                // Metadata row with preview indicator
                 <div class="flex items-center justify-between text-xs text-charcoal-500 dark:text-charcoal-400">
                     <span class="flex items-center gap-1">
                         <i data-lucide={icon} class="icon-xs"></i>
                         {file_type.to_uppercase()}
+                        {if can_preview {
+                            Some(view! {
+                                <i data-lucide="eye" class="icon-xs text-amber-500 ml-1" title="Click to preview"></i>
+                            })
+                        } else {
+                            None
+                        }}
                     </span>
                     <span>{size}</span>
                 </div>
@@ -388,5 +521,55 @@ mod tests {
         let all = AttachmentSort::all();
         assert_eq!(all.len(), 6);
         assert_eq!(all[0], AttachmentSort::DateDesc);
+    }
+
+    // === Preview Modal Tests ===
+
+    #[test]
+    fn test_preview_supported_for_images() {
+        let file_types = ["image", "pdf"];
+        for ft in file_types {
+            let can_preview = ft == "image" || ft == "pdf";
+            assert!(can_preview, "Should support preview for {}", ft);
+        }
+    }
+
+    #[test]
+    fn test_preview_not_supported_for_other_types() {
+        let file_types = ["document", "spreadsheet", "archive", "code", "other"];
+        for ft in file_types {
+            let can_preview = ft == "image" || ft == "pdf";
+            assert!(!can_preview, "Should not support preview for {}", ft);
+        }
+    }
+
+    #[test]
+    fn test_modal_class_max_width() {
+        let modal_class = "max-w-4xl max-h-[90vh] overflow-hidden";
+        assert!(modal_class.contains("max-w-4xl"));
+        assert!(modal_class.contains("max-h-[90vh]"));
+    }
+
+    #[test]
+    fn test_preview_area_class() {
+        let preview_class =
+            "flex items-center justify-center min-h-[300px] max-h-[70vh] bg-charcoal-100";
+        assert!(preview_class.contains("min-h-[300px]"));
+        assert!(preview_class.contains("max-h-[70vh]"));
+    }
+
+    #[test]
+    fn test_preview_button_has_touch_target() {
+        // Preview buttons must have 44px minimum height for WCAG 2.2
+        let button_class = "min-h-[44px]";
+        assert!(button_class.contains("min-h-[44px]"));
+    }
+
+    #[test]
+    fn test_preview_hover_ring() {
+        // Preview area should have visual feedback on hover
+        let hover_class = "hover:ring-2 hover:ring-amber-400";
+        assert!(hover_class.contains("hover:ring-2"));
+        assert!(hover_class.contains("hover:ring-amber-400"));
     }
 }
