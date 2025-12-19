@@ -479,3 +479,55 @@ pub async fn get_file_reservations(
         })
     }
 }
+
+/// Mark read response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarkReadResponse {
+    pub success: bool,
+    #[serde(default)]
+    pub message: Option<String>,
+}
+
+/// Mark a message as read/unread.
+///
+/// # Arguments
+/// * `message_id` - The message ID to mark
+/// * `project_slug` - Project context
+/// * `agent_name` - Agent marking the message
+/// * `is_read` - True to mark as read, false to mark as unread
+pub async fn mark_read(
+    message_id: i64,
+    project_slug: &str,
+    agent_name: &str,
+    is_read: bool,
+) -> Result<MarkReadResponse, ApiError> {
+    let url = format!("{}/api/messages/{}/read", API_BASE_URL, message_id);
+
+    #[derive(Serialize)]
+    struct Payload<'a> {
+        project_slug: &'a str,
+        agent_name: &'a str,
+        is_read: bool,
+    }
+
+    let response = Request::post(&url)
+        .header("Content-Type", "application/json")
+        .json(&Payload {
+            project_slug,
+            agent_name,
+            is_read,
+        })?
+        .send()
+        .await?;
+
+    if response.ok() {
+        Ok(MarkReadResponse {
+            success: true,
+            message: Some("Message read status updated".to_string()),
+        })
+    } else {
+        Err(ApiError {
+            message: format!("Failed to update read status: {}", response.status()),
+        })
+    }
+}
