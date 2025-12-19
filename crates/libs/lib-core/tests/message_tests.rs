@@ -1067,6 +1067,455 @@ async fn test_list_pending_reviews_partial_ack() {
     assert_eq!(pending.len(), 0, "Should be empty after all acked");
 }
 
+// ============================================================================
+// LIST_PENDING_REVIEWS INTEGRATION TESTS (T6)
+// ============================================================================
+
+/// Test that list_pending_reviews returns empty when all messages are fully acknowledged
+#[tokio::test]
+async fn test_list_pending_reviews_empty_when_all_acked() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let (project_id, sender_id, recipient_id) = setup_messaging(&tc).await;
+
+    // Create 3 messages all requiring acknowledgment
+    for i in 1..=3 {
+        let msg_c = MessageForCreate {
+            project_id,
+            sender_id,
+            recipient_ids: vec![recipient_id],
+            cc_ids: None,
+            bcc_ids: None,
+            subject: format!("Review Request {}", i),
+            body_md: format!("Please review item {}", i),
+            thread_id: None,
+            importance: Some("high".to_string()),
+            ack_required: true,
+        };
+        let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
+
+        // Acknowledge each message immediately
+        MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, recipient_id)
+            .await
+            .unwrap();
+    }
+
+    // After all acknowledged, pending reviews should be empty
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project_id), None, 10)
+        .await
+        .expect("Should list pending reviews");
+
+    assert_eq!(
+        pending.len(),
+        0,
+        "Pending reviews should be empty when all messages are fully acknowledged"
+    );
+}
+
+/// Test that list_pending_reviews returns full context in PendingReviewRow
+#[tokio::test]
+async fn test_list_pending_reviews_full_context_present() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let human_key = "/pending/full-context";
+    let slug = slugify(human_key);
+
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .expect("Failed to create project");
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    // Create sender
+    let sender_c = AgentForCreate {
+        project_id: project.id,
+        name: "ContextSender".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Sender for context test".to_string(),
+    };
+    let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
+
+    // Create recipient
+    let recipient_c = AgentForCreate {
+        project_id: project.id,
+        name: "ContextRecipient".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Recipient for context test".to_string(),
+    };
+    let recipient_id = AgentBmc::create(&tc.ctx, &tc.mm, recipient_c)
+        .await
+        .unwrap();
+
+    // Create message with ack_required
+    let msg_c = MessageForCreate {
+        project_id: project.id,
+        sender_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "[COMPLETION] Full Context Test".to_string(),
+        body_md: "This message tests full context retrieval.".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
+
+    // Retrieve pending reviews
+    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
+        .await
+        .expect("Should list pending reviews");
+
+    assert_eq!(pending.len(), 1, "Should have 1 pending review");
+
+    let row = &pending[0];
+
+    // Verify message fields
+    assert_eq!(row.message_id, msg_id);
+    assert_eq!(row.subject, "[COMPLETION] Full Context Test");
+    assert_eq!(row.body_md, "This message tests full context retrieval.");
+    assert_eq!(row.importance, "high");
+
+    // Verify sender info
+    assert_eq!(row.sender_id, sender_id);
+    assert_eq!(row.sender_name, "ContextSender");
+
+    // Verify project info
+    assert_eq!(row.project_id, project.id);
+    assert_eq!(row.project_slug, slug);
+    assert_eq!(row.project_name, human_key);
+
+    // Verify thread count (should be 1 for single message thread)
+    assert!(row.thread_count >= 1, "Thread count should be at least 1");
+
+    // Verify recipients JSON is populated
+    assert!(
+        !row.recipients_json.is_empty(),
+        "Recipients JSON should not be empty"
+    );
+    assert!(
+        row.recipients_json.contains("ContextRecipient"),
+        "Recipients should include recipient name"
+    );
+}
+
+/// Test list_pending_reviews filter by project
+#[tokio::test]
+async fn test_list_pending_reviews_filter_by_project() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    // Create project 1
+    let slug1 = slugify("/pending/project1");
+    let project1_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug1, "/pending/project1")
+        .await
+        .unwrap();
+    let project1 = ProjectBmc::get(&tc.ctx, &tc.mm, project1_id).await.unwrap();
+
+    let sender1_c = AgentForCreate {
+        project_id: project1.id,
+        name: "P1Sender".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Sender in project 1".to_string(),
+    };
+    let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
+
+    let r1_c = AgentForCreate {
+        project_id: project1.id,
+        name: "P1Recipient".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Recipient in project 1".to_string(),
+    };
+    let r1_id = AgentBmc::create(&tc.ctx, &tc.mm, r1_c).await.unwrap();
+
+    // Create project 2
+    let slug2 = slugify("/pending/project2");
+    let project2_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug2, "/pending/project2")
+        .await
+        .unwrap();
+    let project2 = ProjectBmc::get(&tc.ctx, &tc.mm, project2_id).await.unwrap();
+
+    let sender2_c = AgentForCreate {
+        project_id: project2.id,
+        name: "P2Sender".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Sender in project 2".to_string(),
+    };
+    let sender2_id = AgentBmc::create(&tc.ctx, &tc.mm, sender2_c).await.unwrap();
+
+    let r2_c = AgentForCreate {
+        project_id: project2.id,
+        name: "P2Recipient".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Recipient in project 2".to_string(),
+    };
+    let r2_id = AgentBmc::create(&tc.ctx, &tc.mm, r2_c).await.unwrap();
+
+    // Create ack_required message in project 1
+    let msg1_c = MessageForCreate {
+        project_id: project1.id,
+        sender_id: sender1_id,
+        recipient_ids: vec![r1_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Project 1 Review".to_string(),
+        body_md: "Review in project 1".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
+
+    // Create ack_required message in project 2
+    let msg2_c = MessageForCreate {
+        project_id: project2.id,
+        sender_id: sender2_id,
+        recipient_ids: vec![r2_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Project 2 Review".to_string(),
+        body_md: "Review in project 2".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
+
+    // Filter by project 1 only
+    let pending1 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project1.id), None, 10)
+        .await
+        .expect("Should filter by project 1");
+
+    assert_eq!(pending1.len(), 1, "Should have 1 pending in project 1");
+    assert_eq!(pending1[0].subject, "Project 1 Review");
+    assert_eq!(pending1[0].project_id, project1.id);
+
+    // Filter by project 2 only
+    let pending2 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project2.id), None, 10)
+        .await
+        .expect("Should filter by project 2");
+
+    assert_eq!(pending2.len(), 1, "Should have 1 pending in project 2");
+    assert_eq!(pending2[0].subject, "Project 2 Review");
+    assert_eq!(pending2[0].project_id, project2.id);
+
+    // No filter (None) - should return both
+    let pending_all = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, None, None, 10)
+        .await
+        .expect("Should list all pending reviews");
+
+    assert!(
+        pending_all.len() >= 2,
+        "Should have at least 2 pending reviews without project filter"
+    );
+}
+
+/// Test list_pending_reviews filter by sender
+#[tokio::test]
+async fn test_list_pending_reviews_filter_by_sender() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let human_key = "/pending/sender-filter";
+    let slug = slugify(human_key);
+
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .unwrap();
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    // Create 2 different senders
+    let sender1_c = AgentForCreate {
+        project_id: project.id,
+        name: "Sender1".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "First sender".to_string(),
+    };
+    let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
+
+    let sender2_c = AgentForCreate {
+        project_id: project.id,
+        name: "Sender2".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Second sender".to_string(),
+    };
+    let sender2_id = AgentBmc::create(&tc.ctx, &tc.mm, sender2_c).await.unwrap();
+
+    // Create recipient
+    let recipient_c = AgentForCreate {
+        project_id: project.id,
+        name: "CommonRecipient".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Shared recipient".to_string(),
+    };
+    let recipient_id = AgentBmc::create(&tc.ctx, &tc.mm, recipient_c)
+        .await
+        .unwrap();
+
+    // Message from sender 1
+    let msg1_c = MessageForCreate {
+        project_id: project.id,
+        sender_id: sender1_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "From Sender1".to_string(),
+        body_md: "Message from sender 1".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    MessageBmc::create(&tc.ctx, &tc.mm, msg1_c).await.unwrap();
+
+    // Message from sender 2
+    let msg2_c = MessageForCreate {
+        project_id: project.id,
+        sender_id: sender2_id,
+        recipient_ids: vec![recipient_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "From Sender2".to_string(),
+        body_md: "Message from sender 2".to_string(),
+        thread_id: None,
+        importance: Some("high".to_string()),
+        ack_required: true,
+    };
+    MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
+
+    // Filter by sender 1 only
+    let pending1 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), Some(sender1_id), 10)
+            .await
+            .expect("Should filter by sender 1");
+
+    assert_eq!(pending1.len(), 1, "Should have 1 message from sender 1");
+    assert_eq!(pending1[0].subject, "From Sender1");
+    assert_eq!(pending1[0].sender_id, sender1_id);
+
+    // Filter by sender 2 only
+    let pending2 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), Some(sender2_id), 10)
+            .await
+            .expect("Should filter by sender 2");
+
+    assert_eq!(pending2.len(), 1, "Should have 1 message from sender 2");
+    assert_eq!(pending2[0].subject, "From Sender2");
+    assert_eq!(pending2[0].sender_id, sender2_id);
+
+    // No sender filter - should return both
+    let pending_all = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
+        .await
+        .expect("Should list all without sender filter");
+
+    assert_eq!(
+        pending_all.len(),
+        2,
+        "Should have 2 pending reviews without sender filter"
+    );
+}
+
+/// Test list_pending_reviews limit is clamped to 1-50 range
+#[tokio::test]
+async fn test_list_pending_reviews_limit_clamped() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+    let human_key = "/pending/limit-test";
+    let slug = slugify(human_key);
+
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .unwrap();
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    // Create sender
+    let sender_c = AgentForCreate {
+        project_id: project.id,
+        name: "LimitSender".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Sender for limit test".to_string(),
+    };
+    let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
+
+    // Create recipient
+    let recipient_c = AgentForCreate {
+        project_id: project.id,
+        name: "LimitRecipient".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Recipient for limit test".to_string(),
+    };
+    let recipient_id = AgentBmc::create(&tc.ctx, &tc.mm, recipient_c)
+        .await
+        .unwrap();
+
+    // Create 5 messages with ack_required
+    for i in 1..=5 {
+        let msg_c = MessageForCreate {
+            project_id: project.id,
+            sender_id,
+            recipient_ids: vec![recipient_id],
+            cc_ids: None,
+            bcc_ids: None,
+            subject: format!("Review {}", i),
+            body_md: format!("Review message {}", i),
+            thread_id: None,
+            importance: Some("high".to_string()),
+            ack_required: true,
+        };
+        MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
+    }
+
+    // Test limit=3 returns exactly 3
+    let pending3 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 3)
+        .await
+        .expect("Should respect limit=3");
+    assert_eq!(pending3.len(), 3, "Should return exactly 3 with limit=3");
+
+    // Test limit=0 is clamped to 1 (minimum)
+    let pending0 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 0)
+        .await
+        .expect("Should clamp limit=0 to 1");
+    assert_eq!(pending0.len(), 1, "limit=0 should be clamped to 1");
+
+    // Test negative limit is clamped to 1
+    let pending_neg = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, -5)
+        .await
+        .expect("Should clamp negative limit to 1");
+    assert_eq!(
+        pending_neg.len(),
+        1,
+        "Negative limit should be clamped to 1"
+    );
+
+    // Test limit=100 is clamped to 50 (maximum)
+    // We only have 5 messages so we can't directly verify 50, but we verify it doesn't error
+    let pending100 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 100)
+        .await
+        .expect("Should clamp limit=100 to 50 (max)");
+    assert!(
+        pending100.len() <= 50,
+        "Large limit should be clamped to max 50"
+    );
+    assert_eq!(
+        pending100.len(),
+        5,
+        "Should return all 5 messages when limit > count"
+    );
+}
+
 /// Test message with multiple recipients across all types (TO, CC, BCC)
 ///
 /// This tests the complete batch optimization path with mixed recipient types.
