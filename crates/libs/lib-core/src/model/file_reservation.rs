@@ -132,8 +132,9 @@ impl FileReservationBmc {
         // Git Operations - serialized to prevent lock contention
         let _git_guard = mm.git_lock.lock().await;
 
-        let repo_root = &mm.repo_root;
-        let repo = git_store::open_repo(repo_root)?;
+        // Use cached repository to prevent FD exhaustion
+        let repo_arc = mm.get_repo().await?;
+        let repo = repo_arc.lock().await;
 
         // Hash path_pattern
         let mut hasher = Sha1::new();

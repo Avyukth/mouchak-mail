@@ -314,8 +314,16 @@ impl MessageBmc {
         }
 
         // Spawn background task for git operations (non-blocking)
+        // Get cached repository before spawning to ensure it's in the cache
+        let cached_repo = match mm.get_repo().await {
+            Ok(repo) => repo,
+            Err(e) => {
+                warn!("Failed to get cached repo for message {}: {}", id, e);
+                return Ok(id); // Return success since DB write succeeded
+            }
+        };
+
         let git_lock = mm.git_lock.clone();
-        let repo_root = mm.repo_root.clone();
         let subject = msg_c.subject.clone();
         let body_md = msg_c.body_md.clone();
         let thread_id_clone = thread_id.clone();
@@ -324,7 +332,7 @@ impl MessageBmc {
         tokio::spawn(async move {
             if let Err(e) = commit_message_to_git(
                 git_lock,
-                repo_root,
+                cached_repo,
                 id,
                 &project_slug,
                 &sender_name,
@@ -1131,7 +1139,7 @@ fn write_message_to_archive(
 #[allow(clippy::too_many_arguments)]
 async fn commit_message_to_git(
     git_lock: Arc<Mutex<()>>,
-    repo_root: PathBuf,
+    cached_repo: Arc<Mutex<git2::Repository>>,
     id: i64,
     project_slug: &str,
     sender_name: &str,
@@ -1170,8 +1178,9 @@ async fn commit_message_to_git(
     )?;
 
     // Git operations - serialized to prevent lock contention
+    // Use pre-fetched cached repository to prevent FD exhaustion
     let _git_guard = git_lock.lock().await;
-    let repo = git_store::open_repo(&repo_root)?;
+    let repo = cached_repo.lock().await;
     let workdir = repo
         .workdir()
         .ok_or(crate::Error::InvalidInput("No workdir".into()))?;

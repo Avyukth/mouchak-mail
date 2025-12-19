@@ -192,4 +192,94 @@ mod tests {
         cache.clear().await;
         assert!(cache.is_empty().await);
     }
+
+    /// Stress test simulating 100+ concurrent agent accesses
+    /// Verifies that cache prevents FD exhaustion by reusing handles
+    #[tokio::test]
+    async fn test_concurrent_agent_access_no_fd_exhaustion() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        // Cache with small capacity to force eviction
+        let cache = Arc::new(RepoCache::new(4));
+        let (_dir, path) = create_test_repo().await;
+
+        let success_count = Arc::new(AtomicUsize::new(0));
+        let error_count = Arc::new(AtomicUsize::new(0));
+
+        // Spawn 100 concurrent tasks simulating agents
+        let mut handles = vec![];
+        for _ in 0..100 {
+            let cache = Arc::clone(&cache);
+            let path = path.clone();
+            let success_count = Arc::clone(&success_count);
+            let error_count = Arc::clone(&error_count);
+
+            handles.push(tokio::spawn(async move {
+                match cache.get(&path).await {
+                    Ok(_repo) => {
+                        success_count.fetch_add(1, Ordering::SeqCst);
+                    }
+                    Err(_) => {
+                        error_count.fetch_add(1, Ordering::SeqCst);
+                    }
+                }
+            }));
+        }
+
+        // Wait for all tasks
+        for handle in handles {
+            let _ = handle.await;
+        }
+
+        // All should succeed without FD exhaustion
+        assert_eq!(success_count.load(Ordering::SeqCst), 100);
+        assert_eq!(error_count.load(Ordering::SeqCst), 0);
+
+        // Cache should only have 1 entry (same repo)
+        assert_eq!(cache.len().await, 1);
+    }
+
+    /// Stress test with multiple repos to verify eviction works under load
+    #[tokio::test]
+    async fn test_concurrent_multi_repo_eviction() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        // Small cache to force eviction
+        let cache = Arc::new(RepoCache::new(3));
+
+        // Create 10 different repos
+        let mut dirs = vec![];
+        let mut paths = vec![];
+        for _ in 0..10 {
+            let (dir, path) = create_test_repo().await;
+            dirs.push(dir);
+            paths.push(path);
+        }
+
+        let success_count = Arc::new(AtomicUsize::new(0));
+
+        // Spawn 50 tasks each accessing random repos
+        let mut handles = vec![];
+        for i in 0..50 {
+            let cache = Arc::clone(&cache);
+            let path = paths[i % 10].clone();
+            let success_count = Arc::clone(&success_count);
+
+            handles.push(tokio::spawn(async move {
+                if cache.get(&path).await.is_ok() {
+                    success_count.fetch_add(1, Ordering::SeqCst);
+                }
+            }));
+        }
+
+        for handle in handles {
+            let _ = handle.await;
+        }
+
+        // All should succeed
+        assert_eq!(success_count.load(Ordering::SeqCst), 50);
+
+        // Cache should have at most 3 entries due to capacity
+        assert!(cache.len().await <= 3);
+    }
 }

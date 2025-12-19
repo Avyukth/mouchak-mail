@@ -51,10 +51,16 @@ pub mod project_sibling_suggestion;
 pub mod tool_metric;
 
 use crate::Result;
+use crate::store::repo_cache::RepoCache;
 use crate::store::{self, Db};
+use git2::Repository;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+
+/// Default LRU cache capacity for git repositories.
+/// Each repo uses ~10-50 FDs, so 8 repos = ~400 FDs max.
+const DEFAULT_REPO_CACHE_SIZE: usize = 8;
 
 #[derive(Clone)]
 pub struct ModelManager {
@@ -64,6 +70,9 @@ pub struct ModelManager {
     /// high concurrency well, so we serialize commits at the application level.
     /// This is critical for supporting 100+ concurrent agents.
     pub git_lock: Arc<Mutex<()>>,
+    /// LRU cache for git repositories to prevent file descriptor exhaustion.
+    /// NIST Control: SC-5 (DoS Protection)
+    repo_cache: Arc<RepoCache>,
 }
 
 impl ModelManager {
@@ -77,10 +86,17 @@ impl ModelManager {
         // Auto-initialize git repository if not exists
         crate::store::git_store::init_or_open_repo(&repo_root)?;
 
+        // Read cache size from env, default to 8
+        let cache_size = std::env::var("GIT_REPO_CACHE_SIZE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(DEFAULT_REPO_CACHE_SIZE);
+
         Ok(ModelManager {
             db,
             repo_root,
             git_lock: Arc::new(Mutex::new(())),
+            repo_cache: Arc::new(RepoCache::new(cache_size)),
         })
     }
 
@@ -91,7 +107,23 @@ impl ModelManager {
             db,
             repo_root,
             git_lock: Arc::new(Mutex::new(())),
+            repo_cache: Arc::new(RepoCache::default()),
         }
+    }
+
+    /// Get a cached repository handle for the repo_root.
+    ///
+    /// Uses LRU cache to prevent file descriptor exhaustion.
+    /// The returned `Arc<Mutex<Repository>>` must be locked before use.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let repo_arc = mm.get_repo().await?;
+    /// let repo = repo_arc.lock().await;
+    /// git_store::commit_file(&*repo, ...)?;
+    /// ```
+    pub async fn get_repo(&self) -> Result<Arc<Mutex<Repository>>> {
+        self.repo_cache.get(&self.repo_root).await
     }
 
     /// Returns the sqlx db pool reference.

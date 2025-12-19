@@ -198,7 +198,9 @@ impl ExportBmc {
         // 3. Git Operations - serialized to prevent lock contention
         let _git_guard = mm.git_lock.lock().await;
 
-        let repo = crate::store::git_store::open_repo(&mm.repo_root)?;
+        // Use cached repository to prevent FD exhaustion
+        let repo_arc = mm.get_repo().await?;
+        let repo = repo_arc.lock().await;
 
         // 4. Commit
         let oid = crate::store::git_store::commit_file(

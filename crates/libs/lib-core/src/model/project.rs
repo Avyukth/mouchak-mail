@@ -519,8 +519,9 @@ impl ProjectBmc {
             .join(&project.slug)
             .join("agents.json");
 
-        // We open the repo at mm.repo_root
-        let repo = git_store::open_repo(repo_root)?;
+        // Use cached repository to prevent FD exhaustion
+        let repo_arc = mm.get_repo().await?;
+        let repo = repo_arc.lock().await;
 
         let oid = git_store::commit_paths(
             &repo,
