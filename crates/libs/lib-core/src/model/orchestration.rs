@@ -322,6 +322,15 @@ pub struct WorktreeManager {
     base_path: PathBuf,
 }
 
+/// Result of a worktree operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorktreeResult {
+    pub success: bool,
+    pub path: PathBuf,
+    pub branch: String,
+    pub message: String,
+}
+
 impl WorktreeManager {
     /// Create a new WorktreeManager with the given base path.
     /// All worktrees will be created under `base/.sandboxes/`.
@@ -339,6 +348,197 @@ impl WorktreeManager {
     /// Get the path for a reviewer worktree
     pub fn reviewer_path(&self, task_id: &str) -> PathBuf {
         self.base_path.join(format!("reviewer-fix-{}", task_id))
+    }
+
+    /// Create a worker worktree for isolated task development.
+    ///
+    /// Creates a new git worktree at `.sandboxes/worker-{task_id}` with a
+    /// new branch `feature/{task_id}` based on the current HEAD.
+    pub fn create_worker_worktree(&self, task_id: &str) -> std::io::Result<WorktreeResult> {
+        let worktree_path = self.worker_path(task_id);
+        let branch_name = format!("feature/{}", task_id);
+
+        self.create_worktree(&worktree_path, &branch_name)
+    }
+
+    /// Create a reviewer worktree for applying fixes.
+    ///
+    /// Creates a new git worktree at `.sandboxes/reviewer-fix-{task_id}` with a
+    /// new branch `fix/{task_id}` based on the current HEAD.
+    pub fn create_reviewer_worktree(&self, task_id: &str) -> std::io::Result<WorktreeResult> {
+        let worktree_path = self.reviewer_path(task_id);
+        let branch_name = format!("fix/{}", task_id);
+
+        self.create_worktree(&worktree_path, &branch_name)
+    }
+
+    /// Internal helper to create a worktree with a new branch.
+    fn create_worktree(&self, path: &Path, branch: &str) -> std::io::Result<WorktreeResult> {
+        use std::process::Command;
+
+        // Ensure sandboxes directory exists
+        std::fs::create_dir_all(&self.base_path)?;
+
+        // Check if worktree already exists
+        if path.exists() {
+            return Ok(WorktreeResult {
+                success: false,
+                path: path.to_path_buf(),
+                branch: branch.to_string(),
+                message: "Worktree already exists".to_string(),
+            });
+        }
+
+        // Create worktree with new branch: git worktree add -b <branch> <path>
+        let output = Command::new("git")
+            .args(["worktree", "add", "-b", branch])
+            .arg(path)
+            .output()?;
+
+        if output.status.success() {
+            Ok(WorktreeResult {
+                success: true,
+                path: path.to_path_buf(),
+                branch: branch.to_string(),
+                message: "Worktree created successfully".to_string(),
+            })
+        } else {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            Ok(WorktreeResult {
+                success: false,
+                path: path.to_path_buf(),
+                branch: branch.to_string(),
+                message: format!("Failed to create worktree: {}", stderr),
+            })
+        }
+    }
+
+    /// Merge the worktree branch into target and cleanup.
+    ///
+    /// This method:
+    /// 1. Switches to the target branch in the main repo
+    /// 2. Merges the worktree's branch
+    /// 3. Removes the worktree
+    /// 4. Deletes the branch
+    ///
+    /// Returns the merge commit SHA on success.
+    pub fn merge_and_cleanup(
+        &self,
+        worktree_path: &Path,
+        target_branch: &str,
+    ) -> std::io::Result<String> {
+        use std::process::Command;
+
+        // Get the branch name from the worktree
+        let branch_output = Command::new("git")
+            .args(["-C"])
+            .arg(worktree_path)
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .output()?;
+
+        if !branch_output.status.success() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to get worktree branch",
+            ));
+        }
+
+        let branch_name = String::from_utf8_lossy(&branch_output.stdout)
+            .trim()
+            .to_string();
+
+        // Checkout target branch in main repo
+        let checkout = Command::new("git")
+            .args(["checkout", target_branch])
+            .output()?;
+
+        if !checkout.status.success() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!(
+                    "Failed to checkout {}: {}",
+                    target_branch,
+                    String::from_utf8_lossy(&checkout.stderr)
+                ),
+            ));
+        }
+
+        // Merge the worktree branch
+        let merge = Command::new("git")
+            .args(["merge", "--no-ff", "-m"])
+            .arg(format!("Merge {} into {}", branch_name, target_branch))
+            .arg(&branch_name)
+            .output()?;
+
+        if !merge.status.success() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Merge failed: {}", String::from_utf8_lossy(&merge.stderr)),
+            ));
+        }
+
+        // Get the merge commit SHA
+        let sha_output = Command::new("git")
+            .args(["rev-parse", "--short", "HEAD"])
+            .output()?;
+
+        let commit_sha = String::from_utf8_lossy(&sha_output.stdout)
+            .trim()
+            .to_string();
+
+        // Remove the worktree
+        let _ = Command::new("git")
+            .args(["worktree", "remove", "--force"])
+            .arg(worktree_path)
+            .output();
+
+        // Delete the branch
+        let _ = Command::new("git")
+            .args(["branch", "-D", &branch_name])
+            .output();
+
+        Ok(commit_sha)
+    }
+
+    /// Force remove a worktree without merging.
+    ///
+    /// Removes the worktree and deletes its branch. Use when abandoning work.
+    pub fn force_cleanup(&self, worktree_path: &Path) -> std::io::Result<()> {
+        use std::process::Command;
+
+        // Get the branch name first
+        let branch_output = Command::new("git")
+            .args(["-C"])
+            .arg(worktree_path)
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .output();
+
+        let branch_name = branch_output
+            .ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+
+        // Remove the worktree forcefully
+        let remove = Command::new("git")
+            .args(["worktree", "remove", "--force"])
+            .arg(worktree_path)
+            .output()?;
+
+        if !remove.status.success() {
+            // Try removing the directory directly if git worktree remove fails
+            if worktree_path.exists() {
+                std::fs::remove_dir_all(worktree_path)?;
+            }
+
+            // Prune worktrees to clean up stale references
+            let _ = Command::new("git").args(["worktree", "prune"]).output();
+        }
+
+        // Delete the branch if we found it
+        if let Some(branch) = branch_name {
+            let _ = Command::new("git").args(["branch", "-D", &branch]).output();
+        }
+
+        Ok(())
     }
 
     /// List all active worktrees in the sandboxes directory

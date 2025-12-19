@@ -346,22 +346,28 @@ impl AgentBmc {
         }
     }
 
-    /// Check if a reviewer agent exists for a project.
+    /// Check if an active reviewer agent exists for a project.
     ///
     /// Used by workers to determine if they should send [COMPLETION] to a reviewer
     /// or directly to a human (self-review mode).
+    ///
+    /// An agent is considered "active" if its `last_active_ts` is within the
+    /// specified `stale_threshold`. If `None` is provided for threshold,
+    /// defaults to 1 hour.
     ///
     /// # Arguments
     /// * `_ctx` - Request context
     /// * `mm` - ModelManager providing database access
     /// * `project_id` - Project database ID
+    /// * `stale_threshold` - Optional duration; agents inactive longer are considered stale
     ///
     /// # Returns
-    /// `Some(Agent)` if an agent named "reviewer" exists, `None` otherwise
+    /// `Some(Agent)` if an active agent named "reviewer" exists, `None` otherwise
     pub async fn check_reviewer_exists(
         _ctx: &Ctx,
         mm: &ModelManager,
         project_id: i64,
+        stale_threshold: Option<std::time::Duration>,
     ) -> Result<Option<Agent>> {
         let db = mm.db();
         let stmt = db.prepare(
@@ -381,6 +387,18 @@ impl AgentBmc {
             let last_active_ts =
                 NaiveDateTime::parse_from_str(&last_active_ts_str, "%Y-%m-%d %H:%M:%S")
                     .unwrap_or_default();
+
+            // Check if agent is stale (inactive beyond threshold)
+            let threshold = stale_threshold.unwrap_or(std::time::Duration::from_secs(3600)); // 1 hour default
+            let now = chrono::Utc::now().naive_utc();
+            let threshold_chrono =
+                chrono::Duration::from_std(threshold).unwrap_or(chrono::Duration::hours(1));
+            let cutoff = now - threshold_chrono;
+
+            if last_active_ts < cutoff {
+                // Agent is stale, treat as non-existent
+                return Ok(None);
+            }
 
             Ok(Some(Agent {
                 id: row.get(0)?,
