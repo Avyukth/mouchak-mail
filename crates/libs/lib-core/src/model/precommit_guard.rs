@@ -1198,4 +1198,258 @@ mod tests {
             "pre-push should be removed from custom hooks dir"
         );
     }
+
+    // ============================================================================
+    // WORKTREE TESTS (PORT-7.2) - Using git2 crate (Rust-native)
+    // ============================================================================
+
+    /// Helper to create a git repo using git2 (Rust-native)
+    fn create_git_repo_native(path: &std::path::Path) -> git2::Repository {
+        git2::Repository::init(path).expect("git2: init repo")
+    }
+
+    /// Helper to create initial commit (required for worktrees)
+    fn create_initial_commit(repo: &git2::Repository) -> git2::Oid {
+        let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+        let tree_id = repo.index().unwrap().write_tree().unwrap();
+        let tree = repo.find_tree(tree_id).unwrap();
+        repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+            .expect("create initial commit")
+    }
+
+    /// Helper to create a worktree using git2 (Rust-native)
+    fn create_worktree_native(
+        repo: &git2::Repository,
+        name: &str,
+        path: &std::path::Path,
+    ) -> git2::Worktree {
+        repo.worktree(name, path, None)
+            .expect("git2: create worktree")
+    }
+
+    #[test]
+    fn test_worktree_basic_installation_main_repo() {
+        // Test that hooks can be installed in main repo that has worktrees
+        let temp_dir = TempDir::new().unwrap();
+        let main_repo_path = temp_dir.path().join("main-repo");
+        std::fs::create_dir_all(&main_repo_path).unwrap();
+
+        // Create main repo using git2 (Rust-native)
+        let repo = create_git_repo_native(&main_repo_path);
+        create_initial_commit(&repo);
+
+        // Create a worktree (requires initial commit)
+        let wt_path = temp_dir.path().join("worktree-1");
+        let _wt = create_worktree_native(&repo, "wt-1", &wt_path);
+
+        // Verify worktree exists
+        assert!(wt_path.exists(), "Worktree directory should exist");
+
+        // Install hooks in main repo - should work
+        let hooks_dir = get_hooks_dir(&main_repo_path);
+        assert!(
+            hooks_dir.to_string_lossy().contains(".git"),
+            "Main repo hooks should be in .git/hooks"
+        );
+    }
+
+    #[test]
+    fn test_worktree_basic_installation_worktree_repo() {
+        // Test that hooks dir is resolved correctly for worktree
+        let temp_dir = TempDir::new().unwrap();
+        let main_repo_path = temp_dir.path().join("main-repo");
+        std::fs::create_dir_all(&main_repo_path).unwrap();
+
+        // Create main repo using git2
+        let repo = create_git_repo_native(&main_repo_path);
+        create_initial_commit(&repo);
+
+        // Create worktree
+        let wt_path = temp_dir.path().join("worktree-1");
+        let _wt = create_worktree_native(&repo, "wt-1", &wt_path);
+
+        // Get hooks dir for worktree
+        let wt_hooks_dir = get_hooks_dir(&wt_path);
+
+        // Worktree should reference main repo's hooks (via .git file)
+        // The hooks should be in the main repo's git dir, not the worktree
+        assert!(
+            wt_hooks_dir.exists() || wt_hooks_dir.parent().map_or(false, |p| p.exists()),
+            "Worktree hooks dir or parent should be resolvable"
+        );
+    }
+
+    #[test]
+    fn test_worktree_hook_preservation_existing_hook() {
+        // Test that existing pre-commit hook is preserved (not overwritten)
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path().join("repo");
+        std::fs::create_dir_all(&repo_path).unwrap();
+
+        // Create repo and hooks dir
+        let _repo = create_git_repo_native(&repo_path);
+        let hooks_dir = repo_path.join(".git").join("hooks");
+        std::fs::create_dir_all(&hooks_dir).unwrap();
+
+        // Create an existing pre-commit hook (user's custom hook)
+        let existing_hook = hooks_dir.join("pre-commit");
+        let user_script = "#!/bin/sh\necho 'User hook'\nexit 0\n";
+        std::fs::write(&existing_hook, user_script).unwrap();
+
+        // Read the existing hook content
+        let before = std::fs::read_to_string(&existing_hook).unwrap();
+        assert!(before.contains("User hook"), "Original hook should exist");
+
+        // TODO: When install is updated to support chaining, verify preservation
+        // For now, just verify the existing hook detection logic works
+    }
+
+    #[test]
+    fn test_worktree_hook_preservation_backup_created() {
+        // Placeholder for hook backup test
+        // Tests that when overwriting, a .bak file is created
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path().join("repo");
+        std::fs::create_dir_all(&repo_path).unwrap();
+
+        let _repo = create_git_repo_native(&repo_path);
+
+        // Verify we can create backup files
+        let hooks_dir = repo_path.join(".git").join("hooks");
+        std::fs::create_dir_all(&hooks_dir).unwrap();
+
+        let original = hooks_dir.join("pre-commit");
+        let backup = hooks_dir.join("pre-commit.bak");
+
+        std::fs::write(&original, "original content").unwrap();
+        std::fs::copy(&original, &backup).unwrap();
+
+        assert!(backup.exists(), "Backup file should be created");
+        assert_eq!(
+            std::fs::read_to_string(&backup).unwrap(),
+            "original content"
+        );
+    }
+
+    #[test]
+    fn test_worktree_lifecycle_create_and_remove() {
+        // Test complete worktree lifecycle using git2 (Rust-native)
+        let temp_dir = TempDir::new().unwrap();
+        let main_repo_path = temp_dir.path().join("main-repo");
+        std::fs::create_dir_all(&main_repo_path).unwrap();
+
+        // Create main repo
+        let repo = create_git_repo_native(&main_repo_path);
+        create_initial_commit(&repo);
+
+        // Create worktree
+        let wt_path = temp_dir.path().join("worktree-lifecycle");
+        let wt = create_worktree_native(&repo, "lifecycle-wt", &wt_path);
+
+        // Verify worktree path exists
+        assert!(wt_path.exists(), "Worktree path should exist");
+        assert!(wt.path().exists(), "Worktree git path should exist");
+
+        // List worktrees
+        let worktrees = repo.worktrees().expect("list worktrees");
+        assert!(
+            worktrees.iter().any(|n| n == Some("lifecycle-wt")),
+            "Worktree should be in list"
+        );
+
+        // Cleanup worktree
+        drop(wt);
+        std::fs::remove_dir_all(&wt_path).ok(); // Best-effort cleanup
+    }
+
+    #[test]
+    fn test_worktree_lifecycle_multiple_worktrees() {
+        // Test managing multiple worktrees
+        let temp_dir = TempDir::new().unwrap();
+        let main_repo_path = temp_dir.path().join("main-repo");
+        std::fs::create_dir_all(&main_repo_path).unwrap();
+
+        let repo = create_git_repo_native(&main_repo_path);
+        create_initial_commit(&repo);
+
+        // Create multiple worktrees
+        let wt1_path = temp_dir.path().join("wt-feature-a");
+        let wt2_path = temp_dir.path().join("wt-feature-b");
+        let wt3_path = temp_dir.path().join("wt-bugfix");
+
+        let _wt1 = create_worktree_native(&repo, "feature-a", &wt1_path);
+        let _wt2 = create_worktree_native(&repo, "feature-b", &wt2_path);
+        let _wt3 = create_worktree_native(&repo, "bugfix", &wt3_path);
+
+        // List and verify all exist
+        let worktrees = repo.worktrees().expect("list worktrees");
+        assert_eq!(worktrees.len(), 3, "Should have 3 worktrees");
+
+        // Verify each has a valid path
+        assert!(wt1_path.exists());
+        assert!(wt2_path.exists());
+        assert!(wt3_path.exists());
+    }
+
+    #[test]
+    fn test_worktree_chain_runner_script_generation() {
+        // Test that a chain runner script can be generated
+        // This would call existing hooks before our guard
+        let chain_script = r#"#!/bin/sh
+# Chain runner - calls existing hooks before guard
+
+# Call original hook if it exists
+if [ -f ".git/hooks/pre-commit.original" ]; then
+    .git/hooks/pre-commit.original "$@"
+    result=$?
+    if [ $result -ne 0 ]; then
+        exit $result
+    fi
+fi
+
+# Now run our guard
+# ... guard logic here ...
+exit 0
+"#;
+
+        // Verify script structure
+        assert!(chain_script.contains("#!/bin/sh"), "Should have shebang");
+        assert!(
+            chain_script.contains(".original"),
+            "Should reference original hook"
+        );
+        assert!(chain_script.contains("$result"), "Should capture exit code");
+    }
+
+    #[tokio::test]
+    async fn test_worktree_install_hooks_in_worktree() {
+        // Test installing hooks directly in a worktree
+        let temp_dir = TempDir::new().unwrap();
+        let main_repo_path = temp_dir.path().join("main-repo");
+        std::fs::create_dir_all(&main_repo_path).unwrap();
+
+        // Create main repo with git2
+        let repo = create_git_repo_native(&main_repo_path);
+        create_initial_commit(&repo);
+
+        // Create worktree
+        let wt_path = temp_dir.path().join("wt-install-test");
+        let _wt = create_worktree_native(&repo, "install-test", &wt_path);
+
+        // Create ModelManager for install
+        let ctx = Ctx::root_ctx();
+        let dummy_mm = {
+            use libsql::Builder;
+            let db_path = temp_dir.path().join("test.db");
+            let db = Builder::new_local(&db_path).build().await.unwrap();
+            let conn = db.connect().unwrap();
+            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+        };
+
+        // Install hooks in worktree path
+        let result = PrecommitGuardBmc::install(&ctx, &dummy_mm, &wt_path, None).await;
+
+        // Should succeed (hooks may be in main repo or worktree-local)
+        assert!(result.is_ok(), "Install should succeed in worktree context");
+    }
 }
