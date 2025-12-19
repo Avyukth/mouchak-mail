@@ -14,7 +14,7 @@ mod common;
 
 use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
-use lib_core::model::export::{ExportBmc, ExportFormat};
+use lib_core::model::export::{ExportBmc, ExportFormat, ScrubMode};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
 use lib_core::utils::slugify;
@@ -83,9 +83,16 @@ async fn test_export_json() {
 
     let (_, slug) = setup_project_with_messages(&tc, "json").await;
 
-    let exported = ExportBmc::export_mailbox(&tc.ctx, &tc.mm, &slug, ExportFormat::Json, false)
-        .await
-        .expect("Failed to export mailbox");
+    let exported = ExportBmc::export_mailbox(
+        &tc.ctx,
+        &tc.mm,
+        &slug,
+        ExportFormat::Json,
+        ScrubMode::None,
+        false,
+    )
+    .await
+    .expect("Failed to export mailbox");
 
     assert_eq!(exported.project_slug, slug);
     assert_eq!(exported.format, "json");
@@ -106,9 +113,16 @@ async fn test_export_html() {
 
     let (_, slug) = setup_project_with_messages(&tc, "html").await;
 
-    let exported = ExportBmc::export_mailbox(&tc.ctx, &tc.mm, &slug, ExportFormat::Html, false)
-        .await
-        .expect("Failed to export mailbox");
+    let exported = ExportBmc::export_mailbox(
+        &tc.ctx,
+        &tc.mm,
+        &slug,
+        ExportFormat::Html,
+        ScrubMode::None,
+        false,
+    )
+    .await
+    .expect("Failed to export mailbox");
 
     assert_eq!(exported.format, "html");
     assert!(exported.content.contains("<!DOCTYPE html>"));
@@ -125,9 +139,16 @@ async fn test_export_markdown() {
 
     let (_, slug) = setup_project_with_messages(&tc, "md").await;
 
-    let exported = ExportBmc::export_mailbox(&tc.ctx, &tc.mm, &slug, ExportFormat::Markdown, false)
-        .await
-        .expect("Failed to export mailbox");
+    let exported = ExportBmc::export_mailbox(
+        &tc.ctx,
+        &tc.mm,
+        &slug,
+        ExportFormat::Markdown,
+        ScrubMode::None,
+        false,
+    )
+    .await
+    .expect("Failed to export mailbox");
 
     assert_eq!(exported.format, "markdown");
     assert!(exported.content.contains("# Mailbox Export"));
@@ -144,9 +165,16 @@ async fn test_export_csv() {
 
     let (_, slug) = setup_project_with_messages(&tc, "csv").await;
 
-    let exported = ExportBmc::export_mailbox(&tc.ctx, &tc.mm, &slug, ExportFormat::Csv, false)
-        .await
-        .expect("Failed to export mailbox");
+    let exported = ExportBmc::export_mailbox(
+        &tc.ctx,
+        &tc.mm,
+        &slug,
+        ExportFormat::Csv,
+        ScrubMode::None,
+        false,
+    )
+    .await
+    .expect("Failed to export mailbox");
 
     assert_eq!(exported.format, "csv");
     assert!(
@@ -171,9 +199,16 @@ async fn test_export_empty_mailbox() {
         .await
         .expect("Failed to create project");
 
-    let exported = ExportBmc::export_mailbox(&tc.ctx, &tc.mm, &slug, ExportFormat::Json, false)
-        .await
-        .expect("Failed to export mailbox");
+    let exported = ExportBmc::export_mailbox(
+        &tc.ctx,
+        &tc.mm,
+        &slug,
+        ExportFormat::Json,
+        ScrubMode::None,
+        false,
+    )
+    .await
+    .expect("Failed to export mailbox");
 
     assert_eq!(exported.message_count, 0);
     assert_eq!(exported.content, "[]"); // Empty JSON array
@@ -215,6 +250,7 @@ async fn test_export_nonexistent_project() {
         &tc.mm,
         "nonexistent-slug",
         ExportFormat::Json,
+        ScrubMode::None,
         false,
     )
     .await;
@@ -231,9 +267,16 @@ async fn test_export_timestamp() {
 
     let (_, slug) = setup_project_with_messages(&tc, "timestamp").await;
 
-    let exported = ExportBmc::export_mailbox(&tc.ctx, &tc.mm, &slug, ExportFormat::Json, false)
-        .await
-        .expect("Failed to export mailbox");
+    let exported = ExportBmc::export_mailbox(
+        &tc.ctx,
+        &tc.mm,
+        &slug,
+        ExportFormat::Json,
+        ScrubMode::None,
+        false,
+    )
+    .await
+    .expect("Failed to export mailbox");
 
     assert!(!exported.exported_at.is_empty());
     assert!(exported.exported_at.contains("UTC"));

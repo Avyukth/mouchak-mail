@@ -146,7 +146,79 @@ pub struct PendingReviewRow {
 /// threading, and full-text search.
 pub struct MessageBmc;
 
+/// Summary of an overdue message for escalation
+#[derive(Debug, Clone, Serialize)]
+pub struct OverdueMessage {
+    pub message_id: i64,
+    pub project_id: i64,
+    pub sender_id: i64,
+    pub subject: String,
+    pub sender_name: String,
+    pub recipient_id: i64,
+    pub recipient_name: String,
+    pub created_ts: NaiveDateTime,
+}
+
 impl MessageBmc {
+    /// List messages that require acknowledgement but haven't received one within the threshold
+    pub async fn list_overdue_acks(
+        _ctx: &Ctx,
+        mm: &ModelManager,
+        threshold_hours: i64,
+    ) -> Result<Vec<OverdueMessage>> {
+        let db = mm.db();
+        // SQLite: datetime('now', '-N hours')
+        let time_modifier = format!("-{} hours", threshold_hours);
+
+        // Query logic:
+        // 1. Message must require ack
+        // 2. Recipient hasn't acked (mr.ack_ts is NULL)
+        // 3. Message created before threshold
+        let stmt = db.prepare(
+            r#"
+            SELECT 
+                m.id, m.project_id, m.sender_id, m.subject, ag_sender.name, mr.agent_id, ag_recipient.name, m.created_ts
+            FROM messages AS m
+            JOIN message_recipients AS mr ON m.id = mr.message_id
+            JOIN agents AS ag_sender ON m.sender_id = ag_sender.id
+            JOIN agents AS ag_recipient ON mr.agent_id = ag_recipient.id
+            WHERE 
+                m.ack_required = 1 
+                AND mr.ack_ts IS NULL
+                AND m.created_ts < datetime('now', ?)
+            ORDER BY m.created_ts ASC
+            "#
+        ).await?;
+
+        let mut rows = stmt.query([time_modifier]).await?;
+        let mut overdue = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let message_id: i64 = row.get(0)?;
+            let project_id: i64 = row.get(1)?;
+            let sender_id: i64 = row.get(2)?;
+            let subject: String = row.get(3)?;
+            let sender_name: String = row.get(4)?;
+            let recipient_id: i64 = row.get(5)?;
+            let recipient_name: String = row.get(6)?;
+            let created_ts_str: String = row.get(7)?;
+            let created_ts = NaiveDateTime::parse_from_str(&created_ts_str, "%Y-%m-%d %H:%M:%S")
+                .unwrap_or_default();
+
+            overdue.push(OverdueMessage {
+                message_id,
+                project_id,
+                sender_id,
+                subject,
+                sender_name,
+                recipient_id,
+                recipient_name,
+                created_ts,
+            });
+        }
+        Ok(overdue)
+    }
+
     /// Creates a new message and sends it to one or more recipients.
     ///
     /// This method:

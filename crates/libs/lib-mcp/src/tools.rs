@@ -1031,8 +1031,7 @@ impl AgentMailService {
         })
     }
 
-    /// Create AgentMailService with an existing ModelManager
-    /// Use this to share the ModelManager with the main server to avoid migration conflicts
+    /// Create a new service with an existing ModelManager (for testing)
     pub fn new_with_mm(mm: Arc<ModelManager>, worktrees_enabled: bool) -> Self {
         let tool_router = Self::tool_router();
 
@@ -1173,6 +1172,14 @@ impl AgentMailService {
                 serde_json::to_string_pretty(&messages)
                     .map_err(|e| McpError::internal_error(e.to_string(), None))?
             }
+            "threads" => {
+                // Default limit 50
+                let threads = MessageBmc::list_threads(&ctx, mm, project_id, 50)
+                    .await
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+                serde_json::to_string_pretty(&threads)
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
+            }
             _ => {
                 return Err(McpError::invalid_params(
                     format!("Unknown resource type: {}", resource_type),
@@ -1264,6 +1271,110 @@ impl AgentMailService {
 
         (project_slug, agent_name)
     }
+    pub async fn list_resources_impl(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+    ) -> Result<ListResourcesResult, McpError> {
+        // List project-rooted resources for all projects
+        let ctx = self.ctx();
+        let projects = ProjectBmc::list_all(&ctx, &self.mm)
+            .await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+        let mut resources = Vec::new();
+
+        for project in projects {
+            let slug = &project.slug;
+
+            // Agents list
+            resources.push(Resource {
+                raw: RawResource {
+                    uri: format!("agent-mail://{}/agents", slug),
+                    name: format!("Agents ({})", slug),
+                    description: Some(format!("List of all agents in project '{}'", slug)),
+                    mime_type: Some("application/json".to_string()),
+                    size: None,
+                    icons: None,
+                    meta: None,
+                    title: None,
+                },
+                annotations: None,
+            });
+
+            // Agents Inboxes & Outboxes
+            let project_agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id)
+                .await
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+            for agent in project_agents {
+                resources.push(Resource {
+                    raw: RawResource {
+                        uri: format!("agent-mail://{}/inbox/{}", slug, agent.name),
+                        name: format!("Inbox: {} ({})", agent.name, slug),
+                        description: Some(format!("Inbox for agent '{}'", agent.name)),
+                        mime_type: Some("application/json".to_string()),
+                        size: None,
+                        icons: None,
+                        meta: None,
+                        title: None,
+                    },
+                    annotations: None,
+                });
+                resources.push(Resource {
+                    raw: RawResource {
+                        uri: format!("agent-mail://{}/outbox/{}", slug, agent.name),
+                        name: format!("Outbox: {} ({})", agent.name, slug),
+                        description: Some(format!("Outbox for agent '{}'", agent.name)),
+                        mime_type: Some("application/json".to_string()),
+                        size: None,
+                        icons: None,
+                        meta: None,
+                        title: None,
+                    },
+                    annotations: None,
+                });
+            }
+
+            // Project Threads
+            resources.push(Resource {
+                raw: RawResource {
+                    uri: format!("agent-mail://{}/threads", slug),
+                    name: format!("Threads ({})", slug),
+                    description: Some(format!(
+                        "List of all conversation threads in project '{}'",
+                        slug
+                    )),
+                    mime_type: Some("application/json".to_string()),
+                    size: None,
+                    icons: None,
+                    meta: None,
+                    title: None,
+                },
+                annotations: None,
+            });
+
+            // File reservations
+            resources.push(Resource {
+                raw: RawResource {
+                    uri: format!("agent-mail://{}/file_reservations", slug),
+                    name: format!("File Reservations ({})", slug),
+                    description: Some(format!("Active file reservations in project '{}'", slug)),
+                    mime_type: Some("application/json".to_string()),
+                    size: None,
+                    icons: None,
+                    meta: None,
+                    title: None,
+                },
+                annotations: None,
+            });
+        }
+
+        Ok(ListResourcesResult {
+            resources,
+            next_cursor: None,
+            meta: None,
+        })
+    }
 }
 
 #[allow(clippy::manual_async_fn)]
@@ -1341,58 +1452,7 @@ impl ServerHandler for AgentMailService {
         _request: Option<PaginatedRequestParam>,
         _context: RequestContext<RoleServer>,
     ) -> impl std::future::Future<Output = Result<ListResourcesResult, McpError>> + Send + '_ {
-        async move {
-            // List project-rooted resources for all projects
-            let ctx = self.ctx();
-            let projects = ProjectBmc::list_all(&ctx, &self.mm)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            let mut resources = Vec::new();
-
-            for project in projects {
-                let slug = &project.slug;
-
-                // Agents list
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: format!("agent-mail://{}/agents", slug),
-                        name: format!("Agents ({})", slug),
-                        description: Some(format!("List of all agents in project '{}'", slug)),
-                        mime_type: Some("application/json".to_string()),
-                        size: None,
-                        icons: None,
-                        meta: None,
-                        title: None,
-                    },
-                    annotations: None,
-                });
-
-                // File reservations
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: format!("agent-mail://{}/file_reservations", slug),
-                        name: format!("File Reservations ({})", slug),
-                        description: Some(format!(
-                            "Active file reservations in project '{}'",
-                            slug
-                        )),
-                        mime_type: Some("application/json".to_string()),
-                        size: None,
-                        icons: None,
-                        meta: None,
-                        title: None,
-                    },
-                    annotations: None,
-                });
-            }
-
-            Ok(ListResourcesResult {
-                resources,
-                next_cursor: None,
-                meta: None,
-            })
-        }
+        async move { self.list_resources_impl(_request).await }
     }
 
     fn read_resource(

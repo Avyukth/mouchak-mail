@@ -43,6 +43,7 @@ pub mod file_reservation;
 pub mod macro_def;
 pub mod message;
 pub mod message_recipient;
+pub mod orchestration;
 pub mod overseer_message;
 pub mod precommit_guard;
 pub mod product;

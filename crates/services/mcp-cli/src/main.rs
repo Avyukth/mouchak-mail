@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use lib_core::{Ctx, ModelManager};
 use std::io::Write;
+use std::str::FromStr;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
@@ -45,6 +46,29 @@ enum Commands {
     Guard {
         #[command(subcommand)]
         command: GuardCommands,
+    },
+    /// Escalate overdue messages
+    EscalateOverdue {
+        /// Threshold in hours
+        #[arg(short, long, default_value_t = 24)]
+        hours: i64,
+        /// Dry run (do not send reminders)
+        #[arg(long, default_value_t = false)]
+        dry_run: bool,
+    },
+    /// Export mailbox
+    Export {
+        /// Project slug
+        project: String,
+        /// Format (json, html, markdown, csv)
+        #[arg(long, default_value = "json")]
+        format: String,
+        /// Scrub mode (none, standard, aggressive)
+        #[arg(long, default_value = "none")]
+        scrub: String,
+        /// Output file (default: stdout)
+        #[arg(short, long)]
+        output: Option<String>,
     },
 }
 
@@ -300,6 +324,81 @@ async fn main() -> Result<()> {
         }
         Commands::Guard { command } => {
             handle_guard_command(command).await?;
+        }
+        Commands::EscalateOverdue { hours, dry_run } => {
+            let mm = ModelManager::new().await?;
+            let ctx = Ctx::root_ctx();
+
+            println!("checking for overdue acks (threshold: {} hours)...", hours);
+            let overdue =
+                lib_core::model::message::MessageBmc::list_overdue_acks(&ctx, &mm, hours).await?;
+            println!("found {} overdue messages.", overdue.len());
+
+            for msg in overdue {
+                println!(
+                    "- [OVERDUE] ID: {}, Subject: '{}', From: {}, To: {}, Created: {}",
+                    msg.message_id,
+                    msg.subject,
+                    msg.sender_name,
+                    msg.recipient_name,
+                    msg.created_ts
+                );
+
+                if !dry_run {
+                    println!("  Escalating...");
+                    let reminder = lib_core::model::message::MessageForCreate {
+                        project_id: msg.project_id,
+                        sender_id: msg.sender_id, // Remind from original sender
+                        recipient_ids: vec![msg.recipient_id],
+                        cc_ids: None,
+                        bcc_ids: None,
+                        subject: format!("REMINDER: {}", msg.subject),
+                        body_md: format!(
+                            "[System Escalation] This message requires acknowledgment and is overdue.\n\nOriginal message: ID {}",
+                            msg.message_id
+                        ),
+                        thread_id: None, // Start new thread? Or try to find original? For now new thread.
+                        importance: Some("high".to_string()),
+                        ack_required: true,
+                    };
+
+                    match lib_core::model::message::MessageBmc::create(&ctx, &mm, reminder).await {
+                        Ok(id) => println!("  -> Sent reminder (ID: {})", id),
+                        Err(e) => println!("  -> Failed to send reminder: {}", e),
+                    }
+                }
+            }
+        }
+        Commands::Export {
+            project,
+            format,
+            scrub,
+            output,
+        } => {
+            let mm = ModelManager::new().await?;
+            let ctx = Ctx::root_ctx();
+
+            let format_enum = lib_core::model::export::ExportFormat::from_str(&format)
+                .map_err(|_| anyhow::anyhow!("Invalid format"))?;
+            let scrub_enum = lib_core::model::export::ScrubMode::from_str(&scrub)
+                .map_err(|_| anyhow::anyhow!("Invalid scrub mode"))?;
+
+            let exported = lib_core::model::export::ExportBmc::export_mailbox(
+                &ctx,
+                &mm,
+                &project,
+                format_enum,
+                scrub_enum,
+                false,
+            )
+            .await?;
+
+            if let Some(path) = output {
+                std::fs::write(&path, &exported.content)?;
+                println!("Exported to {}", path);
+            } else {
+                println!("{}", exported.content);
+            }
         }
     }
 
