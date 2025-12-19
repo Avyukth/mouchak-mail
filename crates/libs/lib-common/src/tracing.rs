@@ -1,4 +1,4 @@
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 pub fn setup_tracing(json_format: bool) {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {

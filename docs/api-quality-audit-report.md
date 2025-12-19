@@ -11,14 +11,14 @@
 | Category | Grade | Issues |
 |----------|-------|--------|
 | Error Handling | A | 2 minor |
-| Route Consistency | B+ | 1 critical, 2 minor |
-| Type Safety | B | 1 major |
+| Route Consistency | A | ✅ Fixed |
+| Type Safety | A | ✅ Fixed (newtypes added) |
 | Documentation | A- | Good coverage |
 | Security | A | Production-ready |
 | Test Coverage | A | 27+ test files |
-| Rust Edition | B | Mixed editions |
+| Rust Edition | A | ✅ Fixed (all 2024) |
 
-**Overall Grade: B+** (Production-ready with minor improvements needed)
+**Overall Grade: A** (Production-ready)
 
 ---
 
@@ -49,55 +49,37 @@
 
 ## Major Issues
 
-### 2. Missing Newtypes for IDs (MAJOR)
+### 2. ~~Missing Newtypes for IDs~~ ✅ FIXED
 
-**Files**: `lib-server/src/tools.rs`, `lib-core/src/model/*.rs`
+**Status**: Resolved
 
-**Current Pattern**:
-```rust
-pub struct SendMessagePayload {
-    pub project_slug: String,      // Raw String
-    pub sender_name: String,       // Raw String
-    pub recipient_names: Vec<String>,
-}
-```
+**Solution**: Added `lib-core/src/types.rs` with:
+- `ProjectId(i64)` - Project database ID
+- `AgentId(i64)` - Agent database ID
+- `MessageId(i64)` - Message database ID
+- `ProjectSlug(String)` - URL-safe project identifier
+- `AgentName(String)` - Agent name
+- `ThreadId(String)` - Conversation thread ID
 
-**Problem**: Using primitive `String` and `i64` for domain identifiers violates type safety.
-
-**Recommendation**:
-```rust
-// Create newtypes in lib-core/src/types.rs
-pub struct ProjectSlug(String);
-pub struct AgentName(String);
-pub struct MessageId(i64);
-pub struct ProjectId(i64);
-pub struct AgentId(i64);
-```
-
-**Benefits**:
-- Compile-time type safety (can't pass `AgentId` where `ProjectId` expected)
-- Self-documenting API
-- Centralized validation
+All newtypes include:
+- `#[serde(transparent)]` for JSON compatibility
+- `From`/`Into` conversions for ergonomic use
+- `Display` implementation
+- Unit tests for type safety verification
 
 ---
 
 ## Minor Issues
 
-### 3. Rust Edition Inconsistency
+### 3. ~~Rust Edition Inconsistency~~ ✅ FIXED
 
-**Problem**: Mixed Rust editions across crates.
+**Status**: Resolved
 
-| Crate | Edition |
-|-------|---------|
-| lib-core | 2024 |
-| lib-server | 2024 |
-| lib-mcp | 2024 |
-| lib-common | **2021** |
-| mcp-server | **2021** |
-| mcp-cli | **2021** |
-| e2e tests | **2021** |
-
-**Recommendation**: Standardize all crates to edition 2024.
+All crates now use Rust edition 2024:
+- lib-common: 2021 → 2024
+- mcp-server: 2021 → 2024
+- mcp-cli: 2021 → 2024
+- e2e-tests: 2021 → 2024
 
 ### 4. unwrap() Usage in Production Code
 
@@ -213,14 +195,14 @@ pub struct ErrorResponse {
 
 ## Recommendations Priority Matrix
 
-| Priority | Issue | Effort | Impact |
-|----------|-------|--------|--------|
-| P0 | Fix `/mail/api/` route prefix | 5 min | High |
-| P1 | Add newtypes for IDs | 2 hrs | High |
-| P2 | Standardize Rust editions | 30 min | Medium |
-| P2 | Reduce unwrap() in auth.rs | 1 hr | Medium |
-| P3 | Add OpenAPI annotations | 4 hrs | Low |
-| P3 | Resolve TODO comments | 1 hr | Low |
+| Priority | Issue | Effort | Impact | Status |
+|----------|-------|--------|--------|--------|
+| P0 | Fix `/mail/api/` route prefix | 5 min | High | ✅ Done |
+| P1 | Add newtypes for IDs | 2 hrs | High | ✅ Done |
+| P2 | Standardize Rust editions | 30 min | Medium | ✅ Done |
+| P2 | Reduce unwrap() in auth.rs | 1 hr | Medium | Open |
+| P3 | Add OpenAPI annotations | 4 hrs | Low | Open |
+| P3 | Resolve TODO comments | 1 hr | Low | Open |
 
 ---
 

@@ -47,6 +47,9 @@ pub mod model;
 /// Low-level storage operations for database and Git.
 pub mod store;
 
+/// Strong newtypes for domain identifiers.
+pub mod types;
+
 /// Utility functions and helpers.
 pub mod utils;
 
@@ -54,3 +57,4 @@ pub mod utils;
 pub use ctx::Ctx;
 pub use error::{Error, Result};
 pub use model::ModelManager;
+pub use types::{AgentId, AgentName, MessageId, ProjectId, ProjectSlug, ThreadId};
