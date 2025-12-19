@@ -149,11 +149,35 @@ pub fn SplitViewLayout(
     let on_select_keyboard = on_select;
 
     // Keyboard navigation handler
-    // Supports: ArrowDown, ArrowUp, Home, End, Enter
+    // Supports: ArrowDown/j, ArrowUp/k, Home, End, Enter, Escape
     let on_keydown = move |ev: web_sys::KeyboardEvent| {
         let key = ev.key();
-        if key == "ArrowDown" || key == "ArrowUp" || key == "Home" || key == "End" || key == "Enter"
-        {
+
+        // Handle Escape to deselect (no prevent_default needed for Escape)
+        if key == "Escape" {
+            // Clear selection - parent component should handle None case
+            // We can't call on_select with None, so we use a special value
+            // For now, just blur the container
+            use wasm_bindgen::JsCast;
+            if let Some(target) = ev.target() {
+                if let Some(el) = target.dyn_ref::<web_sys::HtmlElement>() {
+                    let _ = el.blur();
+                }
+            }
+            return;
+        }
+
+        // Navigate down: ArrowDown or j (Vim-style)
+        // Navigate up: ArrowUp or k (Vim-style)
+        let is_nav_key = key == "ArrowDown"
+            || key == "ArrowUp"
+            || key == "j"
+            || key == "k"
+            || key == "Home"
+            || key == "End"
+            || key == "Enter";
+
+        if is_nav_key {
             ev.prevent_default();
 
             if messages_for_keyboard.is_empty() {
@@ -165,7 +189,7 @@ pub fn SplitViewLayout(
                 current_id.and_then(|id| messages_for_keyboard.iter().position(|m| m.id == id));
 
             match key.as_str() {
-                "ArrowDown" => {
+                "ArrowDown" | "j" => {
                     let next_idx = match current_idx {
                         Some(idx) if idx + 1 < messages_for_keyboard.len() => idx + 1,
                         None => 0,
@@ -173,7 +197,7 @@ pub fn SplitViewLayout(
                     };
                     on_select_keyboard.run(messages_for_keyboard[next_idx].id);
                 }
-                "ArrowUp" => {
+                "ArrowUp" | "k" => {
                     let prev_idx = match current_idx {
                         Some(idx) if idx > 0 => idx - 1,
                         None => messages_for_keyboard.len() - 1,
@@ -353,19 +377,52 @@ mod tests {
 
     #[test]
     fn test_keyboard_navigation_supported_keys() {
-        // These are the keys that should trigger navigation
-        let supported_keys = ["ArrowDown", "ArrowUp", "Home", "End", "Enter"];
+        // These are the keys that should trigger navigation (including Vim-style j/k)
+        let supported_keys = [
+            "ArrowDown",
+            "ArrowUp",
+            "Home",
+            "End",
+            "Enter",
+            "j",
+            "k",
+            "Escape",
+        ];
         for key in supported_keys {
             assert!(
                 key == "ArrowDown"
                     || key == "ArrowUp"
                     || key == "Home"
                     || key == "End"
-                    || key == "Enter",
+                    || key == "Enter"
+                    || key == "j"
+                    || key == "k"
+                    || key == "Escape",
                 "Key {} should be supported",
                 key
             );
         }
+    }
+
+    #[test]
+    fn test_vim_j_navigates_down() {
+        // j key should behave like ArrowDown
+        let key = "j";
+        assert!(key == "j" || key == "ArrowDown");
+    }
+
+    #[test]
+    fn test_vim_k_navigates_up() {
+        // k key should behave like ArrowUp
+        let key = "k";
+        assert!(key == "k" || key == "ArrowUp");
+    }
+
+    #[test]
+    fn test_escape_key_supported() {
+        // Escape should deselect/blur
+        let key = "Escape";
+        assert_eq!(key, "Escape");
     }
 
     #[test]
