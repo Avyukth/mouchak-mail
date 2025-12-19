@@ -7,10 +7,11 @@
 //! - InlineMessageDetail for viewing messages without navigation
 //! - Mobile fallback with card-based list
 
-use crate::api::client::{self, UnifiedInboxMessage};
+use crate::api::client::{self, Agent, UnifiedInboxMessage};
 use crate::components::{
-    Alert, AlertDescription, AlertTitle, AlertVariant, EmptyDetailPanel, FilterBar, FilterState,
-    InlineMessageDetail, MessageListItem, Skeleton, SplitViewLayout,
+    Alert, AlertDescription, AlertTitle, AlertVariant, Button, ButtonVariant, EmptyDetailPanel,
+    FilterBar, FilterState, InlineMessageDetail, MessageListItem, OverseerComposeProps,
+    OverseerComposer, Skeleton, SplitViewLayout,
 };
 use leptos::prelude::*;
 use leptos_router::hooks::use_query_map;
@@ -25,9 +26,13 @@ pub fn UnifiedInbox() -> impl IntoView {
     let all_messages = RwSignal::new(Vec::<UnifiedInboxMessage>::new()); // Unfiltered for extracting options
     let loading = RwSignal::new(true);
     let error = RwSignal::new(Option::<String>::None);
-    let filter_state =
-        RwSignal::new(query.with_untracked(|params| FilterState::from_params_map(params)));
+    let filter_state = RwSignal::new(query.with_untracked(FilterState::from_params_map));
     let selected_id = RwSignal::new(Option::<i64>::None);
+
+    // Overseer Composer state
+    let show_overseer = RwSignal::new(false);
+    let overseer_agents = RwSignal::new(Vec::<Agent>::new());
+    let overseer_project = RwSignal::new(String::new());
 
     // Load all messages once on mount
     Effect::new(move |_| {
@@ -181,17 +186,94 @@ pub fn UnifiedInbox() -> impl IntoView {
         selected_id.set(Some(id));
     });
 
+    // Handle Overseer button click
+    let open_overseer = move |_| {
+        let project_slug = selected_project.get();
+        if project_slug.is_empty() {
+            error.set(Some(
+                "Select a message first to use Overseer mode.".to_string(),
+            ));
+            return;
+        }
+        // Fetch agents for the selected project
+        overseer_project.set(project_slug.clone());
+        leptos::task::spawn_local(async move {
+            match client::get_agents(&project_slug).await {
+                Ok(agents) => {
+                    overseer_agents.set(agents);
+                    show_overseer.set(true);
+                }
+                Err(e) => {
+                    error.set(Some(format!("Failed to load agents: {}", e.message)));
+                }
+            }
+        });
+    };
+
+    // Refresh messages after sending
+    let refresh_messages = move || {
+        leptos::task::spawn_local(async move {
+            if let Ok(msgs) = client::get_unified_inbox(None, Some(100)).await {
+                all_messages.set(msgs.clone());
+                messages.set(msgs);
+            }
+        });
+    };
+
     view! {
         <div class="space-y-6">
+            // Overseer Composer Modal
+            {move || {
+                if show_overseer.get() {
+                    let agents = overseer_agents.get();
+                    let project = overseer_project.get();
+                    Some(view! {
+                        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div
+                                class="fixed inset-0 bg-charcoal-900/50 backdrop-blur-sm"
+                                on:click=move |_| show_overseer.set(false)
+                            ></div>
+                            <div class="relative w-full max-w-2xl animate-scale-in">
+                                <OverseerComposer
+                                    props=OverseerComposeProps {
+                                        project_slug: project,
+                                        agents,
+                                        reply_to_thread_id: None,
+                                        reply_to_recipient: None,
+                                        reply_subject: None,
+                                    }
+                                    on_close=Callback::new(move |_| show_overseer.set(false))
+                                    on_sent=Callback::new(move |_| {
+                                        show_overseer.set(false);
+                                        refresh_messages();
+                                    })
+                                />
+                            </div>
+                        </div>
+                    })
+                } else {
+                    None
+                }
+            }}
+
             // Header
-            <div class="mb-2">
-                <h1 class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100 flex items-center gap-3">
-                    <i data-lucide="inbox" class="icon-xl text-amber-500"></i>
-                    "Unified Inbox"
-                </h1>
-                <p class="text-sm text-charcoal-500 dark:text-charcoal-400 mt-1">
-                    "All messages across all projects"
-                </p>
+            <div class="flex items-center justify-between mb-2">
+                <div>
+                    <h1 class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100 flex items-center gap-3">
+                        <i data-lucide="inbox" class="icon-xl text-amber-500"></i>
+                        "Unified Inbox"
+                    </h1>
+                    <p class="text-sm text-charcoal-500 dark:text-charcoal-400 mt-1">
+                        "All messages across all projects"
+                    </p>
+                </div>
+                <Button
+                    variant=ButtonVariant::Destructive
+                    on_click=Callback::new(open_overseer)
+                >
+                    <i data-lucide="shield-alert" class="icon-sm mr-2"></i>
+                    "Overseer Mode"
+                </Button>
             </div>
 
             // Filter Bar

@@ -37,6 +37,7 @@ pub use inline_message_detail::InlineMessageDetail;
 pub use input::Input;
 pub use layout::Layout;
 pub use message_detail_header::MessageDetailHeader;
+pub use overseer_composer::{OverseerComposeProps, OverseerComposer};
 pub use project_card::{ProjectCard, ProjectStatus, determine_project_status};
 pub use select::{Select, SelectOption};
 pub use separator::{Orientation, Separator};

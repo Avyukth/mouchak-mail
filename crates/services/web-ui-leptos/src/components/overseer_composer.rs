@@ -221,7 +221,6 @@ pub fn OverseerComposer(
                         id="subject".to_string()
                         value=subject
                         placeholder="e.g., STOP IMMEDIATELY, UPDATE PRIORITY...".to_string()
-                        // TODO: Add visual flair to input if possible via classes
                     />
                 </div>
 
