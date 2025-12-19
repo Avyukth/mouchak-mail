@@ -1,5 +1,6 @@
 use crate::{Result, ctx::Ctx, model::ModelManager};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 use tracing::{debug, info, warn};
 
 /// Guard execution mode for pre-commit checks.
@@ -93,6 +94,83 @@ fn parse_bool_env(key: &str) -> bool {
 /// environment variable is set to a truthy value.
 pub fn worktrees_active() -> bool {
     parse_bool_env("WORKTREES_ENABLED") || parse_bool_env("GIT_IDENTITY_ENABLED")
+}
+
+/// Get the hooks directory for a git repository.
+///
+/// Respects git's `core.hooksPath` configuration:
+/// 1. If `core.hooksPath` is set and absolute, use it directly
+/// 2. If `core.hooksPath` is set and relative, resolve from repo root
+/// 3. Fall back to `<git-dir>/hooks`
+/// 4. Last resort: `.git/hooks`
+///
+/// # Arguments
+/// * `repo_path` - Path to the git repository root
+///
+/// # Returns
+/// The resolved hooks directory path
+pub fn get_hooks_dir(repo_path: &Path) -> PathBuf {
+    // Helper to run git commands
+    fn git_config(repo: &Path, args: &[&str]) -> Option<String> {
+        Command::new("git")
+            .args(["-C", &repo.to_string_lossy()])
+            .args(args)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    }
+
+    // Check core.hooksPath
+    if let Some(hooks_path) = git_config(repo_path, &["config", "--get", "core.hooksPath"]) {
+        let path = Path::new(&hooks_path);
+
+        // Check if absolute (Unix or Windows)
+        if path.is_absolute() {
+            debug!(hooks_path = %hooks_path, "Using absolute core.hooksPath");
+            return path.to_path_buf();
+        }
+
+        // Relative path - resolve from repo root
+        if let Some(toplevel) = git_config(repo_path, &["rev-parse", "--show-toplevel"]) {
+            let resolved = PathBuf::from(&toplevel).join(&hooks_path);
+            debug!(
+                hooks_path = %hooks_path,
+                toplevel = %toplevel,
+                resolved = %resolved.display(),
+                "Resolved relative core.hooksPath"
+            );
+            return resolved;
+        }
+
+        // Fallback: resolve relative to provided repo_path
+        let resolved = repo_path.join(&hooks_path);
+        debug!(
+            hooks_path = %hooks_path,
+            resolved = %resolved.display(),
+            "Resolved relative core.hooksPath from repo_path"
+        );
+        return resolved;
+    }
+
+    // No core.hooksPath - use git-dir/hooks
+    if let Some(git_dir) = git_config(repo_path, &["rev-parse", "--git-dir"]) {
+        let git_path = Path::new(&git_dir);
+        let hooks_dir = if git_path.is_absolute() {
+            git_path.join("hooks")
+        } else {
+            repo_path.join(&git_dir).join("hooks")
+        };
+        debug!(git_dir = %git_dir, hooks_dir = %hooks_dir.display(), "Using git-dir/hooks");
+        return hooks_dir;
+    }
+
+    // Last resort: traditional .git/hooks
+    let fallback = repo_path.join(".git").join("hooks");
+    debug!(fallback = %fallback.display(), "Falling back to .git/hooks");
+    fallback
 }
 
 /// Pre-commit guard for file reservation checks
@@ -286,7 +364,8 @@ impl PrecommitGuardBmc {
         git_repo_path: &Path,
         server_url: Option<&str>,
     ) -> Result<String> {
-        let hooks_dir = git_repo_path.join(".git").join("hooks");
+        // Respect core.hooksPath configuration
+        let hooks_dir = get_hooks_dir(git_repo_path);
 
         // Create hooks directory if it doesn't exist
         tokio::fs::create_dir_all(&hooks_dir).await?;
@@ -363,8 +442,11 @@ exit 0
     }
 
     /// Uninstall pre-commit and pre-push hooks from git repository.
+    ///
+    /// Respects `core.hooksPath` configuration when locating hooks.
     pub async fn uninstall(_ctx: &Ctx, _mm: &ModelManager, git_repo_path: &Path) -> Result<String> {
-        let hooks_dir = git_repo_path.join(".git").join("hooks");
+        // Respect core.hooksPath configuration
+        let hooks_dir = get_hooks_dir(git_repo_path);
         let precommit_path = hooks_dir.join("pre-commit");
         let prepush_path = hooks_dir.join("pre-push");
 
@@ -934,5 +1016,186 @@ mod tests {
 
         // Verify it collects refs
         assert!(script.contains("refs="), "Script should collect refs");
+    }
+
+    // ============================================================================
+    // GET_HOOKS_DIR TESTS (PORT-3.4)
+    // ============================================================================
+
+    #[test]
+    fn test_get_hooks_dir_fallback_to_git_hooks() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path().to_path_buf();
+
+        // Initialize a git repo
+        std::process::Command::new("git")
+            .args(["init", &repo_path.to_string_lossy()])
+            .output()
+            .expect("git init");
+
+        // Without core.hooksPath, should return .git/hooks
+        let hooks_dir = get_hooks_dir(&repo_path);
+        assert!(
+            hooks_dir.ends_with("hooks"),
+            "Should end with 'hooks': {:?}",
+            hooks_dir
+        );
+        // On a real git repo, it returns <git-dir>/hooks
+        assert!(
+            hooks_dir.to_string_lossy().contains(".git"),
+            "Should contain .git: {:?}",
+            hooks_dir
+        );
+    }
+
+    #[test]
+    fn test_get_hooks_dir_with_absolute_hooks_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path().to_path_buf();
+
+        // Create custom hooks directory
+        let custom_hooks = temp_dir.path().join("custom-hooks");
+        std::fs::create_dir_all(&custom_hooks).unwrap();
+
+        // Initialize git repo
+        std::process::Command::new("git")
+            .args(["init", &repo_path.to_string_lossy()])
+            .output()
+            .expect("git init");
+
+        // Set absolute core.hooksPath
+        std::process::Command::new("git")
+            .args([
+                "-C",
+                &repo_path.to_string_lossy(),
+                "config",
+                "core.hooksPath",
+                &custom_hooks.to_string_lossy(),
+            ])
+            .output()
+            .expect("git config");
+
+        let hooks_dir = get_hooks_dir(&repo_path);
+        assert_eq!(
+            hooks_dir, custom_hooks,
+            "Should use absolute core.hooksPath"
+        );
+    }
+
+    #[test]
+    fn test_get_hooks_dir_with_relative_hooks_path() {
+        let temp_dir = TempDir::new().unwrap();
+        // Canonicalize to resolve symlinks (e.g., /var -> /private/var on macOS)
+        let repo_path = temp_dir.path().canonicalize().unwrap();
+
+        // Create custom hooks directory (relative path)
+        let custom_hooks_relative = "my-hooks";
+        let custom_hooks_absolute = repo_path.join(custom_hooks_relative);
+        std::fs::create_dir_all(&custom_hooks_absolute).unwrap();
+
+        // Initialize git repo
+        std::process::Command::new("git")
+            .args(["init", &repo_path.to_string_lossy()])
+            .output()
+            .expect("git init");
+
+        // Set relative core.hooksPath
+        std::process::Command::new("git")
+            .args([
+                "-C",
+                &repo_path.to_string_lossy(),
+                "config",
+                "core.hooksPath",
+                custom_hooks_relative,
+            ])
+            .output()
+            .expect("git config");
+
+        let hooks_dir = get_hooks_dir(&repo_path);
+        assert_eq!(
+            hooks_dir, custom_hooks_absolute,
+            "Should resolve relative core.hooksPath from repo root"
+        );
+    }
+
+    #[test]
+    fn test_get_hooks_dir_non_git_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let non_git_path = temp_dir.path().to_path_buf();
+
+        // Don't initialize git - should fall back to .git/hooks
+        let hooks_dir = get_hooks_dir(&non_git_path);
+        assert_eq!(
+            hooks_dir,
+            non_git_path.join(".git").join("hooks"),
+            "Should fall back to .git/hooks for non-git directory"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_install_with_custom_hooks_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path().to_path_buf();
+
+        // Create custom hooks directory
+        let custom_hooks = temp_dir.path().join("custom-hooks");
+        std::fs::create_dir_all(&custom_hooks).unwrap();
+
+        // Initialize git repo
+        std::process::Command::new("git")
+            .args(["init", &repo_path.to_string_lossy()])
+            .output()
+            .expect("git init");
+
+        // Set core.hooksPath
+        std::process::Command::new("git")
+            .args([
+                "-C",
+                &repo_path.to_string_lossy(),
+                "config",
+                "core.hooksPath",
+                &custom_hooks.to_string_lossy(),
+            ])
+            .output()
+            .expect("git config");
+
+        let ctx = Ctx::root_ctx();
+        let dummy_mm = {
+            use libsql::Builder;
+            let db_path = temp_dir.path().join("test.db");
+            let db = Builder::new_local(&db_path).build().await.unwrap();
+            let conn = db.connect().unwrap();
+            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+        };
+
+        // Install hooks
+        let result = PrecommitGuardBmc::install(&ctx, &dummy_mm, &repo_path, None).await;
+        assert!(result.is_ok(), "Install should succeed");
+
+        // Verify hooks are in custom directory, NOT .git/hooks
+        assert!(
+            custom_hooks.join("pre-commit").exists(),
+            "pre-commit should be in custom hooks dir"
+        );
+        assert!(
+            custom_hooks.join("pre-push").exists(),
+            "pre-push should be in custom hooks dir"
+        );
+        assert!(
+            !repo_path.join(".git/hooks/pre-commit").exists(),
+            "pre-commit should NOT be in .git/hooks"
+        );
+
+        // Verify uninstall also uses custom path
+        let result = PrecommitGuardBmc::uninstall(&ctx, &dummy_mm, &repo_path).await;
+        assert!(result.is_ok(), "Uninstall should succeed");
+        assert!(
+            !custom_hooks.join("pre-commit").exists(),
+            "pre-commit should be removed from custom hooks dir"
+        );
+        assert!(
+            !custom_hooks.join("pre-push").exists(),
+            "pre-push should be removed from custom hooks dir"
+        );
     }
 }
