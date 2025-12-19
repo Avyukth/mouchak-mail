@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use lib_core::Ctx;
-use lib_core::model::export::{ExportBmc, ExportFormat};
+use lib_core::model::export::{ExportBmc, ExportFormat, ScrubMode};
 use serde::Deserialize;
 use utoipa::ToSchema;
 
@@ -36,8 +36,15 @@ pub async fn export_mailbox(
         .parse::<ExportFormat>()
         .unwrap_or(ExportFormat::Json);
 
-    let exported =
-        ExportBmc::export_mailbox(&ctx, &state.mm, &payload.project_slug, format, false).await?;
+    let exported = ExportBmc::export_mailbox(
+        &ctx,
+        &state.mm,
+        &payload.project_slug,
+        format,
+        ScrubMode::None,
+        false,
+    )
+    .await?;
 
     // Determine content type and extension
     let (content_type, ext) = match format {

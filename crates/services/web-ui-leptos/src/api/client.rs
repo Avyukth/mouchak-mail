@@ -539,6 +539,9 @@ pub async fn mark_read(
 pub struct Attachment {
     pub id: i64,
     pub project_id: i64,
+    /// Agent ID that uploaded the file (if any).
+    #[serde(default)]
+    pub agent_id: Option<i64>,
     pub filename: String,
     pub stored_path: String,
     pub media_type: String,
@@ -602,13 +605,20 @@ impl Attachment {
     }
 }
 
-/// List attachments for a project.
-pub async fn list_attachments(project_slug: &str) -> Result<Vec<Attachment>, ApiError> {
-    let url = format!(
+/// List attachments for a project, optionally filtered by agent.
+pub async fn list_attachments(
+    project_slug: &str,
+    agent_name: Option<&str>,
+) -> Result<Vec<Attachment>, ApiError> {
+    let mut url = format!(
         "{}/api/attachments?project_slug={}",
         API_BASE_URL,
         urlencoding::encode(project_slug)
     );
+
+    if let Some(agent) = agent_name {
+        url.push_str(&format!("&agent_name={}", urlencoding::encode(agent)));
+    }
 
     let response = Request::get(&url).send().await?;
 

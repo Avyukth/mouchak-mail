@@ -38,6 +38,7 @@ async fn test_create_attachment() {
 
     let attachment_c = AttachmentForCreate {
         project_id,
+        agent_id: None,
         filename: "design.png".to_string(),
         stored_path: "/data/attachments/abc123.png".to_string(),
         media_type: "image/png".to_string(),
@@ -62,6 +63,7 @@ async fn test_get_attachment() {
 
     let attachment_c = AttachmentForCreate {
         project_id,
+        agent_id: None,
         filename: "report.pdf".to_string(),
         stored_path: "/data/attachments/def456.pdf".to_string(),
         media_type: "application/pdf".to_string(),
@@ -103,6 +105,7 @@ async fn test_list_by_project() {
     for (filename, media_type, size) in &files {
         let attachment_c = AttachmentForCreate {
             project_id,
+            agent_id: None,
             filename: filename.to_string(),
             stored_path: format!("/data/attachments/{}", filename),
             media_type: media_type.to_string(),
@@ -179,6 +182,7 @@ async fn test_various_media_types() {
     for (filename, media_type) in media_types {
         let attachment_c = AttachmentForCreate {
             project_id,
+            agent_id: None,
             filename: filename.to_string(),
             stored_path: format!("/data/{}", filename),
             media_type: media_type.to_string(),

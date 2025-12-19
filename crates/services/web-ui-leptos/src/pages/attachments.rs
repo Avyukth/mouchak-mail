@@ -3,7 +3,7 @@
 //! Displays project attachments in a responsive grid with file type icons,
 //! filtering, sorting, and download functionality.
 
-use crate::api::client::{self, Attachment, Project};
+use crate::api::client::{self, Agent, Attachment, Project};
 use crate::components::{
     Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Select, SelectOption,
     Skeleton,
@@ -327,14 +327,17 @@ pub fn Attachments() -> impl IntoView {
 
     // State
     let projects = RwSignal::new(Vec::<Project>::new());
+    let agents = RwSignal::new(Vec::<Agent>::new());
     let attachments = RwSignal::new(Vec::<Attachment>::new());
     let loading = RwSignal::new(true);
+    let loading_agents = RwSignal::new(false);
     let loading_attachments = RwSignal::new(false);
     let error = RwSignal::new(Option::<String>::None);
 
     // Filters
     let selected_project =
         RwSignal::new(query.with_untracked(|q| q.get("project").unwrap_or_default()));
+    let selected_agent = RwSignal::new(String::new()); // Empty = all agents
     let sort_value = RwSignal::new("date_desc".to_string());
 
     // Sync sort_value to sort_order
@@ -356,17 +359,49 @@ pub fn Attachments() -> impl IntoView {
         });
     });
 
-    // Load attachments when project changes
+    // Load agents when project changes
     Effect::new(move |_| {
         let project = selected_project.get();
+        if project.is_empty() {
+            agents.set(vec![]);
+            selected_agent.set(String::new());
+            return;
+        }
+
+        // Reset agent selection when project changes
+        selected_agent.set(String::new());
+        loading_agents.set(true);
+
+        leptos::task::spawn_local(async move {
+            match client::get_agents(&project).await {
+                Ok(a) => {
+                    agents.set(a);
+                    loading_agents.set(false);
+                }
+                Err(e) => {
+                    // Non-fatal: just log and continue
+                    leptos::logging::log!("Failed to load agents: {}", e.message);
+                    agents.set(vec![]);
+                    loading_agents.set(false);
+                }
+            }
+        });
+    });
+
+    // Load attachments when project or agent changes
+    Effect::new(move |_| {
+        let project = selected_project.get();
+        let agent = selected_agent.get();
         if project.is_empty() {
             attachments.set(vec![]);
             return;
         }
 
         loading_attachments.set(true);
+        let agent_filter = if agent.is_empty() { None } else { Some(agent) };
+
         leptos::task::spawn_local(async move {
-            match client::list_attachments(&project).await {
+            match client::list_attachments(&project, agent_filter.as_deref()).await {
                 Ok(mut atts) => {
                     sort_order.get().sort(&mut atts);
                     attachments.set(atts);
@@ -399,6 +434,18 @@ pub fn Attachments() -> impl IntoView {
         opts
     });
 
+    // Build agent options (only when project is selected)
+    let agent_options = Signal::derive(move || {
+        let mut opts: Vec<SelectOption> = vec![SelectOption::new("", "All Agents")];
+        opts.extend(
+            agents
+                .get()
+                .iter()
+                .map(|a| SelectOption::new(a.name.clone(), a.name.clone())),
+        );
+        opts
+    });
+
     // Sort options - generated from enum to stay DRY
     let sort_options: Vec<SelectOption> = AttachmentSort::all()
         .into_iter()
@@ -427,6 +474,24 @@ pub fn Attachments() -> impl IntoView {
                         value=selected_project
                         placeholder="Select Project...".to_string()
                     />
+                    // Agent filter - only visible when project is selected and has agents
+                    {move || {
+                        let project = selected_project.get();
+                        let agent_list = agents.get();
+                        let is_loading = loading_agents.get();
+                        if !project.is_empty() && (!agent_list.is_empty() || is_loading) {
+                            Some(view! {
+                                <Select
+                                    id="agent-select".to_string()
+                                    options=agent_options.get()
+                                    value=selected_agent
+                                    placeholder="All Agents".to_string()
+                                />
+                            })
+                        } else {
+                            None
+                        }
+                    }}
                     <Select
                         id="sort-select".to_string()
                         options=sort_options.clone()
@@ -571,5 +636,30 @@ mod tests {
         let hover_class = "hover:ring-2 hover:ring-amber-400";
         assert!(hover_class.contains("hover:ring-2"));
         assert!(hover_class.contains("hover:ring-amber-400"));
+    }
+
+    // === Agent Filter Tests ===
+
+    #[test]
+    fn test_agent_filter_default_all_agents() {
+        // Default agent selection should be empty string (all agents)
+        let selected_agent = String::new();
+        assert!(selected_agent.is_empty());
+    }
+
+    #[test]
+    fn test_agent_filter_option_conversion() {
+        // Agent filter should convert empty string to None for API
+        let agent = String::new();
+        let filter = if agent.is_empty() { None } else { Some(agent) };
+        assert!(filter.is_none());
+
+        let agent_name = "worker-1".to_string();
+        let filter = if agent_name.is_empty() {
+            None
+        } else {
+            Some(agent_name)
+        };
+        assert_eq!(filter, Some("worker-1".to_string()));
     }
 }

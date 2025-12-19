@@ -9,6 +9,7 @@ use axum::{
 };
 use base64::Engine;
 use lib_core::Ctx;
+use lib_core::model::agent::AgentBmc;
 use lib_core::model::attachment::{AttachmentBmc, AttachmentForCreate};
 use lib_core::model::project::ProjectBmc;
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,9 @@ use utoipa::ToSchema;
 #[derive(Deserialize, ToSchema)]
 pub struct AddAttachmentPayload {
     pub project_slug: String,
+    /// Optional agent name that uploaded this file.
+    #[serde(default)]
+    pub agent_name: Option<String>,
     pub filename: String,
     pub content_base64: String,
 }
@@ -56,6 +60,14 @@ pub async fn add_attachment(
 
     // 1. Get Project
     let project = ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug).await?;
+
+    // 1b. Resolve agent_name to agent_id if provided
+    let agent_id = if let Some(ref agent_name) = payload.agent_name {
+        let agent = AgentBmc::get_by_name(&ctx, mm, project.id, agent_name).await?;
+        Some(agent.id)
+    } else {
+        None
+    };
 
     // 2. Decode Content
     // Sanitize base64 string (remove data URL prefix if present)
@@ -107,6 +119,7 @@ pub async fn add_attachment(
         mm,
         AttachmentForCreate {
             project_id: project.id,
+            agent_id,
             filename: filename.clone(),
             stored_path: stored_path.to_string_lossy().to_string(),
             media_type: mime.to_string(),
@@ -121,6 +134,8 @@ pub async fn add_attachment(
 #[derive(Deserialize, utoipa::IntoParams)]
 pub struct ListAttachmentsParams {
     pub project_slug: String,
+    /// Optional agent name to filter attachments by.
+    pub agent_name: Option<String>,
 }
 
 #[utoipa::path(
@@ -146,7 +161,17 @@ pub async fn list_attachments(
     }
 
     let project = ProjectBmc::get_by_identifier(&ctx, &state.mm, &params.project_slug).await?;
-    let items = AttachmentBmc::list_by_project(&ctx, &state.mm, project.id).await?;
+
+    // Resolve agent_name to agent_id if provided
+    let agent_id = if let Some(ref agent_name) = params.agent_name {
+        let agent = AgentBmc::get_by_name(&ctx, &state.mm, project.id, agent_name).await?;
+        Some(agent.id)
+    } else {
+        None
+    };
+
+    let items =
+        AttachmentBmc::list_by_project_and_agent(&ctx, &state.mm, project.id, agent_id).await?;
     Ok(Json(items).into_response())
 }
 
