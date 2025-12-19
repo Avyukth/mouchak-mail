@@ -283,4 +283,62 @@ mod tests {
         // Should be stale due to old timestamp
         assert!(owner.is_stale(Duration::hours(1)));
     }
+
+    /// Integration test simulating crash recovery scenario.
+    /// Models what ModelManager does on startup when it finds a stale lock.
+    #[tokio::test]
+    async fn test_crash_recovery_integration() {
+        let dir = TempDir::new().expect("create temp dir");
+        let lock = ArchiveLock::new(dir.path());
+
+        // Step 1: Simulate a crashed process that left a stale lock
+        // (dead PID from over an hour ago)
+        let crashed_owner = LockOwner {
+            pid: 999999999, // Dead PID
+            timestamp: Utc::now() - Duration::hours(2),
+            agent: Some("crashed-agent".into()),
+            hostname: "crashed-host".into(),
+        };
+
+        fs::write(&lock.lock_path, "")
+            .await
+            .expect("write stale lock file");
+        fs::write(
+            &lock.owner_path,
+            serde_json::to_string(&crashed_owner).expect("serialize"),
+        )
+        .await
+        .expect("write stale owner file");
+
+        // Step 2: New process starts up (simulating ModelManager::cleanup_stale_locks)
+        // Quick check with short timeout - should clean stale and acquire
+        let startup_timeout = std::time::Duration::from_millis(100);
+        let guard = lock
+            .acquire(Some("startup-cleanup".into()), startup_timeout)
+            .await
+            .expect("should acquire lock after cleaning stale");
+
+        // Verify we now own the lock
+        let owner = lock.read_owner().await.expect("read owner");
+        assert_eq!(owner.pid, std::process::id());
+        assert_eq!(owner.agent, Some("startup-cleanup".into()));
+
+        // Step 3: Release lock (guard drop) - simulating successful startup
+        drop(guard);
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // Step 4: Normal operation can now acquire lock
+        let normal_guard = lock
+            .acquire(
+                Some("normal-agent".into()),
+                std::time::Duration::from_secs(1),
+            )
+            .await
+            .expect("normal operation should acquire lock");
+
+        let owner = lock.read_owner().await.expect("read owner");
+        assert_eq!(owner.agent, Some("normal-agent".into()));
+
+        drop(normal_guard);
+    }
 }

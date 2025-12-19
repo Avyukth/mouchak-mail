@@ -51,16 +51,21 @@ pub mod project_sibling_suggestion;
 pub mod tool_metric;
 
 use crate::Result;
+use crate::store::archive_lock::{ArchiveLock, LockGuard};
 use crate::store::repo_cache::RepoCache;
 use crate::store::{self, Db};
 use git2::Repository;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tracing::info;
 
 /// Default LRU cache capacity for git repositories.
 /// Each repo uses ~10-50 FDs, so 8 repos = ~400 FDs max.
 const DEFAULT_REPO_CACHE_SIZE: usize = 8;
+
+/// Default archive lock timeout in seconds
+const DEFAULT_ARCHIVE_LOCK_TIMEOUT_SECS: u64 = 30;
 
 #[derive(Clone)]
 pub struct ModelManager {
@@ -73,6 +78,10 @@ pub struct ModelManager {
     /// LRU cache for git repositories to prevent file descriptor exhaustion.
     /// NIST Control: SC-5 (DoS Protection)
     repo_cache: Arc<RepoCache>,
+    /// File-based advisory lock for cross-process coordination.
+    /// Handles stale lock cleanup from crashed processes.
+    /// NIST Control: AU-9 (Audit Log Protection)
+    archive_lock: Arc<ArchiveLock>,
 }
 
 impl ModelManager {
@@ -92,22 +101,58 @@ impl ModelManager {
             .and_then(|s| s.parse().ok())
             .unwrap_or(DEFAULT_REPO_CACHE_SIZE);
 
+        // Initialize archive lock and cleanup any stale locks from crashed processes
+        let archive_lock = Arc::new(ArchiveLock::new(&repo_root));
+        Self::cleanup_stale_locks(&archive_lock).await;
+
         Ok(ModelManager {
             db,
             repo_root,
             git_lock: Arc::new(Mutex::new(())),
             repo_cache: Arc::new(RepoCache::new(cache_size)),
+            archive_lock,
         })
     }
 
     /// Constructor for testing with custom db connection and paths
     /// This is public so integration tests can use it
     pub fn new_for_test(db: Db, repo_root: PathBuf) -> Self {
+        let archive_lock = Arc::new(ArchiveLock::new(&repo_root));
         ModelManager {
             db,
-            repo_root,
+            repo_root: repo_root.clone(),
             git_lock: Arc::new(Mutex::new(())),
             repo_cache: Arc::new(RepoCache::default()),
+            archive_lock,
+        }
+    }
+
+    /// Cleanup stale locks from crashed processes on startup.
+    /// NIST Control: AU-9 (Audit Log Protection)
+    async fn cleanup_stale_locks(archive_lock: &ArchiveLock) {
+        // Try to acquire lock with short timeout - if we get it, no stale lock
+        // If we timeout but the lock is from a dead process, it will be cleaned
+        let timeout = std::time::Duration::from_millis(100);
+        match archive_lock
+            .acquire(Some("startup-cleanup".into()), timeout)
+            .await
+        {
+            Ok(_guard) => {
+                // Lock acquired and released - no stale lock present
+                info!("Archive lock check passed - no stale locks");
+            }
+            Err(crate::Error::LockTimeout { path, owner_pid }) => {
+                // Lock held by another process - check if it's stale
+                info!(
+                    path = %path,
+                    pid = owner_pid,
+                    "Archive lock held by another process, will be cleaned if stale"
+                );
+            }
+            Err(e) => {
+                // Other error - log and continue
+                info!(error = %e, "Error checking archive lock on startup");
+            }
         }
     }
 
@@ -124,6 +169,26 @@ impl ModelManager {
     /// ```
     pub async fn get_repo(&self) -> Result<Arc<Mutex<Repository>>> {
         self.repo_cache.get(&self.repo_root).await
+    }
+
+    /// Acquire advisory file lock for longer archive operations.
+    ///
+    /// The returned guard automatically releases the lock when dropped.
+    /// Use this for operations that span multiple git commits or need
+    /// cross-process coordination.
+    ///
+    /// # Arguments
+    /// * `agent` - Optional agent name for lock ownership tracking
+    ///
+    /// # Example
+    /// ```ignore
+    /// let _guard = mm.acquire_archive_lock(Some("export-agent")).await?;
+    /// // ... perform multiple git operations ...
+    /// // Lock automatically released when _guard drops
+    /// ```
+    pub async fn acquire_archive_lock(&self, agent: Option<String>) -> Result<LockGuard<'_>> {
+        let timeout = std::time::Duration::from_secs(DEFAULT_ARCHIVE_LOCK_TIMEOUT_SECS);
+        self.archive_lock.acquire(agent, timeout).await
     }
 
     /// Returns the sqlx db pool reference.
