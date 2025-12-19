@@ -13,16 +13,20 @@ use crate::components::{
     InlineMessageDetail, MessageListItem, Skeleton, SplitViewLayout,
 };
 use leptos::prelude::*;
+use leptos_router::hooks::use_query_map;
 
 /// Unified Inbox page component.
 #[component]
 pub fn UnifiedInbox() -> impl IntoView {
+    let query = use_query_map();
+
     // State
     let messages = RwSignal::new(Vec::<UnifiedInboxMessage>::new());
     let all_messages = RwSignal::new(Vec::<UnifiedInboxMessage>::new()); // Unfiltered for extracting options
     let loading = RwSignal::new(true);
     let error = RwSignal::new(Option::<String>::None);
-    let filter_state = RwSignal::new(FilterState::new());
+    let filter_state =
+        RwSignal::new(query.with_untracked(|params| FilterState::from_query_params(params)));
     let selected_id = RwSignal::new(Option::<i64>::None);
 
     // Load all messages once on mount
