@@ -47,6 +47,9 @@ pub use pagination::Pagination;
 pub use project_card::{ProjectCard, ProjectStatus, determine_project_status};
 pub use select::{Select, SelectOption};
 pub use separator::{Orientation, Separator};
-pub use skeleton::Skeleton;
+pub use skeleton::{
+    AttachmentCardSkeleton, AttachmentGridSkeleton, CardSkeleton, MessageDetailSkeleton,
+    MessageItemSkeleton, MessageListSkeleton, Skeleton, TableRowSkeleton,
+};
 pub use split_view::{EmptyDetailPanel, MessageListItem, SplitViewLayout};
 pub use toast::{Toast, ToastVariant, Toaster, ToasterContext, use_toaster};
