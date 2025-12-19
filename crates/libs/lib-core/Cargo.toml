@@ -36,6 +36,8 @@ hostname = "0.4.2"
 [dev-dependencies]
 tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
 tempfile = "3.23.0"
+temp-env = "0.3.6"
+serial_test = "3.2.0"
 
 [lints]
 workspace = true
