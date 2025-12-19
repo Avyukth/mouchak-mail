@@ -1,6 +1,6 @@
 # Leptos Migration Plan: SvelteKit → Rust/WASM
 
-> Port MCP Agent Mail web UI from SvelteKit to Leptos for zero-JS, full-stack Rust.
+> Port MCP Agent Mail web UI from SvelteKit (archival) to Leptos for zero-JS, full-stack Rust.
 
 ## Executive Summary
 
@@ -13,6 +13,12 @@
 | SSR | Built-in | Built-in |
 | Styling | Tailwind CSS | Tailwind CSS (same) |
 | Bundle | ~150KB JS | ~200KB WASM + 5KB shim |
+
+---
+
+## Parity Requirements
+
+See `docs/LEPTOS_PARITY_CHECKLIST.md` for the full UI parity checklist and archival rules.
 
 ---
 

@@ -61,14 +61,16 @@ Rust-native rewrite of [mcp_agent_mail](https://github.com/Dicklesworthstone/mcp
 
 ---
 
-## Phase 2: SvelteKit Frontend (COMPLETE)
+## Phase 2: SvelteKit Frontend (COMPLETE, ARCHIVAL)
 
 **Commits**: `76a8c00`, `049e133`
 
-### Deliverables
+### Deliverables (archival reference only)
 - SvelteKit 2 + Svelte 5 + TailwindCSS + Bun
 - Material Design 3 theming
 - Static adapter for Rust binary embedding
+
+**Note**: All UI functionality must be ported to Leptos; SvelteKit is archival only.
 
 ### Pages
 - `/` - Projects list with search
@@ -243,4 +245,5 @@ Adjective+Noun pattern (BlueMountain, GreenCastle) aids:
 - [MCP Tools Reference](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail) - Authoritative list of 28 MCP tools
 - [Sharing Plan](https://github.com/Dicklesworthstone/mcp_agent_mail/blob/main/PLAN_TO_ENABLE_EASY_AND_SECURE_SHARING_OF_AGENT_MAILBOX.md)
 - [Worktree Integration](https://github.com/Dicklesworthstone/mcp_agent_mail/blob/main/PLAN_TO_NON_DISRUPTIVELY_INTEGRATE_WITH_THE_GIT_WORKTREE_APPROACH.md)
+- [Agent Communication Protocol](docs/AGENT_COMMUNICATION_PROTOCOL.md)
 - [Beads Issue Tracker](https://github.com/steveyegge/beads)

@@ -6,6 +6,8 @@
 
 MCP Agent Mail is a high-performance messaging platform for AI coding agents, providing "Gmail for agents" functionality. The Rust implementation achieves **44.6x higher throughput** than the Python reference (15,200 req/s vs 341 req/s) through zero-cost abstractions and async-first design.
 
+**UI target**: Leptos (Rust/WASM). The SvelteKit UI is archival and should be treated as reference only.
+
 ---
 
 ## System Architecture

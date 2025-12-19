@@ -1,5 +1,6 @@
 use assert_cmd::Command;
-use predicates::prelude::*;
+// use predicates::prelude::*; -> Removed
+use predicates::str::contains;
 use tempfile::TempDir;
 
 #[test]
@@ -21,5 +22,5 @@ fn test_guard_status_command() {
         .arg("status")
         .assert()
         .success() // Now Green
-        .stdout(predicates::str::contains("Installed hooks:"));
+        .stdout(contains("Installed hooks:"));
 }

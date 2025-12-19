@@ -2425,6 +2425,7 @@ Track via `list_tool_metrics()`:
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture
 - [docs/WALKTHROUGH.md](docs/WALKTHROUGH.md) — Usage walkthrough
+<!-- - [docs/AGENT_COMMUNICATION_PROTOCOL.md](docs/AGENT_COMMUNICATION_PROTOCOL.md) — Worker/reviewer messaging protocol -->
 - [.env.example](.env.example) — All environment variables
 - [scripts/integrations/](scripts/integrations/) — Agent integration configs
 - [MCP Protocol](https://modelcontextprotocol.io)

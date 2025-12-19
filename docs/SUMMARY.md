@@ -1,62 +1,38 @@
-# MCP Agent Mail (Rust Implementation)
+# MCP Agent Mail (Rust) - Summary
 
 ## Project Goal
-To re-implement the `mcp_agent_mail` system ("Gmail for coding agents") using a "Rust Native" approach. This involves replacing the original Python stack (FastAPI, SQLite+FTS5, GitPython) with high-performance, safe, and idiomatic Rust alternatives (Axum, Libsql, Git2) while adding a modern SvelteKit frontend.
+Port `mcp_agent_mail` ("Gmail for coding agents") from Python to a **native Rust** implementation that preserves API behavior while improving performance, safety, and operability. The Rust stack replaces FastAPI/SQLite/GitPython with **Axum**, **libsql**, and **git2**, and exposes both REST and MCP transports with a Rust-native UI strategy.
 
-The project follows strict quality protocols (A+ code standards, TDD, zero technical debt) derived from the `Depyler` project's guidelines.
+## Current Architecture (Rust-Native)
+- **Multi-crate workspace**: `lib-core` (BMC domain logic), `lib-mcp` (MCP tools), `lib-server` (Axum HTTP), services (`mcp-server`, `mcp-stdio`, `mcp-cli`, `web-ui`, `web-ui-leptos`).
+- **Storage**: libsql for primary data + git2-backed archive for durable message history.
+- **Transport**: REST endpoints + MCP JSON-RPC (rmcp) + STDIO service.
+- **UI**: SvelteKit implementation exists; Leptos migration is the target for a Rust/WASM web UI.
 
-## Critical Pivot: Phase 1.5 - Accelerated Logic Porting
-**Reasoning**: A pure manual rewrite was too slow (<10% feature parity).
-**New Strategy**: We adopted a hybrid approach—using `depyler` to transpile Python logic as reference "pseudo-code," then manually integrating it into our idiomatic `lib-core`. This accelerates porting the complex logic of 46 MCP tools while maintaining Rust quality.
+## Porting Strategy (Python → Rust)
+- **Parity-first** with **BMC pattern** and strong types. Python logic is used as a behavioral reference, but Rust implementation remains idiomatic and safe.
+- **Tool parity tracking** is documented in `docs/PROJECT_PLAN.md` and `docs/PYTHON_PORT_PLAN_v2.md`, with gaps and sequencing in `docs/GAP_ANALYSIS.md`.
+- **Quality gates** follow Rust best practices: explicit error handling, no `unwrap` in production, strong newtypes, and TDD discipline (see `.tmp/skills/rust-skills/SKILL.md`).
 
-## Achievements So Far (Post-Pivot)
+## Major Workstreams
+- **Worktree Integration (opt-in)**: Identity canonicalization, guard/hook composition, Git pathspec matching, and product-wide coordination to support multi-agent worktrees without breaking existing behavior. Reference: `PLAN_TO_NON_DISRUPTIVELY_INTEGRATE_WITH_THE_GIT_WORKTREE_APPROACH.md`.
+- **Secure Mailbox Sharing**: Export a static, read-only mailbox bundle with scrubbing, integrity manifests, and optional encryption. Reference: `PLAN_TO_ENABLE_EASY_AND_SECURE_SHARING_OF_AGENT_MAILBOX.md`.
+- **Production Hardening**: Auth/RBAC, rate limiting, observability, panic hooks, container hardening, and CI quality gates. Reference: `docs/PRODUCTION_HARDENING_PLAN.md` and `.tmp/skills/production-hardening-backend/SKILL.md`.
+- **Web UI Migration**: Move from SvelteKit to Leptos (Rust/WASM) for a unified Rust stack. Reference: `docs/LEPTOS_MIGRATION_PLAN.md`.
 
-### 1. Architecture & Core (`lib-core`)
-*   **Modular Workspace**: Established `lib-core` (domain logic), `mcp-server` (web API), and `mcp-cli` (command-line interface).
-*   **Storage Layer**:
-    *   **Database**: Fully integrated `libsql` (Turso/SQLite) with manual schema migrations (replacing `sqlx` due to compatibility needs).
-    *   **Git**: Implemented `git_store` using `git2` for high-performance "mailbox" operations (atomic commits, file history).
-*   **Domain Logic**: Implemented BMC (Backend Model Controller) pattern for:
-    *   `Project`: Create, get by slug, get by human key, ensure archive.
-    *   `Agent`: Create, get by ID/name, list all.
-    *   `Message`: Create (with Git commit), list inbox, get by ID.
-*   **Error Handling**: Robust `thiserror`-based `ServerError` system handling DB, Git, IO, and logic errors.
+## Verification & Performance
+- **Testing**: E2E and integration plans in `docs/E2E_TEST_PLAN.md`, plus gap-driven test coverage goals in `docs/PRODUCTION_HARDENING_PLAN.md`.
+- **Benchmarking**: Baseline and head-to-head plans in `docs/BENCHMARKING_PLAN.md` and `docs/UNIFIED_BENCHMARKING_PLAN.md`.
+- **Architecture**: System design, request flow, and security model in `docs/ARCHITECTURE.md`.
 
-### 2. API Layer (`mcp-server`)
-*   **Web Server**: Built an `axum` 0.6 web server (compatible with `libsql`/`tonic` dependencies).
-*   **Endpoints**: Implemented core REST API endpoints mirroring BMC logic:
-    *   `POST /api/project/ensure`
-    *   `POST /api/agent/register`
-    *   `POST /api/message/send`
-    *   `POST /api/inbox`
-    *   `GET /api/projects`
-    *   `GET /api/projects/:slug/agents`
-    *   `GET /api/messages/:id`
-    *   `GET /api/health`
+## Current Status (High Level)
+- Core Rust backend, data layer, REST + MCP transports exist and are functional.
+- Feature parity and production readiness are **in progress**, guided by the port plan and gap analysis.
+- UI is transitioning toward **Leptos**, with SvelteKit retained for continuity.
 
-### 3. Verification (`mcp-cli`)
-*   **CLI Tool**: Functional CLI for testing core flows without a frontend.
-*   **End-to-End Test**: Successfully verified:
-    *   Creating a project ("demo-project")
-    *   Creating an agent ("researcher")
-    *   Sending a message (persists to DB + Git repo)
-    *   Retrieving data via API.
-
-## Planned Work (Upcoming)
-
-### Phase 2: Frontend Scaffolding (SvelteKit) - **IMMEDIATE NEXT STEP**
-*   Initialize `crates/services/web-ui` with **SvelteKit** + **Bun**.
-*   Configure **TailwindCSS** with Material Design 3 theming.
-*   Set up `adapter-static` for embedding the frontend into the Rust binary.
-
-### Phase 3: Full Feature Parity (The "46 Tools")
-*   Systematically port the remaining logic for file reservations, agent links, and search using the `transpiled_reference` strategy.
-*   Expose these features as API endpoints.
-
-### Phase 4: MCP Protocol & Search
-*   Integrate `mcp-protocol-sdk` to expose the API as a standard MCP server for AI agents.
-*   Enable and optimize FTS5 search in `libsql`.
-
-## Current Status
-**Backend Core & API: STABLE & FUNCTIONAL.**
-We have a working backend that persists to both SQL and Git, serves a JSON API, and handles errors correctly. We are perfectly positioned to build the frontend.
+## Reading Order (Quick Start)
+1. `docs/ARCHITECTURE.md` - System overview and crate boundaries.
+2. `docs/PROJECT_PLAN.md` + `docs/PYTHON_PORT_PLAN_v2.md` - Parity roadmap.
+3. `docs/GAP_ANALYSIS.md` - What’s missing vs Python.
+4. Worktree + Sharing plans (links above) - multi-agent workflows and exports.
+5. `docs/PRODUCTION_HARDENING_PLAN.md` - hardening and release readiness.
