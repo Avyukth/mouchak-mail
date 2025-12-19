@@ -63,7 +63,7 @@ minijinja = "2.14.0"
 pulldown-cmark = "0.13.0"
 
 # MCP Protocol SDK (Official)
-rmcp = { version = "0.11.0", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
+rmcp = { version = "0.12.0", features = ["server", "macros", "transport-io", "transport-streamable-http-server"] }
 schemars = "1.1.0"
 
 # Error Handling
@@ -71,7 +71,7 @@ anyhow = "1.0.100"
 thiserror = "2.0.17"
 
 # Logging/Tracing
-tracing = "0.1.43"
+tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 tracing-appender = "0.2.4"
 
