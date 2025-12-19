@@ -531,3 +531,97 @@ pub async fn mark_read(
         })
     }
 }
+
+// -- Attachments API --
+
+/// Attachment response from listing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Attachment {
+    pub id: i64,
+    pub project_id: i64,
+    pub filename: String,
+    pub stored_path: String,
+    pub media_type: String,
+    pub size_bytes: i64,
+    #[serde(default)]
+    pub created_ts: Option<String>,
+}
+
+impl Attachment {
+    /// Get file type category for icon display.
+    pub fn file_type_category(&self) -> &'static str {
+        let ext = self.filename.rsplit('.').next().unwrap_or("").to_lowercase();
+        match ext.as_str() {
+            "jpg" | "jpeg" | "png" | "gif" | "webp" | "svg" | "bmp" => "image",
+            "pdf" => "pdf",
+            "doc" | "docx" | "odt" => "document",
+            "xls" | "xlsx" | "csv" | "ods" => "spreadsheet",
+            "mp4" | "webm" | "mov" | "avi" => "video",
+            "mp3" | "wav" | "ogg" | "flac" => "audio",
+            "zip" | "tar" | "gz" | "7z" | "rar" => "archive",
+            "json" | "xml" | "yaml" | "toml" => "code",
+            "rs" | "js" | "ts" | "py" | "go" | "java" | "c" | "cpp" | "h" => "code",
+            "md" | "txt" | "log" => "text",
+            _ => "file",
+        }
+    }
+
+    /// Get human-readable file size.
+    pub fn human_size(&self) -> String {
+        let size = self.size_bytes as f64;
+        if size < 1024.0 {
+            format!("{} B", self.size_bytes)
+        } else if size < 1024.0 * 1024.0 {
+            format!("{:.1} KB", size / 1024.0)
+        } else if size < 1024.0 * 1024.0 * 1024.0 {
+            format!("{:.1} MB", size / (1024.0 * 1024.0))
+        } else {
+            format!("{:.2} GB", size / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+
+    /// Get lucide icon name for file type.
+    pub fn icon_name(&self) -> &'static str {
+        match self.file_type_category() {
+            "image" => "image",
+            "pdf" => "file-text",
+            "document" => "file-text",
+            "spreadsheet" => "table",
+            "video" => "video",
+            "audio" => "music",
+            "archive" => "archive",
+            "code" => "file-code",
+            "text" => "file-text",
+            _ => "file",
+        }
+    }
+}
+
+/// List attachments for a project.
+pub async fn list_attachments(project_slug: &str) -> Result<Vec<Attachment>, ApiError> {
+    let url = format!(
+        "{}/api/attachments?project_slug={}",
+        API_BASE_URL,
+        urlencoding::encode(project_slug)
+    );
+
+    let response = Request::get(&url).send().await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to list attachments: {}", response.status()),
+        })
+    }
+}
+
+/// Get attachment download URL.
+pub fn attachment_download_url(id: i64, project_slug: &str) -> String {
+    format!(
+        "{}/api/attachments/{}?project_slug={}",
+        API_BASE_URL,
+        id,
+        urlencoding::encode(project_slug)
+    )
+}

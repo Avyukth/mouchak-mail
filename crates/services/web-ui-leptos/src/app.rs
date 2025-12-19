@@ -19,6 +19,7 @@ pub fn App() -> impl IntoView {
                     <Route path=path!("projects/:slug") view=ProjectDetail />
                     <Route path=path!("projects/:slug/file-reservations") view=FileReservations />
                     <Route path=path!("agents") view=Agents />
+                    <Route path=path!("attachments") view=Attachments />
                     <Route path=path!("inbox") view=Inbox />
                     <Route path=path!("inbox/:id") view=MessageDetail />
                     <Route path=path!("mail") view=UnifiedInbox />

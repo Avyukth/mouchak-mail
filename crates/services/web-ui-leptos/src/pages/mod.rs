@@ -1,6 +1,7 @@
 //! Page components for each route.
 
 mod agents;
+mod attachments;
 mod dashboard;
 mod file_reservations;
 mod inbox;
@@ -10,6 +11,7 @@ mod projects;
 mod unified_inbox;
 
 pub use agents::Agents;
+pub use attachments::Attachments;
 pub use dashboard::Dashboard;
 pub use file_reservations::FileReservations;
 pub use inbox::Inbox;
