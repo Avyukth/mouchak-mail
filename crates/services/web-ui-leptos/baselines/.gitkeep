@@ -1,0 +1,2 @@
+# Visual regression baseline screenshots
+# Run: bun run scripts/visual-regression.ts baseline

@@ -10,3 +10,6 @@ style/output.css
 
 # Trunk
 .trunk/
+
+# Visual regression current screenshots (baselines are tracked)
+.vr-current/
