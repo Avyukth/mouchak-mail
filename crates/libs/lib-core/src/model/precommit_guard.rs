@@ -1,4 +1,9 @@
+use crate::model::agent::AgentBmc;
+use crate::model::file_reservation::FileReservationBmc;
+use crate::model::project::ProjectBmc;
 use crate::{Result, ctx::Ctx, model::ModelManager};
+use chrono::Utc;
+use glob::Pattern;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tracing::{debug, info, warn};
@@ -317,10 +322,10 @@ impl PrecommitGuardBmc {
     /// * **Warn**: Allow with warnings
     /// * **Bypass**: Skip all checks
     pub async fn check_reservations(
-        _ctx: &Ctx,
-        _mm: &ModelManager,
-        _agent_name: &str,
-        _files: &[String],
+        ctx: &Ctx,
+        mm: &ModelManager,
+        agent_name: &str,
+        files: &[String],
     ) -> Result<Option<Vec<String>>> {
         // Gate: early return if worktrees not enabled
         if !Self::should_check() {
@@ -337,18 +342,114 @@ impl PrecommitGuardBmc {
         }
 
         debug!(
-            agent = _agent_name,
-            files_count = _files.len(),
+            agent = agent_name,
+            files_count = files.len(),
             mode = ?mode,
             "Checking file reservations"
         );
 
-        // TODO: Implement actual reservation checking against database
-        // For now, pass through with no violations
-        // When conflicts are detected:
-        // - Enforce mode: return Err with conflict details
-        // - Warn mode: log warning and return Ok(Some(warnings))
-        Ok(None)
+        // Get project slug from environment or detect from git
+        let project_slug = match std::env::var("AGENT_MAIL_PROJECT") {
+            Ok(slug) if !slug.is_empty() => slug,
+            _ => {
+                // Try to detect from current directory name
+                std::env::current_dir()
+                    .ok()
+                    .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
+                    .unwrap_or_else(|| "default".to_string())
+            }
+        };
+
+        // Look up project - if not found, no reservations to check
+        let project = match ProjectBmc::get_by_slug(ctx, mm, &project_slug).await {
+            Ok(p) => p,
+            Err(_) => {
+                debug!(project_slug = %project_slug, "Project not found, skipping reservation check");
+                return Ok(None);
+            }
+        };
+
+        // Look up agent - if not found, cannot check ownership
+        let agent = match AgentBmc::get_by_name(ctx, mm, project.id, agent_name).await {
+            Ok(a) => a,
+            Err(_) => {
+                debug!(
+                    agent = agent_name,
+                    "Agent not found, skipping reservation check"
+                );
+                return Ok(None);
+            }
+        };
+
+        // Get active reservations for this project
+        let reservations = FileReservationBmc::list_active_for_project(ctx, mm, project.id).await?;
+
+        if reservations.is_empty() {
+            debug!("No active reservations for project");
+            return Ok(None);
+        }
+
+        // Check each file against reservations from OTHER agents
+        let mut violations = Vec::new();
+        let now = Utc::now().naive_utc();
+
+        for file in files {
+            for reservation in &reservations {
+                // Skip our own reservations
+                if reservation.agent_id == agent.id {
+                    continue;
+                }
+
+                // Skip expired reservations
+                if reservation.expires_ts < now {
+                    continue;
+                }
+
+                // Check if file matches the reservation pattern
+                if let Ok(pattern) = Pattern::new(&reservation.path_pattern) {
+                    if pattern.matches(file) {
+                        // Get the agent name who holds the reservation
+                        let holder_name = AgentBmc::get(ctx, mm, reservation.agent_id)
+                            .await
+                            .map(|a| a.name)
+                            .unwrap_or_else(|_| format!("agent#{}", reservation.agent_id));
+
+                        violations.push(format!(
+                            "File '{}' is reserved by '{}' (pattern: {}, reason: {})",
+                            file, holder_name, reservation.path_pattern, reservation.reason
+                        ));
+                    }
+                }
+            }
+        }
+
+        if violations.is_empty() {
+            debug!("No reservation conflicts found");
+            return Ok(None);
+        }
+
+        // Handle based on mode
+        match mode {
+            GuardMode::Enforce => {
+                // Return violations as errors (caller should block commit)
+                warn!(
+                    violations_count = violations.len(),
+                    "File reservation conflicts detected (enforce mode)"
+                );
+                Ok(Some(violations))
+            }
+            GuardMode::Warn => {
+                // Log warnings but allow commit
+                for violation in &violations {
+                    warn!(violation = %violation, "File reservation conflict (warn mode)");
+                }
+                Ok(Some(violations))
+            }
+            GuardMode::Bypass => {
+                // Already handled above, but for completeness
+                Ok(None)
+            }
+        }
     }
 
     /// Install pre-commit and pre-push hooks in git repository.
@@ -694,7 +795,7 @@ mod tests {
                     .await;
 
                     assert!(result.is_ok());
-                    // Currently returns None (no violations) as check is TODO
+                    // No reservations in test DB, so should return None
                     assert!(result.unwrap().is_none());
                 });
             },

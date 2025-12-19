@@ -542,7 +542,10 @@ async fn handle_service_status(port: u16) -> anyhow::Result<()> {
         }
         _ => {
             if let Some(pid) = find_pid_on_port(port) {
-                println!("⚠ Process {} is on port {} but not responding to health checks", pid, port);
+                println!(
+                    "⚠ Process {} is on port {} but not responding to health checks",
+                    pid, port
+                );
             } else {
                 println!("✗ No server running on port {}", port);
             }

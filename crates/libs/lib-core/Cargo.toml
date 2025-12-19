@@ -29,6 +29,7 @@ regex = "1.12.2"
 lazy_static = "1.5.0"
 derive_more = { version = "2.1.0", features = ["from"] }
 strsim = "0.11.1"
+glob = "0.3.2"
 lru = "0.16.2"
 libc = "0.2.178"
 hostname = "0.4.2"
@@ -38,7 +39,7 @@ base64.workspace = true
 [dev-dependencies]
 tokio = { version = "1.48.0", features = ["rt-multi-thread", "macros"] }
 tempfile = "3.23.0"
-temp-env = "0.3.6"
+temp-env = { version = "0.3.6", features = ["async_closure"] }
 serial_test = "3.2.0"
 futures = "0.3.31"
 

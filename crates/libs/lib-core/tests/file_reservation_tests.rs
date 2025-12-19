@@ -370,3 +370,195 @@ async fn test_file_reservation_not_found() {
         "Should return error for nonexistent reservation"
     );
 }
+
+// ============================================================================
+// PRECOMMIT GUARD CONFLICT DETECTION TESTS
+// ============================================================================
+
+use lib_core::model::precommit_guard::PrecommitGuardBmc;
+use serial_test::serial;
+use temp_env::async_with_vars;
+
+/// Helper to create a second agent for conflict testing
+async fn create_second_agent(tc: &TestContext, project_id: i64) -> i64 {
+    let agent = AgentForCreate {
+        project_id,
+        name: "other-agent".to_string(),
+        program: "claude-code".to_string(),
+        model: "claude-3".to_string(),
+        task_description: "Another agent".to_string(),
+    };
+    AgentBmc::create(&tc.ctx, &tc.mm, agent)
+        .await
+        .expect("Failed to create second agent")
+}
+
+/// Test that guard detects conflicts when another agent holds a reservation
+#[tokio::test]
+#[serial]
+async fn test_guard_detects_reservation_conflict() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    // Create project and two agents
+    let (project_id, agent1_id) = setup_project_and_agent(&tc).await;
+    let _agent2_id = create_second_agent(&tc, project_id).await;
+
+    // Agent 1 reserves src/**/*.rs
+    let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
+    let fr_c = FileReservationForCreate {
+        project_id,
+        agent_id: agent1_id,
+        path_pattern: "src/**/*.rs".to_string(),
+        exclusive: true,
+        reason: "Working on source files".to_string(),
+        expires_ts,
+    };
+    FileReservationBmc::create(&tc.ctx, &tc.mm, fr_c)
+        .await
+        .expect("Failed to create reservation");
+
+    // Set up env for guard check
+    let project_slug = slugify("/test/repo");
+    async_with_vars(
+        [
+            ("WORKTREES_ENABLED", Some("1")),
+            ("AGENT_MAIL_PROJECT", Some(project_slug.as_str())),
+            ("AGENT_MAIL_BYPASS", None::<&str>),
+            ("AGENT_MAIL_GUARD_MODE", None::<&str>),
+        ],
+        async {
+            // Agent 2 tries to commit src/main.rs - should detect conflict
+            let result = PrecommitGuardBmc::check_reservations(
+                &tc.ctx,
+                &tc.mm,
+                "other-agent",
+                &["src/main.rs".to_string()],
+            )
+            .await;
+
+            assert!(result.is_ok(), "Should not error");
+            let violations = result.unwrap();
+            assert!(violations.is_some(), "Should detect violation");
+            let violations = violations.unwrap();
+            assert_eq!(violations.len(), 1, "Should have exactly one violation");
+            assert!(
+                violations[0].contains("src/main.rs"),
+                "Violation should mention the file"
+            );
+            assert!(
+                violations[0].contains("test-agent"),
+                "Violation should mention the holder"
+            );
+        },
+    )
+    .await;
+}
+
+/// Test that guard allows commits for files owned by same agent
+#[tokio::test]
+#[serial]
+async fn test_guard_allows_own_reservations() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let (project_id, agent_id) = setup_project_and_agent(&tc).await;
+
+    // Agent reserves src/**/*.rs
+    let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
+    let fr_c = FileReservationForCreate {
+        project_id,
+        agent_id,
+        path_pattern: "src/**/*.rs".to_string(),
+        exclusive: true,
+        reason: "Working on source files".to_string(),
+        expires_ts,
+    };
+    FileReservationBmc::create(&tc.ctx, &tc.mm, fr_c)
+        .await
+        .expect("Failed to create reservation");
+
+    // Set up env for guard check
+    let project_slug = slugify("/test/repo");
+    async_with_vars(
+        [
+            ("WORKTREES_ENABLED", Some("1")),
+            ("AGENT_MAIL_PROJECT", Some(project_slug.as_str())),
+            ("AGENT_MAIL_BYPASS", None::<&str>),
+            ("AGENT_MAIL_GUARD_MODE", None::<&str>),
+        ],
+        async {
+            // Same agent commits src/main.rs - should be allowed (own reservation)
+            let result = PrecommitGuardBmc::check_reservations(
+                &tc.ctx,
+                &tc.mm,
+                "test-agent",
+                &["src/main.rs".to_string()],
+            )
+            .await;
+
+            assert!(result.is_ok(), "Should not error");
+            assert!(
+                result.unwrap().is_none(),
+                "Should not detect violation for own reservation"
+            );
+        },
+    )
+    .await;
+}
+
+/// Test that guard ignores expired reservations
+#[tokio::test]
+#[serial]
+async fn test_guard_ignores_expired_reservations() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let (project_id, agent1_id) = setup_project_and_agent(&tc).await;
+    let _agent2_id = create_second_agent(&tc, project_id).await;
+
+    // Agent 1 reserves src/**/*.rs with expired time
+    let expires_ts = Utc::now().naive_utc() - Duration::hours(1); // Already expired!
+    let fr_c = FileReservationForCreate {
+        project_id,
+        agent_id: agent1_id,
+        path_pattern: "src/**/*.rs".to_string(),
+        exclusive: true,
+        reason: "Working on source files".to_string(),
+        expires_ts,
+    };
+    FileReservationBmc::create(&tc.ctx, &tc.mm, fr_c)
+        .await
+        .expect("Failed to create reservation");
+
+    // Set up env for guard check
+    let project_slug = slugify("/test/repo");
+    async_with_vars(
+        [
+            ("WORKTREES_ENABLED", Some("1")),
+            ("AGENT_MAIL_PROJECT", Some(project_slug.as_str())),
+            ("AGENT_MAIL_BYPASS", None::<&str>),
+            ("AGENT_MAIL_GUARD_MODE", None::<&str>),
+        ],
+        async {
+            // Agent 2 tries to commit - should be allowed (reservation expired)
+            let result = PrecommitGuardBmc::check_reservations(
+                &tc.ctx,
+                &tc.mm,
+                "other-agent",
+                &["src/main.rs".to_string()],
+            )
+            .await;
+
+            assert!(result.is_ok(), "Should not error");
+            assert!(
+                result.unwrap().is_none(),
+                "Should not detect violation for expired reservation"
+            );
+        },
+    )
+    .await;
+}

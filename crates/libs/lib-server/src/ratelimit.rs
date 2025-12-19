@@ -220,8 +220,9 @@ impl ToolRateLimits {
             Quota::per_second(NonZeroU32::new(write_rps).expect("Write RPS should be non-zero"));
         let read_quota =
             Quota::per_second(NonZeroU32::new(read_rps).expect("Read RPS should be non-zero"));
-        let default_quota =
-            Quota::per_second(NonZeroU32::new(default_rps).expect("Default RPS should be non-zero"));
+        let default_quota = Quota::per_second(
+            NonZeroU32::new(default_rps).expect("Default RPS should be non-zero"),
+        );
 
         tracing::info!(
             "Per-Tool Rate Limiting: enabled={}, write_rps={}, read_rps={}, default_rps={}",
@@ -535,32 +536,80 @@ mod tests {
     #[test]
     fn test_tool_category_from_tool_name_write_tools() {
         // Write tools should have lower limits (10 rps)
-        assert_eq!(ToolCategory::from_tool_name("send_message"), ToolCategory::Write);
-        assert_eq!(ToolCategory::from_tool_name("reply_message"), ToolCategory::Write);
-        assert_eq!(ToolCategory::from_tool_name("file_reservation_paths"), ToolCategory::Write);
-        assert_eq!(ToolCategory::from_tool_name("reserve_file"), ToolCategory::Write);
-        assert_eq!(ToolCategory::from_tool_name("acquire_build_slot"), ToolCategory::Write);
-        assert_eq!(ToolCategory::from_tool_name("register_agent"), ToolCategory::Write);
+        assert_eq!(
+            ToolCategory::from_tool_name("send_message"),
+            ToolCategory::Write
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("reply_message"),
+            ToolCategory::Write
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("file_reservation_paths"),
+            ToolCategory::Write
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("reserve_file"),
+            ToolCategory::Write
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("acquire_build_slot"),
+            ToolCategory::Write
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("register_agent"),
+            ToolCategory::Write
+        );
     }
 
     #[test]
     fn test_tool_category_from_tool_name_read_tools() {
         // Read tools should have higher limits (100 rps)
-        assert_eq!(ToolCategory::from_tool_name("fetch_inbox"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("check_inbox"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("list_outbox"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("get_message"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("search_messages"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("list_agents"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("list_threads"), ToolCategory::Read);
-        assert_eq!(ToolCategory::from_tool_name("get_project_info"), ToolCategory::Read);
+        assert_eq!(
+            ToolCategory::from_tool_name("fetch_inbox"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("check_inbox"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("list_outbox"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("get_message"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("search_messages"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("list_agents"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("list_threads"),
+            ToolCategory::Read
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("get_project_info"),
+            ToolCategory::Read
+        );
     }
 
     #[test]
     fn test_tool_category_from_tool_name_default() {
         // Unknown tools should use default limits (50 rps)
-        assert_eq!(ToolCategory::from_tool_name("unknown_tool"), ToolCategory::Default);
-        assert_eq!(ToolCategory::from_tool_name("custom_operation"), ToolCategory::Default);
+        assert_eq!(
+            ToolCategory::from_tool_name("unknown_tool"),
+            ToolCategory::Default
+        );
+        assert_eq!(
+            ToolCategory::from_tool_name("custom_operation"),
+            ToolCategory::Default
+        );
     }
 
     #[test]
