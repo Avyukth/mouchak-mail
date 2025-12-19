@@ -67,6 +67,226 @@ impl RateLimitConfig {
     }
 }
 
+// ============================================================================
+// Per-Tool Rate Limiting (PORT-4.2)
+// ============================================================================
+
+/// Tool category for rate limiting purposes.
+///
+/// Different categories have different rate limits:
+/// - Write: 10 RPS (mutating operations)
+/// - Read: 100 RPS (query operations)
+/// - Default: 50 RPS (unknown operations)
+///
+/// NIST Control: SC-5 (DoS Protection)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolCategory {
+    /// Mutating operations (send_message, reserve_file, etc.) - 10 RPS
+    Write,
+    /// Query operations (fetch_inbox, list_agents, etc.) - 100 RPS
+    Read,
+    /// Unknown operations - 50 RPS
+    Default,
+}
+
+impl ToolCategory {
+    /// Classify a tool name into a category.
+    ///
+    /// Write tools (10 RPS): Operations that modify state
+    /// Read tools (100 RPS): Operations that only read state
+    /// Default (50 RPS): Unknown or mixed operations
+    pub fn from_tool_name(tool_name: &str) -> Self {
+        // Write tools - lower limits (10 rps)
+        const WRITE_TOOLS: &[&str] = &[
+            "send_message",
+            "reply_message",
+            "file_reservation_paths",
+            "reserve_file",
+            "release_reservation",
+            "force_release_reservation",
+            "renew_file_reservation",
+            "acquire_build_slot",
+            "release_build_slot",
+            "renew_build_slot",
+            "register_agent",
+            "update_agent_profile",
+            "create_agent_identity",
+            "mark_message_read",
+            "acknowledge_message",
+            "request_contact",
+            "respond_contact",
+            "set_contact_policy",
+            "register_macro",
+            "unregister_macro",
+            "invoke_macro",
+            "ensure_project",
+            "ensure_product",
+            "link_project_to_product",
+            "unlink_project_from_product",
+            "install_precommit_guard",
+            "uninstall_precommit_guard",
+            "add_attachment",
+        ];
+
+        // Read tools - higher limits (100 rps)
+        const READ_TOOLS: &[&str] = &[
+            "fetch_inbox",
+            "check_inbox",
+            "list_outbox",
+            "get_message",
+            "search_messages",
+            "list_agents",
+            "get_agent_profile",
+            "whois",
+            "list_threads",
+            "get_thread",
+            "summarize_thread",
+            "summarize_threads",
+            "list_file_reservations",
+            "list_contacts",
+            "list_macros",
+            "list_projects",
+            "get_project_info",
+            "list_project_siblings",
+            "list_products",
+            "product_inbox",
+            "get_attachment",
+            "export_mailbox",
+            "list_tool_metrics",
+            "get_tool_stats",
+            "list_activity",
+        ];
+
+        if WRITE_TOOLS.contains(&tool_name) {
+            ToolCategory::Write
+        } else if READ_TOOLS.contains(&tool_name) {
+            ToolCategory::Read
+        } else {
+            ToolCategory::Default
+        }
+    }
+}
+
+/// Per-tool rate limiter with separate buckets for each category.
+///
+/// Environment variables:
+/// - `RATE_LIMIT_WRITE_RPS`: Write operations limit (default: 10)
+/// - `RATE_LIMIT_READ_RPS`: Read operations limit (default: 100)
+/// - `RATE_LIMIT_DEFAULT_RPS`: Default limit for unknown tools (default: 50)
+///
+/// NIST Control: SC-5 (DoS Protection)
+#[derive(Clone)]
+pub struct ToolRateLimits {
+    write_limiter: Arc<KeyedRateLimiter>,
+    read_limiter: Arc<KeyedRateLimiter>,
+    default_limiter: Arc<KeyedRateLimiter>,
+    pub write_rps: u32,
+    pub read_rps: u32,
+    pub default_rps: u32,
+    pub enabled: bool,
+}
+
+impl Default for ToolRateLimits {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ToolRateLimits {
+    /// Create per-tool rate limiters with defaults or environment overrides.
+    #[allow(clippy::expect_used)] // NonZeroU32 from parsed u32 with fallback defaults; always valid
+    pub fn new() -> Self {
+        let enabled =
+            std::env::var("RATE_LIMIT_ENABLED").unwrap_or_else(|_| "true".into()) == "true";
+
+        // Parse RPS values from environment with defaults per specification
+        let write_rps = std::env::var("RATE_LIMIT_WRITE_RPS")
+            .unwrap_or_else(|_| "10".into())
+            .parse::<u32>()
+            .unwrap_or(10);
+
+        let read_rps = std::env::var("RATE_LIMIT_READ_RPS")
+            .unwrap_or_else(|_| "100".into())
+            .parse::<u32>()
+            .unwrap_or(100);
+
+        let default_rps = std::env::var("RATE_LIMIT_DEFAULT_RPS")
+            .unwrap_or_else(|_| "50".into())
+            .parse::<u32>()
+            .unwrap_or(50);
+
+        // Create limiters with burst = rps (no burst allowance for tool limits)
+        let write_quota =
+            Quota::per_second(NonZeroU32::new(write_rps).expect("Write RPS should be non-zero"));
+        let read_quota =
+            Quota::per_second(NonZeroU32::new(read_rps).expect("Read RPS should be non-zero"));
+        let default_quota =
+            Quota::per_second(NonZeroU32::new(default_rps).expect("Default RPS should be non-zero"));
+
+        tracing::info!(
+            "Per-Tool Rate Limiting: enabled={}, write_rps={}, read_rps={}, default_rps={}",
+            enabled,
+            write_rps,
+            read_rps,
+            default_rps
+        );
+
+        Self {
+            write_limiter: Arc::new(RateLimiter::keyed(write_quota)),
+            read_limiter: Arc::new(RateLimiter::keyed(read_quota)),
+            default_limiter: Arc::new(RateLimiter::keyed(default_quota)),
+            write_rps,
+            read_rps,
+            default_rps,
+            enabled,
+        }
+    }
+
+    /// Check if a tool request is within rate limits.
+    ///
+    /// # Arguments
+    /// * `tool_name` - The MCP tool name (e.g., "send_message")
+    /// * `bucket_key` - The identity key (e.g., "user:ip")
+    ///
+    /// # Returns
+    /// * `Ok(())` if within limits
+    /// * `Err(ToolCategory)` if rate limited, with the category that was exceeded
+    pub fn check_tool(&self, tool_name: &str, bucket_key: &str) -> Result<(), ToolCategory> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        let category = ToolCategory::from_tool_name(tool_name);
+        let limiter = match category {
+            ToolCategory::Write => &self.write_limiter,
+            ToolCategory::Read => &self.read_limiter,
+            ToolCategory::Default => &self.default_limiter,
+        };
+
+        match limiter.check_key(&bucket_key.to_string()) {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                warn!(
+                    tool = %tool_name,
+                    category = ?category,
+                    bucket_key = %bucket_key,
+                    "Per-tool rate limit exceeded"
+                );
+                Err(category)
+            }
+        }
+    }
+
+    /// Get the RPS limit for a tool category.
+    pub fn rps_for_category(&self, category: ToolCategory) -> u32 {
+        match category {
+            ToolCategory::Write => self.write_rps,
+            ToolCategory::Read => self.read_rps,
+            ToolCategory::Default => self.default_rps,
+        }
+    }
+}
+
 /// Extract JWT subject from Authorization header without full verification.
 ///
 /// This only decodes the JWT payload to extract the `sub` claim for rate limiting.
@@ -306,5 +526,108 @@ mod tests {
         // Test that RateLimitConfig can be created with defaults
         let config = RateLimitConfig::new();
         assert!(config.enabled);
+    }
+
+    // ========================================================================
+    // Per-Tool Rate Limiting Tests (PORT-4.2)
+    // ========================================================================
+
+    #[test]
+    fn test_tool_category_from_tool_name_write_tools() {
+        // Write tools should have lower limits (10 rps)
+        assert_eq!(ToolCategory::from_tool_name("send_message"), ToolCategory::Write);
+        assert_eq!(ToolCategory::from_tool_name("reply_message"), ToolCategory::Write);
+        assert_eq!(ToolCategory::from_tool_name("file_reservation_paths"), ToolCategory::Write);
+        assert_eq!(ToolCategory::from_tool_name("reserve_file"), ToolCategory::Write);
+        assert_eq!(ToolCategory::from_tool_name("acquire_build_slot"), ToolCategory::Write);
+        assert_eq!(ToolCategory::from_tool_name("register_agent"), ToolCategory::Write);
+    }
+
+    #[test]
+    fn test_tool_category_from_tool_name_read_tools() {
+        // Read tools should have higher limits (100 rps)
+        assert_eq!(ToolCategory::from_tool_name("fetch_inbox"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("check_inbox"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("list_outbox"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("get_message"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("search_messages"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("list_agents"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("list_threads"), ToolCategory::Read);
+        assert_eq!(ToolCategory::from_tool_name("get_project_info"), ToolCategory::Read);
+    }
+
+    #[test]
+    fn test_tool_category_from_tool_name_default() {
+        // Unknown tools should use default limits (50 rps)
+        assert_eq!(ToolCategory::from_tool_name("unknown_tool"), ToolCategory::Default);
+        assert_eq!(ToolCategory::from_tool_name("custom_operation"), ToolCategory::Default);
+    }
+
+    #[test]
+    fn test_tool_rate_limits_default_values() {
+        let limits = ToolRateLimits::new();
+
+        // Verify default RPS values
+        assert_eq!(limits.write_rps, 10);
+        assert_eq!(limits.read_rps, 100);
+        assert_eq!(limits.default_rps, 50);
+    }
+
+    #[test]
+    fn test_tool_rate_limits_get_limiter_returns_correct_category() {
+        let limits = ToolRateLimits::new();
+
+        // Write tool should use write limiter
+        let key = "test-user:127.0.0.1";
+
+        // First, exhaust the write limiter (10 requests)
+        for _ in 0..10 {
+            assert!(limits.check_tool("send_message", key).is_ok());
+        }
+        // 11th request should fail for write tools
+        assert!(limits.check_tool("send_message", key).is_err());
+
+        // Read limiter should still work (separate bucket)
+        assert!(limits.check_tool("fetch_inbox", key).is_ok());
+    }
+
+    #[test]
+    fn test_tool_rate_limits_write_lower_than_read() {
+        let limits = ToolRateLimits::new();
+        let key = "agent-1:192.168.1.1";
+
+        // Write limit is 10 rps - exhaust it
+        for i in 0..10 {
+            let result = limits.check_tool("send_message", key);
+            assert!(result.is_ok(), "Write request {} should succeed", i);
+        }
+
+        // Next write should fail
+        assert!(
+            limits.check_tool("send_message", key).is_err(),
+            "Write request 11 should be rate limited"
+        );
+
+        // But read should still work (has 100 rps limit)
+        for i in 0..50 {
+            let result = limits.check_tool("fetch_inbox", key);
+            assert!(result.is_ok(), "Read request {} should succeed", i);
+        }
+    }
+
+    #[test]
+    fn test_tool_rate_limits_different_keys_independent() {
+        let limits = ToolRateLimits::new();
+
+        // Exhaust limit for user1
+        for _ in 0..10 {
+            assert!(limits.check_tool("send_message", "user1:1.1.1.1").is_ok());
+        }
+        assert!(limits.check_tool("send_message", "user1:1.1.1.1").is_err());
+
+        // user2 should still have full quota
+        for _ in 0..10 {
+            assert!(limits.check_tool("send_message", "user2:2.2.2.2").is_ok());
+        }
     }
 }
