@@ -468,12 +468,14 @@ pub fn Attachments() -> impl IntoView {
 
                 // Filters row
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <Select
-                        id="project-select".to_string()
-                        options=project_options.get()
-                        value=selected_project
-                        placeholder="Select Project...".to_string()
-                    />
+                    {move || view! {
+                        <Select
+                            id="project-select".to_string()
+                            options=project_options.get()
+                            value=selected_project
+                            placeholder="Select Project...".to_string()
+                        />
+                    }}
                     // Agent filter - only visible when project is selected and has agents
                     {move || {
                         let project = selected_project.get();
