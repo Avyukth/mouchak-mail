@@ -467,6 +467,7 @@ pub struct MessageResponse {
     pub ack_required: bool,
     pub created_ts: chrono::NaiveDateTime,
     pub attachments: Vec<serde_json::Value>,
+    pub recipients: Vec<String>,
 }
 
 pub async fn get_message(
@@ -477,6 +478,9 @@ pub async fn get_message(
     let mm = &app_state.mm;
 
     let message = lib_core::model::message::MessageBmc::get(&ctx, mm, message_id).await?;
+    let recipients = lib_core::model::message::MessageBmc::get_recipients(&ctx, mm, message_id)
+        .await
+        .unwrap_or_default();
 
     Ok(Json(MessageResponse {
         id: message.id,
@@ -490,6 +494,7 @@ pub async fn get_message(
         ack_required: message.ack_required,
         created_ts: message.created_ts,
         attachments: message.attachments,
+        recipients,
     })
     .into_response())
 }
@@ -936,6 +941,7 @@ pub async fn get_thread(
             ack_required: msg.ack_required,
             created_ts: msg.created_ts,
             attachments: msg.attachments,
+            recipients: vec![], // TODO: Batch fetch recipients for thread messages
         })
         .collect();
 

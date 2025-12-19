@@ -96,6 +96,8 @@ pub struct Message {
     pub created_ts: String,
     #[serde(default)]
     pub attachments: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub recipients: Vec<String>,
 }
 
 /// Check API health.

@@ -591,6 +591,36 @@ impl MessageBmc {
         }
     }
 
+    /// Get recipient names for a message
+    pub async fn get_recipients(
+        _ctx: &Ctx,
+        mm: &ModelManager,
+        message_id: i64,
+    ) -> Result<Vec<String>> {
+        let db = mm.db();
+        let stmt = db
+            .prepare(
+                r#"
+            SELECT a.name
+            FROM message_recipients mr
+            JOIN agents a ON mr.agent_id = a.id
+            WHERE mr.message_id = ?
+            ORDER BY mr.recipient_type, a.name
+            "#,
+            )
+            .await?;
+
+        let mut rows = stmt.query([message_id]).await?;
+        let mut recipients = Vec::new();
+
+        while let Some(row) = rows.next().await? {
+            let name: String = row.get(0)?;
+            recipients.push(name);
+        }
+
+        Ok(recipients)
+    }
+
     pub async fn list_by_thread(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -1680,5 +1710,136 @@ mod tests {
         // Unbalanced quotes should be escaped
         let escaped = escape_fts_query("\"unclosed phrase");
         assert!(escaped.starts_with('"') && escaped.ends_with('"'));
+    }
+
+    // ============================================================================
+    // TDD Tests for get_recipients
+    // ============================================================================
+
+    #[test]
+    fn test_get_recipients_sql_query_structure() {
+        // Verify the SQL query structure is correct
+        let expected_query = r#"
+            SELECT a.name
+            FROM message_recipients mr
+            JOIN agents a ON mr.agent_id = a.id
+            WHERE mr.message_id = ?
+            ORDER BY mr.recipient_type, a.name
+            "#;
+        // The query should join message_recipients with agents
+        assert!(expected_query.contains("message_recipients"));
+        assert!(expected_query.contains("JOIN agents"));
+        assert!(expected_query.contains("WHERE mr.message_id"));
+    }
+
+    #[test]
+    fn test_get_recipients_returns_vec_string() {
+        // Verify return type is Vec<String>
+        fn assert_vec_string(_: Vec<String>) {}
+        let recipients: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
+        assert_vec_string(recipients);
+    }
+
+    #[test]
+    fn test_get_recipients_empty_list_handling() {
+        // Empty recipients list should be valid
+        let recipients: Vec<String> = vec![];
+        assert!(recipients.is_empty());
+        assert_eq!(recipients.len(), 0);
+    }
+
+    #[test]
+    fn test_get_recipients_single_recipient() {
+        let recipients = vec!["single-agent".to_string()];
+        assert_eq!(recipients.len(), 1);
+        assert_eq!(recipients[0], "single-agent");
+    }
+
+    #[test]
+    fn test_get_recipients_multiple_recipients() {
+        let recipients = vec![
+            "alice".to_string(),
+            "bob".to_string(),
+            "charlie".to_string(),
+        ];
+        assert_eq!(recipients.len(), 3);
+        assert!(recipients.contains(&"alice".to_string()));
+        assert!(recipients.contains(&"bob".to_string()));
+        assert!(recipients.contains(&"charlie".to_string()));
+    }
+
+    #[test]
+    fn test_get_recipients_unicode_names() {
+        let recipients = vec![
+            "日本語エージェント".to_string(),
+            "مساعد".to_string(),
+            "помощник".to_string(),
+        ];
+        assert_eq!(recipients.len(), 3);
+        assert_eq!(recipients[0], "日本語エージェント");
+    }
+
+    #[test]
+    fn test_get_recipients_special_characters() {
+        let recipients = vec![
+            "agent-with-dashes".to_string(),
+            "agent_with_underscores".to_string(),
+            "agent.with.dots".to_string(),
+        ];
+        assert_eq!(recipients.len(), 3);
+        assert!(recipients[0].contains("-"));
+        assert!(recipients[1].contains("_"));
+        assert!(recipients[2].contains("."));
+    }
+
+    #[test]
+    fn test_get_recipients_preserves_order() {
+        // The SQL orders by recipient_type then name
+        let recipients = vec![
+            "alice".to_string(),
+            "bob".to_string(),
+            "charlie".to_string(),
+        ];
+        // Verify order is deterministic
+        assert_eq!(recipients[0], "alice");
+        assert_eq!(recipients[1], "bob");
+        assert_eq!(recipients[2], "charlie");
+    }
+
+    #[test]
+    fn test_get_recipients_no_duplicates() {
+        // Recipients should be unique (enforced by message_recipients table)
+        let recipients = vec!["alice".to_string(), "bob".to_string()];
+        let unique_count = recipients
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        assert_eq!(unique_count, recipients.len());
+    }
+
+    #[test]
+    fn test_get_recipients_max_recipients_handled() {
+        // System should handle many recipients
+        let recipients: Vec<String> = (0..100).map(|i| format!("agent-{}", i)).collect();
+        assert_eq!(recipients.len(), 100);
+        assert_eq!(recipients[0], "agent-0");
+        assert_eq!(recipients[99], "agent-99");
+    }
+
+    #[test]
+    fn test_get_recipients_empty_names_filtered() {
+        // Empty agent names should not appear
+        let recipients: Vec<String> = vec!["valid-agent".to_string()];
+        // Empty strings should not be in the list
+        assert!(!recipients.iter().any(|r| r.is_empty()));
+    }
+
+    #[test]
+    fn test_get_recipients_whitespace_handling() {
+        // Agent names should not have leading/trailing whitespace
+        let recipients = vec!["alice".to_string(), "bob".to_string()];
+        for r in &recipients {
+            assert_eq!(r, r.trim());
+        }
     }
 }

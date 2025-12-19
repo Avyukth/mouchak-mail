@@ -130,7 +130,7 @@ pub fn MessageDetail() -> impl IntoView {
                             <MessageDetailHeader
                                 subject={subject.clone()}
                                 sender={sender.clone()}
-                                recipients={vec!["recipient".to_string()]} // TODO: get from msg
+                                recipients={msg.recipients.clone()}
                                 project_slug={project_slug.clone()}
                                 sent_at={created.clone()}
                                 message_id={msg_id}

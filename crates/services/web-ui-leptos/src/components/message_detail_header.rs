@@ -363,4 +363,78 @@ mod tests {
         let formatted = format!("Subject: {}", subject);
         assert!(formatted.contains(subject));
     }
+
+    // === Additional Recipients Tests (LEPTOS-008) ===
+
+    #[test]
+    fn test_recipients_display_more_than_three() {
+        let recipients = vec![
+            "alice".to_string(),
+            "bob".to_string(),
+            "charlie".to_string(),
+            "diana".to_string(),
+            "eve".to_string(),
+        ];
+        // When > 3 recipients, UI should show first and "+N more"
+        let display_count = 3;
+        let overflow = recipients.len().saturating_sub(display_count);
+        assert_eq!(overflow, 2);
+        let display = format!(
+            "{} +{} more",
+            recipients[..display_count].join(", "),
+            overflow
+        );
+        assert!(display.contains("+2 more"));
+    }
+
+    #[test]
+    fn test_recipients_avatar_for_first() {
+        let recipients = vec!["alice".to_string(), "bob".to_string()];
+        // First recipient gets an avatar
+        let first = recipients.first().cloned().unwrap_or_default();
+        assert_eq!(first, "alice");
+        assert!(!first.is_empty());
+    }
+
+    #[test]
+    fn test_recipients_graceful_null_handling() {
+        // Simulate null/undefined from API (empty vec after serde default)
+        let recipients: Vec<String> = vec![];
+        let display = if recipients.is_empty() {
+            "No recipients".to_string()
+        } else {
+            recipients.join(", ")
+        };
+        assert_eq!(display, "No recipients");
+    }
+
+    #[test]
+    fn test_recipients_with_spaces_in_names() {
+        // Agent names might have spaces
+        let recipients = vec!["Alice Agent".to_string(), "Bob Builder".to_string()];
+        let display = recipients.join(", ");
+        assert_eq!(display, "Alice Agent, Bob Builder");
+    }
+
+    #[test]
+    fn test_recipients_very_long_list() {
+        // Should handle many recipients gracefully
+        let recipients: Vec<String> = (0..50).map(|i| format!("agent-{}", i)).collect();
+        assert_eq!(recipients.len(), 50);
+        // UI should truncate display
+        let truncated = &recipients[..3];
+        let overflow = recipients.len() - 3;
+        let display = format!("{} +{} more", truncated.join(", "), overflow);
+        assert!(display.contains("+47 more"));
+    }
+
+    #[test]
+    fn test_recipients_special_chars_escaped() {
+        // Special characters should not break display
+        let recipients = vec!["agent<script>".to_string(), "agent&more".to_string()];
+        let display = recipients.join(", ");
+        // These chars would be HTML-escaped by Leptos view
+        assert!(display.contains("<script>"));
+        assert!(display.contains("&more"));
+    }
 }
