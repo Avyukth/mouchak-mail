@@ -366,6 +366,7 @@ impl IntoResponse for ServerError {
 pub type Result<T> = std::result::Result<T, ServerError>;
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

@@ -44,7 +44,7 @@ pub struct AppState {
 static METRICS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
 
 #[allow(clippy::expect_used)] // Metrics setup is infallible; panic acceptable during initialization
-fn setup_metrics() -> PrometheusHandle {
+pub fn setup_metrics() -> PrometheusHandle {
     METRICS_HANDLE
         .get_or_init(|| {
             const EXPONENTIAL_SECONDS: &[f64] = &[

@@ -5,6 +5,8 @@
 //!
 //! These tests use lib_mcp::AgentMailService which implements the MCP ServerHandler trait.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
