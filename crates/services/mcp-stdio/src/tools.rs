@@ -376,8 +376,11 @@ impl AgentMailService {
         let uri = url::Url::parse(&uri_str)
             .map_err(|e| McpError::invalid_params(format!("Invalid URI: {}", e), None))?;
 
-        if uri.scheme() != "agent-mail" {
-            return Err(McpError::invalid_params("URI scheme must be 'agent-mail'".to_string(), None));
+        if uri.scheme() != "agent-mail" && uri.scheme() != "resource" {
+            return Err(McpError::invalid_params(
+                "URI scheme must be 'agent-mail' or 'resource'".to_string(),
+                None,
+            ));
         }
 
         // URI format: agent-mail://{project_slug}/{resource_type}/{optional_id}
