@@ -73,16 +73,17 @@ async fn test_resources_gap_features() -> anyhow::Result<()> {
     assert!(has_outbox, "List resources should contain outbox");
     assert!(has_threads, "List resources should contain threads");
 
-    // 4. Test read_resource (Inbox)
+    // 4. Test read_resource (Inbox) - with include_bodies=true to get message content
+    let inbox_with_bodies_uri = format!("{}?include_bodies=true", inbox_uri);
     let inbox_req = ReadResourceRequestParam {
-        uri: inbox_uri.clone(),
+        uri: inbox_with_bodies_uri,
     };
     let read_res = service.read_resource_impl(inbox_req).await?;
     let content = &read_res.contents[0];
     if let rmcp::model::ResourceContents::TextResourceContents { text, .. } = content {
         assert!(
             text.contains("Test Body"),
-            "Inbox should contain message body"
+            "Inbox should contain message body when include_bodies=true"
         );
     } else {
         panic!("Expected text content for inbox");
