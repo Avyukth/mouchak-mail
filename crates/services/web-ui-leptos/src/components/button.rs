@@ -27,21 +27,19 @@ impl ButtonVariant {
     pub fn classes(&self) -> &'static str {
         match self {
             ButtonVariant::Default => {
-                "bg-gradient-to-r from-amber-600 to-amber-500 text-white hover:from-amber-700 hover:to-amber-600 shadow-sm"
+                "bg-primary text-primary-foreground shadow-md hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
             }
-            ButtonVariant::Destructive => "bg-red-600 text-white hover:bg-red-700",
+            ButtonVariant::Destructive => {
+                "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+            }
             ButtonVariant::Outline => {
-                "border border-charcoal-300 dark:border-charcoal-600 bg-transparent hover:bg-charcoal-100 dark:hover:bg-charcoal-800"
+                "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
             }
             ButtonVariant::Secondary => {
-                "bg-charcoal-100 dark:bg-charcoal-700 text-charcoal-800 dark:text-charcoal-100 hover:bg-charcoal-200 dark:hover:bg-charcoal-600"
+                "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
             }
-            ButtonVariant::Ghost => {
-                "bg-transparent hover:bg-charcoal-100 dark:hover:bg-charcoal-800 text-charcoal-700 dark:text-charcoal-300"
-            }
-            ButtonVariant::Link => {
-                "bg-transparent text-amber-600 dark:text-amber-400 underline-offset-4 hover:underline p-0 h-auto"
-            }
+            ButtonVariant::Ghost => "hover:bg-accent hover:text-accent-foreground",
+            ButtonVariant::Link => "text-primary underline-offset-4 hover:underline p-0 h-auto",
         }
     }
 }
@@ -73,7 +71,7 @@ impl ButtonSize {
 }
 
 /// Base button classes (always applied)
-const BUTTON_BASE: &str = "inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 gap-2";
+const BUTTON_BASE: &str = "inline-flex items-center justify-center whitespace-nowrap font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 gap-2";
 
 /// Button component with variants and accessibility.
 ///
@@ -155,12 +153,16 @@ mod tests {
 
     #[test]
     fn test_button_variant_default() {
-        assert!(ButtonVariant::Default.classes().contains("amber"));
+        assert!(ButtonVariant::Default.classes().contains("bg-primary"));
     }
 
     #[test]
     fn test_button_variant_destructive() {
-        assert!(ButtonVariant::Destructive.classes().contains("red"));
+        assert!(
+            ButtonVariant::Destructive
+                .classes()
+                .contains("bg-destructive")
+        );
     }
 
     #[test]
@@ -170,12 +172,12 @@ mod tests {
 
     #[test]
     fn test_button_variant_secondary() {
-        assert!(ButtonVariant::Secondary.classes().contains("charcoal"));
+        assert!(ButtonVariant::Secondary.classes().contains("bg-secondary"));
     }
 
     #[test]
     fn test_button_variant_ghost() {
-        assert!(ButtonVariant::Ghost.classes().contains("transparent"));
+        assert!(ButtonVariant::Ghost.classes().contains("hover:bg-accent"));
     }
 
     #[test]

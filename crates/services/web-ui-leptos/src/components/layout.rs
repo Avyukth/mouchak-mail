@@ -43,11 +43,11 @@ pub fn Layout() -> impl IntoView {
     });
 
     view! {
-        <div class="min-h-screen bg-cream-100 dark:bg-charcoal-900 transition-colors flex flex-col overflow-x-hidden">
+        <div class="min-h-screen bg-background transition-colors flex flex-col overflow-x-hidden">
             // Skip link for keyboard accessibility
             <a
                 href="#main-content"
-                class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-charcoal-900 focus:shadow-lg focus:rounded-md dark:focus:bg-charcoal-800 dark:focus:text-cream-100"
+                class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:shadow-lg focus:rounded-md"
             >
                 "Skip to main content"
             </a>
@@ -56,14 +56,14 @@ pub fn Layout() -> impl IntoView {
             <div class="fixed inset-0 bg-gradient-mesh pointer-events-none" aria-hidden="true"></div>
 
             // Header with navigation - glassmorphism
-            <header class="sticky top-0 z-50 glass border-b border-cream-300/50 dark:border-charcoal-700/50">
+            <header class="sticky top-0 z-50 glass border-b border-border/50">
                 <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" role="navigation" aria-label="Main navigation">
                     <div class="flex justify-between h-16 items-center">
                         // Logo / Brand
                         <div class="flex items-center space-x-8">
                             <a href="/" class="flex items-center space-x-2.5 group">
-                                <i data-lucide="mail" class="icon-xl text-amber-500 group-hover:text-amber-600 transition-colors"></i>
-                                <span class="font-display font-semibold text-lg text-charcoal-800 dark:text-cream-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                <i data-lucide="mail" class="icon-xl text-primary group-hover:text-primary/80 transition-all duration-200"></i>
+                                <span class="font-display font-semibold text-lg text-foreground group-hover:text-primary transition-all duration-200">
                                     "MCP Agent Mail"
                                 </span>
                             </a>
@@ -82,9 +82,8 @@ pub fn Layout() -> impl IntoView {
                         // Right side actions
                         <div class="flex items-center space-x-3">
                             // Status indicator
-                            <div class="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-teal-100/50 dark:bg-teal-900/30 border border-teal-200 dark:border-teal-800">
-                                <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse-gentle"></span>
-                                <span class="text-xs font-medium text-teal-700 dark:text-teal-300">"Online"</span>
+                            <div class="hidden sm:flex status-online">
+                                <span class="text-xs font-medium">"Online"</span>
                             </div>
 
                             // Dark mode toggle
@@ -93,12 +92,12 @@ pub fn Layout() -> impl IntoView {
                                 size=ButtonSize::Icon
                                 on_click=Callback::new(move |_| set_dark_mode.update(|v| *v = !*v))
                                 title={if dark_mode.get() { "Switch to light mode".to_string() } else { "Switch to dark mode".to_string() }}
-                                class="border border-cream-300 dark:border-charcoal-600".to_string()
+                                class="border border-border rounded-full hover:bg-accent".to_string()
                             >
                                 {move || if dark_mode.get() {
-                                    view! { <i data-lucide="sun" class="icon-lg text-amber-500"></i> }.into_any()
+                                    view! { <i data-lucide="sun" class="icon-lg text-primary"></i> }.into_any()
                                 } else {
-                                    view! { <i data-lucide="moon" class="icon-lg text-charcoal-500"></i> }.into_any()
+                                    view! { <i data-lucide="moon" class="icon-lg text-muted-foreground"></i> }.into_any()
                                 }}
                             </Button>
                         </div>
@@ -116,21 +115,21 @@ pub fn Layout() -> impl IntoView {
             </main>
 
             // Footer
-            <footer class="relative border-t border-cream-300 dark:border-charcoal-700 bg-cream-50/50 dark:bg-charcoal-800/50">
+            <footer class="relative border-t border-border bg-muted/50">
                 <div class="max-w-7xl mx-auto py-6 px-4">
                     <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="flex items-center space-x-2 text-sm text-charcoal-500 dark:text-charcoal-400">
-                            <i data-lucide="mail" class="icon-sm text-amber-500"></i>
+                        <div class="flex items-center space-x-2 text-sm text-muted-foreground">
+                            <i data-lucide="mail" class="icon-sm text-primary"></i>
                             <span class="font-display font-medium">"MCP Agent Mail"</span>
-                            <span class="text-cream-400 dark:text-charcoal-600">"•"</span>
+                            <span class="text-border">"•"</span>
                             <span class="font-mono text-xs">"Rust/WASM"</span>
                         </div>
-                        <div class="flex items-center space-x-4 text-sm text-charcoal-400 dark:text-charcoal-500">
-                            <a href="https://github.com" class="flex items-center space-x-1.5 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                        <div class="flex items-center space-x-4 text-sm text-muted-foreground">
+                            <a href="https://github.com" class="flex items-center space-x-1.5 hover:text-primary transition-all duration-200">
                                 <i data-lucide="github" class="icon-sm"></i>
                                 <span>"GitHub"</span>
                             </a>
-                            <a href="/docs" class="flex items-center space-x-1.5 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                            <a href="/docs" class="flex items-center space-x-1.5 hover:text-primary transition-all duration-200">
                                 <i data-lucide="book-open" class="icon-sm"></i>
                                 <span>"Docs"</span>
                             </a>
@@ -149,7 +148,7 @@ fn NavLink(href: &'static str, label: &'static str, icon: &'static str) -> impl 
     view! {
         <a
             href=href
-            class="nav-link flex items-center space-x-2 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium text-charcoal-600 dark:text-charcoal-300 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all"
+            class="nav-link flex items-center space-x-2 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200"
         >
             <i data-lucide=icon class="icon-sm"></i>
             <span>{label}</span>
@@ -266,17 +265,16 @@ mod tests {
     #[test]
     fn test_header_glassmorphism_class() {
         // Header should use glass class for glassmorphism effect
-        let header_class = "glass border-b border-cream-300/50 dark:border-charcoal-700/50";
+        let header_class = "glass border-b border-border/50";
         assert!(header_class.contains("glass"));
         assert!(header_class.contains("border-b"));
     }
 
     #[test]
     fn test_footer_styling() {
-        // Footer should have subtle background
-        let footer_class = "bg-cream-50/50 dark:bg-charcoal-800/50";
-        assert!(footer_class.contains("bg-cream"));
-        assert!(footer_class.contains("dark:bg-charcoal"));
+        // Footer should have subtle muted background
+        let footer_class = "bg-muted/50";
+        assert!(footer_class.contains("bg-muted"));
     }
 
     #[test]
