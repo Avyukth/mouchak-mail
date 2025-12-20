@@ -26,18 +26,18 @@ use lib_core::{
     },
 };
 
-mod agent;
-mod archive;
-mod attachments;
-mod builds;
-mod contacts;
-mod files;
-mod helpers;
-mod observability;
-mod outbox;
+pub mod agent;
+pub mod archive;
+pub mod attachments;
+pub mod builds;
+pub mod contacts;
+pub mod files;
+pub mod helpers;
+pub mod observability;
+pub mod outbox;
 mod params;
-mod project;
-mod reviews;
+pub mod project;
+pub mod reviews;
 
 pub use params::*;
 
@@ -1793,7 +1793,7 @@ impl AgentMailService {
         params: Parameters<RegisterAgentParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::{AgentBmc, AgentForCreate};
-        use lib_core::model::project::ProjectBmc;
+
         use lib_core::utils::validation::{validate_agent_name, validate_project_key};
 
         let ctx = self.ctx();
@@ -1855,7 +1855,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::{MessageBmc, MessageForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -1955,7 +1954,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2039,7 +2037,6 @@ impl AgentMailService {
     )]
     async fn whois(&self, params: Parameters<WhoisParams>) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2071,7 +2068,6 @@ impl AgentMailService {
         params: Parameters<SearchMessagesParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2105,7 +2101,6 @@ impl AgentMailService {
         params: Parameters<GetThreadParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2182,7 +2177,6 @@ impl AgentMailService {
         params: Parameters<ListAgentsParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2261,7 +2255,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::{MessageBmc, MessageForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2324,7 +2317,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2354,7 +2346,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2396,7 +2387,7 @@ impl AgentMailService {
         params: Parameters<CreateAgentIdentityParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
-        use lib_core::model::project::ProjectBmc;
+
         use std::collections::HashSet;
 
         const ADJECTIVES: &[&str] = &[
@@ -2462,7 +2453,6 @@ impl AgentMailService {
         params: Parameters<UpdateAgentProfileParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::{AgentBmc, AgentProfileUpdate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2529,7 +2519,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::file_reservation::FileReservationBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2580,7 +2569,6 @@ impl AgentMailService {
         params: Parameters<ListThreadsParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2672,7 +2660,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::overseer_message::{OverseerMessageBmc, OverseerMessageForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2709,7 +2696,6 @@ impl AgentMailService {
         params: Parameters<ListMacrosParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::macro_def::MacroDefBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2739,7 +2725,6 @@ impl AgentMailService {
         params: Parameters<RegisterMacroParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::macro_def::{MacroDefBmc, MacroDefForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2768,7 +2753,6 @@ impl AgentMailService {
         params: Parameters<UnregisterMacroParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::macro_def::MacroDefBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2794,7 +2778,6 @@ impl AgentMailService {
         params: Parameters<InvokeMacroParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::macro_def::MacroDefBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2847,7 +2830,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::{MessageBmc, MessageForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2901,7 +2883,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::{MessageBmc, MessageForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -2955,7 +2936,6 @@ impl AgentMailService {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
         use lib_core::model::message::{MessageBmc, MessageForCreate};
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -3546,7 +3526,6 @@ impl AgentMailService {
         params: Parameters<SummarizeThreadParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -3633,7 +3612,6 @@ impl AgentMailService {
         params: Parameters<LinkProjectToProductParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::product::ProductBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -3662,7 +3640,6 @@ impl AgentMailService {
         params: Parameters<UnlinkProjectFromProductParams>,
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::product::ProductBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -3981,7 +3958,6 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
 
         let ctx = self.ctx();
         let p = params.0;
@@ -4157,7 +4133,7 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         use lib_core::model::agent::AgentBmc;
         use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
-        use lib_core::model::project::ProjectBmc;
+
         use lib_core::utils::validation::{
             validate_agent_name, validate_project_key, validate_reservation_path, validate_ttl,
         };
@@ -4271,8 +4247,6 @@ impl AgentMailService {
         &self,
         params: Parameters<InstallPrecommitGuardParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::project::ProjectBmc;
-
         let ctx = self.ctx();
         let p = params.0;
 
