@@ -636,7 +636,7 @@ impl MessageBmc {
             FROM messages AS m
             JOIN agents AS ag ON m.sender_id = ag.id
             WHERE m.project_id = ? AND m.thread_id = ?
-            ORDER BY m.created_ts ASC
+            ORDER BY m.created_ts ASC, m.id ASC
             "#
         ).await?;
 
