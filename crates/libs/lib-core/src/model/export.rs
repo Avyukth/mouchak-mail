@@ -75,6 +75,7 @@ impl Scrubber {
         Self { mode }
     }
 
+    #[allow(clippy::expect_used)]
     pub fn scrub(&self, text: &str) -> String {
         if self.mode == ScrubMode::None {
             return text.to_string();

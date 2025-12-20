@@ -437,10 +437,7 @@ impl WorktreeManager {
             .output()?;
 
         if !branch_output.status.success() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Failed to get worktree branch",
-            ));
+            return Err(std::io::Error::other("Failed to get worktree branch"));
         }
 
         let branch_name = String::from_utf8_lossy(&branch_output.stdout)
@@ -453,14 +450,11 @@ impl WorktreeManager {
             .output()?;
 
         if !checkout.status.success() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "Failed to checkout {}: {}",
-                    target_branch,
-                    String::from_utf8_lossy(&checkout.stderr)
-                ),
-            ));
+            return Err(std::io::Error::other(format!(
+                "Failed to checkout {}: {}",
+                target_branch,
+                String::from_utf8_lossy(&checkout.stderr)
+            )));
         }
 
         // Merge the worktree branch
@@ -471,10 +465,10 @@ impl WorktreeManager {
             .output()?;
 
         if !merge.status.success() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("Merge failed: {}", String::from_utf8_lossy(&merge.stderr)),
-            ));
+            return Err(std::io::Error::other(format!(
+                "Merge failed: {}",
+                String::from_utf8_lossy(&merge.stderr)
+            )));
         }
 
         // Get the merge commit SHA
