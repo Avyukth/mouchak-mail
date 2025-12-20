@@ -50,6 +50,7 @@ pub mod precommit_guard;
 pub mod product;
 pub mod project;
 pub mod project_sibling_suggestion;
+pub mod time_travel;
 pub mod tool_metric;
 
 use crate::Result;

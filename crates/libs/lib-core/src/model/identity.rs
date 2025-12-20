@@ -95,7 +95,7 @@ pub fn resolve_identity(path: &Path, mode: IdentityMode) -> ResolvedIdentity {
     let normalized_path = normalize_wsl2_path(path);
 
     // Default values for non-git case
-    let mut git_common_dir = None;
+    let git_common_dir = None;
     let mut case_insensitive = false;
 
     // Try git-based resolution if in GitAware mode

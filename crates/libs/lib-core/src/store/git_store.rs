@@ -248,3 +248,137 @@ pub fn read_file_content<P: AsRef<Path>>(repo: &Repository, file_path: P) -> Res
         .ok_or_else(|| GitError::from_str("Object is not a blob"))?;
     Ok(String::from_utf8_lossy(blob.content()).into_owned())
 }
+
+/// Reads the content of a file at a specific commit.
+///
+/// # Arguments
+///
+/// * `repo` - The Git repository
+/// * `commit_oid` - The OID of the commit to read from
+/// * `file_path` - Relative path within the repository
+///
+/// # Returns
+///
+/// The file content as a string, or None if the file doesn't exist at that commit.
+pub fn read_file_at_commit<P: AsRef<Path>>(
+    repo: &Repository,
+    commit_oid: Oid,
+    file_path: P,
+) -> Result<Option<String>> {
+    let commit = repo.find_commit(commit_oid)?;
+    let tree = commit.tree()?;
+
+    match tree.get_path(file_path.as_ref()) {
+        Ok(entry) => {
+            let object = entry.to_object(repo)?;
+            let blob = object
+                .as_blob()
+                .ok_or_else(|| GitError::from_str("Object is not a blob"))?;
+            Ok(Some(String::from_utf8_lossy(blob.content()).into_owned()))
+        }
+        Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(None),
+        Err(e) => Err(crate::Error::from(e)),
+    }
+}
+
+/// Finds the latest commit before (or at) a given timestamp.
+///
+/// Walks the commit history from HEAD and returns the first commit
+/// whose timestamp is less than or equal to the given time.
+///
+/// # Arguments
+///
+/// * `repo` - The Git repository
+/// * `before_time` - Unix timestamp (seconds since epoch)
+///
+/// # Returns
+///
+/// The OID of the commit, or None if no commits exist before the timestamp.
+pub fn find_commit_before(repo: &Repository, before_time: i64) -> Result<Option<Oid>> {
+    let head = match repo.head() {
+        Ok(h) => h,
+        Err(e)
+            if e.code() == git2::ErrorCode::NotFound
+                || e.code() == git2::ErrorCode::UnbornBranch =>
+        {
+            return Ok(None);
+        }
+        Err(e) => return Err(crate::Error::from(e)),
+    };
+
+    let head_commit = head.peel_to_commit()?;
+
+    // Walk commits from HEAD to find the latest one before the timestamp
+    let mut revwalk = repo.revwalk()?;
+    revwalk.push(head_commit.id())?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+
+    for oid_result in revwalk {
+        let oid = oid_result?;
+        let commit = repo.find_commit(oid)?;
+        let commit_time = commit.time().seconds();
+
+        if commit_time <= before_time {
+            return Ok(Some(oid));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Lists all files in a directory at a specific commit.
+///
+/// # Arguments
+///
+/// * `repo` - The Git repository
+/// * `commit_oid` - The OID of the commit to read from
+/// * `dir_path` - Directory path within the repository (empty for root)
+///
+/// # Returns
+///
+/// A vector of (file_name, content) tuples for files in the directory.
+pub fn list_files_at_commit<P: AsRef<Path>>(
+    repo: &Repository,
+    commit_oid: Oid,
+    dir_path: P,
+) -> Result<Vec<(String, String)>> {
+    let commit = repo.find_commit(commit_oid)?;
+    let tree = commit.tree()?;
+
+    let subtree = if dir_path.as_ref().as_os_str().is_empty() {
+        tree
+    } else {
+        let entry = tree.get_path(dir_path.as_ref())?;
+        let obj = entry.to_object(repo)?;
+        obj.peel_to_tree()?
+    };
+
+    let mut files = Vec::new();
+    for entry in subtree.iter() {
+        if entry.kind() == Some(git2::ObjectType::Blob) {
+            let name = entry.name().unwrap_or("").to_string();
+            let obj = entry.to_object(repo)?;
+            if let Some(blob) = obj.as_blob() {
+                let content = String::from_utf8_lossy(blob.content()).into_owned();
+                files.push((name, content));
+            }
+        }
+    }
+
+    Ok(files)
+}
+
+/// Gets the timestamp of a commit.
+///
+/// # Arguments
+///
+/// * `repo` - The Git repository
+/// * `commit_oid` - The OID of the commit
+///
+/// # Returns
+///
+/// Unix timestamp (seconds since epoch) of the commit.
+pub fn get_commit_time(repo: &Repository, commit_oid: Oid) -> Result<i64> {
+    let commit = repo.find_commit(commit_oid)?;
+    Ok(commit.time().seconds())
+}
