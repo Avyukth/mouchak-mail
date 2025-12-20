@@ -57,22 +57,23 @@ pub fn Input(
     #[prop(optional)]
     on_input: Option<Callback<String>>,
 ) -> impl IntoView {
-    let base_class = "input h-10";
-
-    // Merge classes
-    let final_class = match &class {
-        Some(c) => format!("{} {}", base_class, c),
-        None => base_class.to_string(),
-    };
+    // shadcn/ui Input base classes
+    let base_class = "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
     // Add error styling if invalid
-    let final_class = if invalid {
+    let base_with_error = if invalid {
         format!(
-            "{} border-red-500 focus:ring-red-500 focus:border-red-500",
-            final_class
+            "{} border-destructive focus-visible:ring-destructive",
+            base_class
         )
     } else {
-        final_class
+        base_class.to_string()
+    };
+
+    // Merge with additional classes
+    let final_class = match &class {
+        Some(c) => format!("{} {}", base_with_error, c),
+        None => base_with_error,
     };
 
     view! {
@@ -106,40 +107,38 @@ mod tests {
     #[test]
     fn test_input_base_class() {
         // Input should have h-10 for 40px touch target
-        assert!("input h-10".contains("h-10"));
+        let base = "flex h-10 w-full rounded-md border border-input bg-background";
+        assert!(base.contains("h-10"));
     }
 
     #[test]
     fn test_input_base_class_components() {
-        let base = "input h-10";
-        assert!(base.contains("input"));
+        let base = "flex h-10 w-full rounded-md border border-input bg-background";
+        assert!(base.contains("rounded-md"));
         assert!(base.contains("h-10"));
+        assert!(base.contains("border-input"));
     }
 
     // === Invalid State Tests ===
 
     #[test]
     fn test_input_invalid_class() {
-        let base = "input h-10";
-        let with_invalid = format!(
-            "{} border-red-500 focus:ring-red-500 focus:border-red-500",
-            base
-        );
-        assert!(with_invalid.contains("border-red-500"));
-        assert!(with_invalid.contains("focus:ring-red-500"));
+        let base = "flex h-10 w-full rounded-md border";
+        let with_invalid = format!("{} border-destructive focus-visible:ring-destructive", base);
+        assert!(with_invalid.contains("border-destructive"));
+        assert!(with_invalid.contains("focus-visible:ring-destructive"));
     }
 
     #[test]
     fn test_invalid_state_border() {
-        let invalid_border = "border-red-500";
-        assert!(invalid_border.contains("red"));
-        assert!(invalid_border.contains("500"));
+        let invalid_border = "border-destructive";
+        assert!(invalid_border.contains("destructive"));
     }
 
     #[test]
     fn test_invalid_state_focus_ring() {
-        let invalid_focus = "focus:ring-red-500";
-        assert!(invalid_focus.contains("focus:"));
+        let invalid_focus = "focus-visible:ring-destructive";
+        assert!(invalid_focus.contains("focus-visible:"));
         assert!(invalid_focus.contains("ring"));
     }
 
@@ -147,36 +146,37 @@ mod tests {
 
     #[test]
     fn test_class_merge() {
-        let base = "input h-10";
-        let extra = Some("w-full".to_string());
+        let base = "flex h-10 w-full rounded-md border";
+        let extra = Some("pl-10".to_string());
         let merged = match &extra {
             Some(c) => format!("{} {}", base, c),
             None => base.to_string(),
         };
-        assert_eq!(merged, "input h-10 w-full");
+        assert!(merged.contains("flex h-10"));
+        assert!(merged.contains("pl-10"));
     }
 
     #[test]
     fn test_class_merge_none() {
-        let base = "input h-10";
+        let base = "flex h-10 w-full rounded-md border";
         let extra: Option<String> = None;
         let merged = match &extra {
             Some(c) => format!("{} {}", base, c),
             None => base.to_string(),
         };
-        assert_eq!(merged, "input h-10");
+        assert_eq!(merged, base);
     }
 
     #[test]
     fn test_class_merge_multiple() {
-        let base = "input h-10";
-        let extra = Some("w-full bg-white".to_string());
+        let base = "flex h-10 w-full rounded-md border";
+        let extra = Some("pl-10 bg-white".to_string());
         let merged = match &extra {
             Some(c) => format!("{} {}", base, c),
             None => base.to_string(),
         };
-        assert!(merged.contains("input"));
-        assert!(merged.contains("w-full"));
+        assert!(merged.contains("rounded-md"));
+        assert!(merged.contains("pl-10"));
         assert!(merged.contains("bg-white"));
     }
 
@@ -280,9 +280,10 @@ mod tests {
 
     #[test]
     fn test_input_has_focus_ring_class() {
-        // The .input class in CSS should include focus ring styles
-        let focus_class = "focus:ring-amber-500";
-        assert!(focus_class.contains("focus:"));
+        // shadcn/ui uses focus-visible:ring-ring pattern
+        let focus_class =
+            "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+        assert!(focus_class.contains("focus-visible:"));
         assert!(focus_class.contains("ring"));
     }
 
