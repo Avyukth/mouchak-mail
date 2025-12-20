@@ -714,11 +714,9 @@ async fn main() -> anyhow::Result<()> {
             } => handle_share_verify(&manifest, public_key.as_deref())?,
             ShareCommands::Encrypt { .. } => {
                 println!("Age encryption not yet implemented - use Python version");
-                Ok(())
             }
             ShareCommands::Decrypt { .. } => {
                 println!("Age decryption not yet implemented - use Python version");
-                Ok(())
             }
         },
         Commands::Version => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),

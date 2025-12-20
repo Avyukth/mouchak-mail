@@ -57,6 +57,20 @@ impl TestContext {
     pub fn repo_root(&self) -> PathBuf {
         self.mm.repo_root.clone()
     }
+
+    /// Explain the query plan for a given SQL string
+    pub async fn explain_query_plan(&self, sql: &str) -> Result<Vec<String>> {
+        let db = self.mm.db_for_test();
+        let explain_sql = format!("EXPLAIN QUERY PLAN {}", sql);
+        let mut rows = db.query(&explain_sql, ()).await?;
+        let mut plans = Vec::new();
+        while let Some(row) = rows.next().await? {
+            // detail is the 4th column (index 3) in EXPLAIN QUERY PLAN
+            let detail: String = row.get(3)?;
+            plans.push(detail);
+        }
+        Ok(plans)
+    }
 }
 
 /// Create an isolated database for testing

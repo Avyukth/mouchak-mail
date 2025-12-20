@@ -218,6 +218,8 @@ fn sanitize_error_message(error: &lib_core::Error) -> String {
         lib_core::Error::LockTimeout { .. } => "Lock acquisition timed out".to_string(),
         lib_core::Error::Validation(ve) => ve.to_string(),
         lib_core::Error::Image(_) => "Image processing failed".to_string(),
+        lib_core::Error::EncryptionError(_) => "Encryption operation failed".to_string(),
+        lib_core::Error::DecryptionError(_) => "Decryption operation failed".to_string(),
     }
 }
 
@@ -251,6 +253,9 @@ fn map_core_error_to_status(error: &lib_core::Error) -> StatusCode {
 
         lib_core::Error::Validation(_) => StatusCode::BAD_REQUEST,
         lib_core::Error::Image(_) => StatusCode::BAD_REQUEST,
+        lib_core::Error::EncryptionError(_) | lib_core::Error::DecryptionError(_) => {
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
@@ -285,6 +290,9 @@ fn map_core_error_to_code(error: &lib_core::Error) -> ErrorCode {
         }
 
         lib_core::Error::Image(_) => ErrorCode::ValidationError,
+        lib_core::Error::EncryptionError(_) | lib_core::Error::DecryptionError(_) => {
+            ErrorCode::InternalError
+        }
     }
 }
 

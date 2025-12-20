@@ -83,9 +83,9 @@ impl Scrubber {
         let mut cleaned = text.to_string();
 
         lazy_static! {
-            static ref EMAIL_RE: Regex = Regex::new(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b").unwrap();
+            static ref EMAIL_RE: Regex = Regex::new(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b").expect("valid email regex");
             // Simplified phone: generic patterns like 123-456-7890 or (123) 456 7890
-            static ref PHONE_RE: Regex = Regex::new(r"\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b").unwrap();
+            static ref PHONE_RE: Regex = Regex::new(r"\b\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b").expect("valid phone regex");
         }
 
         // Standard Scrubbing
@@ -101,9 +101,9 @@ impl Scrubber {
             // but for body text, "Aggressive" will mostly just do the same as Standard + maybe credit cards?
             // Let's add Credit Cards.
             lazy_static! {
-                static ref CC_RE: Regex = Regex::new(r"\b(?:\d[ -]*?){13,16}\b").unwrap();
+                static ref CC_RE: Regex = Regex::new(r"\b(?:\d[ -]*?){13,16}\b").expect("valid credit card regex");
                 // SSN: \b\d{3}-\d{2}-\d{4}\b
-                static ref SSN_RE: Regex = Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").unwrap();
+                static ref SSN_RE: Regex = Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").expect("valid SSN regex");
             }
             cleaned = CC_RE.replace_all(&cleaned, "[CREDIT-CARD]").to_string();
             cleaned = SSN_RE.replace_all(&cleaned, "[SSN]").to_string();
@@ -368,7 +368,7 @@ fn html_escape(s: &str) -> String {
 // --- Ed25519 Signing Support ---
 
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use rand::rngs::OsRng;
+use rand_core::OsRng;
 
 /// Export manifest with optional signature for integrity verification
 #[derive(Debug, Clone, Serialize, Deserialize)]
