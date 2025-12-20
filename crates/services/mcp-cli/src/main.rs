@@ -49,12 +49,15 @@ enum Commands {
     },
     /// Escalate overdue messages
     EscalateOverdue {
-        /// Threshold in hours
-        #[arg(short, long, default_value_t = 24)]
+        /// Threshold in hours (default: 24)
+        #[arg(long, default_value_t = 24)]
         hours: i64,
         /// Dry run (do not send reminders)
         #[arg(long, default_value_t = false)]
         dry_run: bool,
+        /// Escalation mode (log, file_reservation, overseer). Overrides ACK_ESCALATION_MODE env var.
+        #[arg(long)]
+        mode: Option<String>,
     },
     /// Export mailbox
     Export {
@@ -369,48 +372,49 @@ async fn main() -> Result<()> {
         Commands::Guard { command } => {
             handle_guard_command(command).await?;
         }
-        Commands::EscalateOverdue { hours, dry_run } => {
+        Commands::EscalateOverdue {
+            hours,
+            dry_run,
+            mode,
+        } => {
             let mm = ModelManager::new().await?;
             let ctx = Ctx::root_ctx();
 
-            println!("checking for overdue acks (threshold: {} hours)...", hours);
-            let overdue =
-                lib_core::model::message::MessageBmc::list_overdue_acks(&ctx, &mm, hours).await?;
-            println!("found {} overdue messages.", overdue.len());
+            let config = lib_common::config::EscalationConfig::from_env();
+            let escalation_mode = mode
+                .and_then(|m| match m.to_lowercase().as_str() {
+                    "log" => Some(lib_common::config::EscalationMode::Log),
+                    "file_reservation" => Some(lib_common::config::EscalationMode::FileReservation),
+                    "overseer" => Some(lib_common::config::EscalationMode::Overseer),
+                    _ => None,
+                })
+                .unwrap_or(config.escalation_mode);
 
-            for msg in overdue {
+            println!(
+                "Checking for overdue acks (threshold: {} hours, mode: {:?}, dry_run: {})...",
+                hours, escalation_mode, dry_run
+            );
+
+            let results = lib_core::model::escalation::EscalationBmc::escalate_overdue(
+                &ctx,
+                &mm,
+                hours,
+                escalation_mode,
+                dry_run,
+            )
+            .await?;
+
+            println!("Processed {} overdue messages.", results.len());
+
+            for result in results {
+                let status = if result.success { "OK" } else { "FAILED" };
                 println!(
-                    "- [OVERDUE] ID: {}, Subject: '{}', From: {}, To: {}, Created: {}",
-                    msg.message_id,
-                    msg.subject,
-                    msg.sender_name,
-                    msg.recipient_name,
-                    msg.created_ts
+                    "  [{}] Message {}: {} - {}",
+                    status,
+                    result.message_id,
+                    result.action_taken,
+                    result.details.as_deref().unwrap_or("(no details)")
                 );
-
-                if !dry_run {
-                    println!("  Escalating...");
-                    let reminder = lib_core::model::message::MessageForCreate {
-                        project_id: msg.project_id,
-                        sender_id: msg.sender_id, // Remind from original sender
-                        recipient_ids: vec![msg.recipient_id],
-                        cc_ids: None,
-                        bcc_ids: None,
-                        subject: format!("REMINDER: {}", msg.subject),
-                        body_md: format!(
-                            "[System Escalation] This message requires acknowledgment and is overdue.\n\nOriginal message: ID {}",
-                            msg.message_id
-                        ),
-                        thread_id: None, // Start new thread? Or try to find original? For now new thread.
-                        importance: Some("high".to_string()),
-                        ack_required: true,
-                    };
-
-                    match lib_core::model::message::MessageBmc::create(&ctx, &mm, reminder).await {
-                        Ok(id) => println!("  -> Sent reminder (ID: {})", id),
-                        Err(e) => println!("  -> Failed to send reminder: {}", e),
-                    }
-                }
             }
         }
         Commands::Export {

@@ -6,6 +6,8 @@ use std::env;
 pub struct AppConfig {
     pub server: ServerConfig,
     pub mcp: McpConfig,
+    #[serde(default)]
+    pub escalation: EscalationConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -20,6 +22,75 @@ pub struct ServerConfig {
 
 fn default_serve_ui() -> bool {
     true
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum EscalationMode {
+    #[default]
+    Log,
+    FileReservation,
+    Overseer,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct EscalationConfig {
+    #[serde(default)]
+    pub ack_ttl_enabled: bool,
+    #[serde(default = "default_ack_ttl_seconds")]
+    pub ack_ttl_seconds: u64,
+    #[serde(default)]
+    pub escalation_enabled: bool,
+    #[serde(default)]
+    pub escalation_mode: EscalationMode,
+    #[serde(default = "default_scan_interval_seconds")]
+    pub scan_interval_seconds: u64,
+}
+
+fn default_ack_ttl_seconds() -> u64 {
+    1800 // 30 minutes
+}
+
+fn default_scan_interval_seconds() -> u64 {
+    300 // 5 minutes
+}
+
+impl Default for EscalationConfig {
+    fn default() -> Self {
+        Self {
+            ack_ttl_enabled: false,
+            ack_ttl_seconds: default_ack_ttl_seconds(),
+            escalation_enabled: false,
+            escalation_mode: EscalationMode::default(),
+            scan_interval_seconds: default_scan_interval_seconds(),
+        }
+    }
+}
+
+impl EscalationConfig {
+    pub fn from_env() -> Self {
+        Self {
+            ack_ttl_enabled: parse_bool_env("ACK_TTL_ENABLED"),
+            ack_ttl_seconds: std::env::var("ACK_TTL_SECONDS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(default_ack_ttl_seconds),
+            escalation_enabled: parse_bool_env("ACK_ESCALATION_ENABLED"),
+            escalation_mode: std::env::var("ACK_ESCALATION_MODE")
+                .ok()
+                .and_then(|m| match m.to_lowercase().as_str() {
+                    "log" => Some(EscalationMode::Log),
+                    "file_reservation" => Some(EscalationMode::FileReservation),
+                    "overseer" => Some(EscalationMode::Overseer),
+                    _ => None,
+                })
+                .unwrap_or_default(),
+            scan_interval_seconds: std::env::var("ACK_SCAN_INTERVAL_SECONDS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or_else(default_scan_interval_seconds),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -77,6 +148,7 @@ impl Default for AppConfig {
                 worktrees_enabled: false,
                 git_identity_enabled: false,
             },
+            escalation: EscalationConfig::default(),
         }
     }
 }
@@ -100,6 +172,11 @@ impl AppConfig {
             .set_default("mcp.port", 3000)?
             .set_default("mcp.worktrees_enabled", false)?
             .set_default("mcp.git_identity_enabled", false)?
+            .set_default("escalation.ack_ttl_enabled", false)?
+            .set_default("escalation.ack_ttl_seconds", 1800_i64)?
+            .set_default("escalation.escalation_enabled", false)?
+            .set_default("escalation.escalation_mode", "log")?
+            .set_default("escalation.scan_interval_seconds", 300_i64)?
             // Merge in config files
             .add_source(File::with_name("config/default").required(false))
             .add_source(File::with_name(&format!("config/{}", run_mode)).required(false));
@@ -112,6 +189,26 @@ impl AppConfig {
         }
         if let Ok(host) = env::var("HOST") {
             builder = builder.set_override("server.host", host)?;
+        }
+
+        if parse_bool_env("ACK_TTL_ENABLED") {
+            builder = builder.set_override("escalation.ack_ttl_enabled", true)?;
+        }
+        if let Ok(ttl) = env::var("ACK_TTL_SECONDS") {
+            if let Ok(secs) = ttl.parse::<i64>() {
+                builder = builder.set_override("escalation.ack_ttl_seconds", secs)?;
+            }
+        }
+        if parse_bool_env("ACK_ESCALATION_ENABLED") {
+            builder = builder.set_override("escalation.escalation_enabled", true)?;
+        }
+        if let Ok(mode) = env::var("ACK_ESCALATION_MODE") {
+            builder = builder.set_override("escalation.escalation_mode", mode)?;
+        }
+        if let Ok(interval) = env::var("ACK_SCAN_INTERVAL_SECONDS") {
+            if let Ok(secs) = interval.parse::<i64>() {
+                builder = builder.set_override("escalation.scan_interval_seconds", secs)?;
+            }
         }
 
         builder.build()?.try_deserialize()
@@ -163,7 +260,6 @@ mod tests {
 
     #[test]
     fn test_worktrees_active() {
-        // Neither enabled
         let config = McpConfig {
             transport: "stdio".into(),
             port: 3000,
@@ -172,7 +268,6 @@ mod tests {
         };
         assert!(!config.worktrees_active());
 
-        // Only worktrees
         let config = McpConfig {
             worktrees_enabled: true,
             git_identity_enabled: false,
@@ -180,7 +275,6 @@ mod tests {
         };
         assert!(config.worktrees_active());
 
-        // Only git_identity
         let config = McpConfig {
             worktrees_enabled: false,
             git_identity_enabled: true,
@@ -188,12 +282,78 @@ mod tests {
         };
         assert!(config.worktrees_active());
 
-        // Both enabled
         let config = McpConfig {
             worktrees_enabled: true,
             git_identity_enabled: true,
             ..config.clone()
         };
         assert!(config.worktrees_active());
+    }
+
+    #[test]
+    fn test_escalation_config_defaults() {
+        let config = EscalationConfig::default();
+        assert!(!config.ack_ttl_enabled);
+        assert_eq!(config.ack_ttl_seconds, 1800);
+        assert!(!config.escalation_enabled);
+        assert_eq!(config.escalation_mode, EscalationMode::Log);
+        assert_eq!(config.scan_interval_seconds, 300);
+    }
+
+    #[test]
+    fn test_escalation_mode_variants() {
+        assert_eq!(EscalationMode::default(), EscalationMode::Log);
+        assert_ne!(EscalationMode::FileReservation, EscalationMode::Log);
+        assert_ne!(EscalationMode::Overseer, EscalationMode::Log);
+    }
+
+    #[test]
+    fn test_escalation_config_from_env() {
+        unsafe {
+            std::env::set_var("ACK_TTL_ENABLED", "true");
+            std::env::set_var("ACK_TTL_SECONDS", "3600");
+            std::env::set_var("ACK_ESCALATION_ENABLED", "1");
+            std::env::set_var("ACK_ESCALATION_MODE", "file_reservation");
+            std::env::set_var("ACK_SCAN_INTERVAL_SECONDS", "60");
+        }
+
+        let config = EscalationConfig::from_env();
+        assert!(config.ack_ttl_enabled);
+        assert_eq!(config.ack_ttl_seconds, 3600);
+        assert!(config.escalation_enabled);
+        assert_eq!(config.escalation_mode, EscalationMode::FileReservation);
+        assert_eq!(config.scan_interval_seconds, 60);
+
+        unsafe {
+            std::env::remove_var("ACK_TTL_ENABLED");
+            std::env::remove_var("ACK_TTL_SECONDS");
+            std::env::remove_var("ACK_ESCALATION_ENABLED");
+            std::env::remove_var("ACK_ESCALATION_MODE");
+            std::env::remove_var("ACK_SCAN_INTERVAL_SECONDS");
+        }
+    }
+
+    #[test]
+    fn test_escalation_mode_from_env_overseer() {
+        unsafe {
+            std::env::set_var("ACK_ESCALATION_MODE", "overseer");
+        }
+        let config = EscalationConfig::from_env();
+        assert_eq!(config.escalation_mode, EscalationMode::Overseer);
+        unsafe {
+            std::env::remove_var("ACK_ESCALATION_MODE");
+        }
+    }
+
+    #[test]
+    fn test_escalation_mode_from_env_invalid_falls_back() {
+        unsafe {
+            std::env::set_var("ACK_ESCALATION_MODE", "invalid_mode");
+        }
+        let config = EscalationConfig::from_env();
+        assert_eq!(config.escalation_mode, EscalationMode::Log);
+        unsafe {
+            std::env::remove_var("ACK_ESCALATION_MODE");
+        }
     }
 }

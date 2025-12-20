@@ -20,6 +20,9 @@ git2.workspace = true
 tracing.workspace = true
 slug = "0.1.6"
 
+# Internal workspace crates
+lib-common = { path = "../lib-common" }
+
 # Crate-specific dependencies
 strum_macros = "0.27.2" # For AsRefStr derive
 tokio = { version = "1.48.0", features = ["macros"] }

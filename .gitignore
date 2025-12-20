@@ -35,3 +35,6 @@ docs/PYTHON_PORT_PLAN_v2.md.tmp/
 docs/LEPTOS_PARITY_CHECKLIST.md
 docs/Completed_task.md
 docs/api-quality-audit-report.md
+
+# bv (beads viewer) local config and caches
+.bv/

@@ -2,6 +2,7 @@ mod common;
 
 use common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
+use lib_core::model::escalation::{EscalationBmc, EscalationMode};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
 use uuid::Uuid;
@@ -135,6 +136,267 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
     );
     assert_eq!(overdue_list[0].message_id, overdue_msg_id);
     assert_eq!(overdue_list[0].subject, "Overdue Subject");
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_escalate_overdue_log_mode_dry_run() -> lib_core::Result<()> {
+    let tc = TestContext::new().await?;
+    let mm = &tc.mm;
+    let ctx = &tc.ctx;
+
+    let project_slug = Uuid::new_v4().to_string();
+    let project_id = ProjectBmc::create(ctx, mm, &project_slug, "Escalation Log Test").await?;
+
+    let sender = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "sender".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let recipient = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "recipient".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id: sender,
+        recipient_ids: vec![recipient],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Test Escalation".to_string(),
+        body_md: "Needs ack".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(ctx, mm, msg_c).await?;
+
+    let db = mm.db_for_test();
+    db.execute(
+        "UPDATE messages SET created_ts = datetime('now', '-25 hours') WHERE id = ?",
+        [msg_id],
+    )
+    .await?;
+
+    let results = EscalationBmc::escalate_overdue(ctx, mm, 24, EscalationMode::Log, true).await?;
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].message_id, msg_id);
+    assert_eq!(results[0].action_taken, "log_dry_run");
+    assert!(results[0].success);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_escalate_overdue_log_mode_real() -> lib_core::Result<()> {
+    let tc = TestContext::new().await?;
+    let mm = &tc.mm;
+    let ctx = &tc.ctx;
+
+    let project_slug = Uuid::new_v4().to_string();
+    let project_id = ProjectBmc::create(ctx, mm, &project_slug, "Escalation Log Real").await?;
+
+    let sender = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "sender".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let recipient = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "recipient".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id: sender,
+        recipient_ids: vec![recipient],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Log Real Test".to_string(),
+        body_md: "Needs ack".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(ctx, mm, msg_c).await?;
+
+    let db = mm.db_for_test();
+    db.execute(
+        "UPDATE messages SET created_ts = datetime('now', '-25 hours') WHERE id = ?",
+        [msg_id],
+    )
+    .await?;
+
+    let results = EscalationBmc::escalate_overdue(ctx, mm, 24, EscalationMode::Log, false).await?;
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].message_id, msg_id);
+    assert_eq!(results[0].action_taken, "logged");
+    assert!(results[0].success);
+    assert!(
+        results[0]
+            .details
+            .as_ref()
+            .unwrap()
+            .contains("Log Real Test")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_escalate_overdue_no_overdue_messages() -> lib_core::Result<()> {
+    let tc = TestContext::new().await?;
+    let mm = &tc.mm;
+    let ctx = &tc.ctx;
+
+    let project_slug = Uuid::new_v4().to_string();
+    let project_id = ProjectBmc::create(ctx, mm, &project_slug, "No Overdue Test").await?;
+
+    let sender = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "sender".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let recipient = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "recipient".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id: sender,
+        recipient_ids: vec![recipient],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Recent Message".to_string(),
+        body_md: "Fresh message".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: true,
+    };
+    let _msg_id = MessageBmc::create(ctx, mm, msg_c).await?;
+
+    let results = EscalationBmc::escalate_overdue(ctx, mm, 24, EscalationMode::Log, false).await?;
+
+    assert!(results.is_empty());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_escalate_overdue_overseer_mode_dry_run() -> lib_core::Result<()> {
+    let tc = TestContext::new().await?;
+    let mm = &tc.mm;
+    let ctx = &tc.ctx;
+
+    let project_slug = Uuid::new_v4().to_string();
+    let project_id = ProjectBmc::create(ctx, mm, &project_slug, "Overseer Test").await?;
+
+    let sender = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "sender".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let recipient = AgentBmc::create(
+        ctx,
+        mm,
+        AgentForCreate {
+            project_id,
+            name: "recipient".to_string(),
+            program: "test".to_string(),
+            model: "test".to_string(),
+            task_description: String::new(),
+        },
+    )
+    .await?;
+
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id: sender,
+        recipient_ids: vec![recipient],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Overseer Dry Run".to_string(),
+        body_md: "Needs ack".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: true,
+    };
+    let msg_id = MessageBmc::create(ctx, mm, msg_c).await?;
+
+    let db = mm.db_for_test();
+    db.execute(
+        "UPDATE messages SET created_ts = datetime('now', '-25 hours') WHERE id = ?",
+        [msg_id],
+    )
+    .await?;
+
+    let results =
+        EscalationBmc::escalate_overdue(ctx, mm, 24, EscalationMode::Overseer, true).await?;
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].action_taken, "overseer_dry_run");
+    assert!(results[0].success);
 
     Ok(())
 }

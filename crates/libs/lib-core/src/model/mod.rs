@@ -38,6 +38,7 @@ pub mod agent_capabilities;
 pub mod agent_link;
 pub mod attachment;
 pub mod build_slot;
+pub mod escalation;
 pub mod export;
 pub mod file_reservation;
 pub mod identity;
