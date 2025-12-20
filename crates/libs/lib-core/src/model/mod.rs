@@ -40,6 +40,7 @@ pub mod attachment;
 pub mod build_slot;
 pub mod export;
 pub mod file_reservation;
+pub mod identity;
 pub mod macro_def;
 pub mod message;
 pub mod message_recipient;
