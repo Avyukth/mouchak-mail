@@ -50,6 +50,15 @@ pub fn Button(
     /// Tooltip title for accessibility
     #[prop(optional, into)]
     title: Option<String>,
+    /// Accessible label (for icon-only buttons)
+    #[prop(optional, into)]
+    aria_label: Option<String>,
+    /// Whether the controlled element is expanded (for toggles)
+    #[prop(optional, into)]
+    aria_expanded: Option<Signal<String>>,
+    /// ID of the element this button controls
+    #[prop(optional, into)]
+    aria_controls: Option<String>,
     /// Click handler
     #[prop(optional)]
     on_click: Option<Callback<()>>,
@@ -65,6 +74,9 @@ pub fn Button(
             class={final_class}
             disabled=move || disabled.get()
             title={title}
+            aria-label={aria_label}
+            aria-expanded=move || aria_expanded.as_ref().map(|s| s.get())
+            aria-controls={aria_controls}
             on:click=move |_| {
                 if let Some(cb) = on_click.as_ref() {
                     cb.run(());

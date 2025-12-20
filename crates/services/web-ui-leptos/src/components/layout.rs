@@ -4,12 +4,19 @@
 use super::{Button, ButtonSize, ButtonVariant};
 use leptos::prelude::*;
 use leptos_router::components::Outlet;
+use leptos_router::hooks::use_location;
 
 /// Main layout wrapper with navigation and content outlet.
 #[component]
 pub fn Layout() -> impl IntoView {
     // Dark mode signal - persisted to localStorage
     let (dark_mode, set_dark_mode) = signal(false);
+
+    // Mobile navigation state
+    let mobile_nav_open = RwSignal::new(false);
+
+    // Get current location for aria-current
+    let location = use_location();
 
     // Initialize from localStorage and watch for changes
     Effect::new(move |_| {
@@ -40,6 +47,13 @@ pub fn Layout() -> impl IntoView {
                     storage.set_item("darkMode", if dark_mode.get() { "true" } else { "false" });
             }
         }
+    });
+
+    // Close mobile nav when clicking outside or navigating
+    Effect::new(move |_| {
+        // Close mobile nav on route change
+        let _ = location.pathname.get();
+        mobile_nav_open.set(false);
     });
 
     view! {
@@ -100,12 +114,104 @@ pub fn Layout() -> impl IntoView {
                                     view! { <i data-lucide="moon" class="icon-lg text-muted-foreground"></i> }.into_any()
                                 }}
                             </Button>
+
+                            // Mobile hamburger menu button
+                            <Button
+                                variant=ButtonVariant::Ghost
+                                size=ButtonSize::Icon
+                                on_click=Callback::new(move |_| mobile_nav_open.update(|v| *v = !*v))
+                                class="md:hidden".to_string()
+                                aria_label="Toggle navigation menu".to_string()
+                                aria_expanded=Signal::derive(move || mobile_nav_open.get().to_string())
+                                aria_controls="mobile-nav".to_string()
+                            >
+                                {move || if mobile_nav_open.get() {
+                                    view! { <i data-lucide="x" class="icon-lg"></i> }.into_any()
+                                } else {
+                                    view! { <i data-lucide="menu" class="icon-lg"></i> }.into_any()
+                                }}
+                            </Button>
                         </div>
                     </div>
                 </nav>
             </header>
 
-            // Mobile navigation drawer (future enhancement)
+            // Mobile navigation drawer - slide down panel
+            {move || {
+                if mobile_nav_open.get() {
+                    Some(view! {
+                        <div
+                            id="mobile-nav"
+                            class="md:hidden fixed inset-x-0 top-16 z-40 bg-background/95 backdrop-blur-lg border-b border-border shadow-lg animate-slide-down"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Navigation menu"
+                        >
+                            <nav class="max-w-7xl mx-auto px-4 py-4 space-y-1">
+                                <MobileNavLink
+                                    href="/"
+                                    label="Dashboard"
+                                    icon="gauge"
+                                    current_path=Signal::derive(move || location.pathname.get())
+                                    on_click=Callback::new(move |_| mobile_nav_open.set(false))
+                                />
+                                <MobileNavLink
+                                    href="/projects"
+                                    label="Projects"
+                                    icon="folder-open"
+                                    current_path=Signal::derive(move || location.pathname.get())
+                                    on_click=Callback::new(move |_| mobile_nav_open.set(false))
+                                />
+                                <MobileNavLink
+                                    href="/agents"
+                                    label="Agents"
+                                    icon="bot"
+                                    current_path=Signal::derive(move || location.pathname.get())
+                                    on_click=Callback::new(move |_| mobile_nav_open.set(false))
+                                />
+                                <MobileNavLink
+                                    href="/inbox"
+                                    label="Inbox"
+                                    icon="inbox"
+                                    current_path=Signal::derive(move || location.pathname.get())
+                                    on_click=Callback::new(move |_| mobile_nav_open.set(false))
+                                />
+                                <MobileNavLink
+                                    href="/mail/unified"
+                                    label="All Mail"
+                                    icon="layers"
+                                    current_path=Signal::derive(move || location.pathname.get())
+                                    on_click=Callback::new(move |_| mobile_nav_open.set(false))
+                                />
+                                <MobileNavLink
+                                    href="/attachments"
+                                    label="Files"
+                                    icon="paperclip"
+                                    current_path=Signal::derive(move || location.pathname.get())
+                                    on_click=Callback::new(move |_| mobile_nav_open.set(false))
+                                />
+                            </nav>
+                        </div>
+                    })
+                } else {
+                    None
+                }
+            }}
+
+            // Overlay when mobile nav is open
+            {move || {
+                if mobile_nav_open.get() {
+                    Some(view! {
+                        <div
+                            class="md:hidden fixed inset-0 top-16 z-30 bg-black/20"
+                            on:click=move |_| mobile_nav_open.set(false)
+                            aria-hidden="true"
+                        ></div>
+                    })
+                } else {
+                    None
+                }
+            }}
 
             // Main content area
             <main id="main-content" tabindex="-1" class="relative max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 flex-1 w-full" role="main">
@@ -143,15 +249,75 @@ pub fn Layout() -> impl IntoView {
 
 /// Navigation link component with Lucide icon.
 /// Uses min-h-[44px] for WCAG 2.1 AA touch target compliance.
+/// Supports aria-current for active page indication.
 #[component]
 fn NavLink(href: &'static str, label: &'static str, icon: &'static str) -> impl IntoView {
+    let location = use_location();
+    let is_active = Signal::derive(move || {
+        let path = location.pathname.get();
+        if href == "/" {
+            path == "/"
+        } else {
+            path.starts_with(href)
+        }
+    });
+
     view! {
         <a
             href=href
-            class="nav-link flex items-center space-x-2 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200"
+            aria-current=move || if is_active.get() { Some("page") } else { None }
+            class={move || format!(
+                "nav-link flex items-center space-x-2 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-all duration-200 {}",
+                if is_active.get() {
+                    "text-primary bg-primary/10"
+                } else {
+                    "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                }
+            )}
         >
             <i data-lucide=icon class="icon-sm"></i>
             <span>{label}</span>
+        </a>
+    }
+}
+
+/// Mobile navigation link - larger touch targets
+#[component]
+fn MobileNavLink(
+    href: &'static str,
+    label: &'static str,
+    icon: &'static str,
+    #[prop(into)] current_path: Signal<String>,
+    on_click: Callback<()>,
+) -> impl IntoView {
+    let is_active = Signal::derive(move || {
+        let path = current_path.get();
+        if href == "/" {
+            path == "/"
+        } else {
+            path.starts_with(href)
+        }
+    });
+
+    view! {
+        <a
+            href=href
+            aria-current=move || if is_active.get() { Some("page") } else { None }
+            class={move || format!(
+                "flex items-center space-x-3 px-4 py-3 min-h-[48px] rounded-lg text-base font-medium transition-all duration-200 {}",
+                if is_active.get() {
+                    "text-primary bg-primary/10"
+                } else {
+                    "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                }
+            )}
+            on:click=move |_| on_click.run(())
+        >
+            <i data-lucide=icon class="icon-lg"></i>
+            <span>{label}</span>
+            {move || is_active.get().then(|| view! {
+                <i data-lucide="check" class="icon-sm ml-auto text-primary"></i>
+            })}
         </a>
     }
 }
