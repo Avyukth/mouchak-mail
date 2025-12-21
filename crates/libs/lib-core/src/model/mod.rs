@@ -36,6 +36,7 @@ pub mod activity;
 pub mod agent;
 pub mod agent_capabilities;
 pub mod agent_link;
+pub mod archive_browser;
 pub mod attachment;
 pub mod build_slot;
 pub mod escalation;
