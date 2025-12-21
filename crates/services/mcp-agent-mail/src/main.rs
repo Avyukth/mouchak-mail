@@ -38,6 +38,9 @@ enum Commands {
         url: String,
     },
 
+    /// Manage configuration
+    Config(ConfigArgs),
+
     /// Export JSON schemas for all tools
     Schema {
         /// Output format: json or markdown
@@ -65,6 +68,23 @@ enum Commands {
 
     /// Show version info
     Version,
+}
+
+#[derive(Args)]
+struct ConfigArgs {
+    #[command(subcommand)]
+    command: ConfigCommands,
+}
+
+#[derive(Subcommand)]
+enum ConfigCommands {
+    /// Set the binding port in config
+    SetPort {
+        /// Port number
+        port: u16,
+    },
+    /// Show the current binding port
+    ShowPort,
 }
 
 #[derive(Args)]
@@ -728,6 +748,48 @@ fn handle_share_verify(manifest_path: &str, public_key: Option<&str>) -> anyhow:
     Ok(())
 }
 
+// --- Config Command Handlers ---
+
+fn handle_config_command(cmd: ConfigCommands) -> anyhow::Result<()> {
+    match cmd {
+        ConfigCommands::SetPort { port } => {
+            let home =
+                std::env::var("HOME").map_err(|_| anyhow::anyhow!("HOME env var not set"))?;
+            let config_dir = PathBuf::from(&home).join(".mcp-agent-mail");
+            let config_path = config_dir.join("config.toml");
+
+            std::fs::create_dir_all(&config_dir)?;
+
+            let content = if config_path.exists() {
+                std::fs::read_to_string(&config_path)?
+            } else {
+                String::new()
+            };
+
+            let mut config: toml::Table =
+                toml::from_str(&content).unwrap_or_else(|_| toml::Table::new());
+            let server_entry = config
+                .entry("server")
+                .or_insert(toml::Value::Table(toml::Table::new()));
+
+            if let toml::Value::Table(server_table) = server_entry {
+                server_table.insert("port".to_string(), toml::Value::Integer(port as i64));
+            }
+
+            let new_content = toml::to_string_pretty(&config)?;
+            std::fs::write(&config_path, new_content)?;
+
+            println!("✓ Updated port to {} in {}", port, config_path.display());
+            println!("  Restart the server for changes to take effect.");
+        }
+        ConfigCommands::ShowPort => {
+            let config = load_config();
+            println!("{}", config.server.port);
+        }
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Install panic hook FIRST, before anything else
@@ -750,6 +812,7 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         Commands::Health { url } => handle_health(url).await?,
+        Commands::Config(args) => handle_config_command(args.command)?,
         Commands::Schema { format, output } => handle_schema(format, output)?,
         Commands::Tools => handle_tools(),
         Commands::Install(args) => match args.command {

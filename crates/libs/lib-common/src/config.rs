@@ -1,8 +1,8 @@
 use config::{Config, File};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AppConfig {
     pub server: ServerConfig,
     pub mcp: McpConfig,
@@ -10,7 +10,7 @@ pub struct AppConfig {
     pub escalation: EscalationConfig,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
@@ -24,7 +24,7 @@ fn default_serve_ui() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum EscalationMode {
     #[default]
@@ -33,7 +33,7 @@ pub enum EscalationMode {
     Overseer,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EscalationConfig {
     #[serde(default)]
     pub ack_ttl_enabled: bool,
@@ -93,7 +93,7 @@ impl EscalationConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct McpConfig {
     pub transport: String,
     pub port: u16,
@@ -180,6 +180,14 @@ impl AppConfig {
             // Merge in config files
             .add_source(File::with_name("config/default").required(false))
             .add_source(File::with_name(&format!("config/{}", run_mode)).required(false));
+
+        // Add user config file from ~/.mcp-agent-mail/config.toml
+        if let Ok(home) = env::var("HOME") {
+            let path = std::path::Path::new(&home)
+                .join(".mcp-agent-mail")
+                .join("config.toml");
+            builder = builder.add_source(File::from(path).required(false));
+        }
 
         // 12-factor app standard: PORT and HOST env vars
         if let Ok(port) = env::var("PORT") {
