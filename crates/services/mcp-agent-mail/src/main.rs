@@ -257,6 +257,15 @@ enum ShareCommands {
 
 #[derive(Subcommand)]
 enum ServiceCommands {
+    /// Start the server (background by default)
+    Start {
+        /// Port to start the server on
+        #[arg(short, long, default_value = "8765")]
+        port: u16,
+        /// Run in background
+        #[arg(short, long, default_value = "true")]
+        background: bool,
+    },
     /// Stop the running server on the specified port
     Stop {
         /// Port to stop the server on
@@ -815,17 +824,62 @@ async fn handle_service_status(port: u16) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn handle_service_start(
+    port: u16,
+    background: bool,
+    config: AppConfig,
+) -> anyhow::Result<()> {
+    if background {
+        println!("Starting server on port {} (background)...", port);
+        // Validate port first
+        if let Err(e) = validate_port(port) {
+            anyhow::bail!("Cannot start server: {}", e);
+        }
+
+        let exe = std::env::current_exe()?;
+        let mut cmd = std::process::Command::new(exe);
+        cmd.arg("serve")
+            .arg("http")
+            .arg("--port")
+            .arg(port.to_string())
+            // Inherit default UI settings or use config?
+            // We can't easily pass full config object via args unless we reconstruct valid flags.
+            // For now, let's just assume default behavior of serve command.
+            // But we should probably use --no-ui if it's a background service?
+            // Let's pass --no-ui to minimize issues.
+            .arg("--no-ui");
+
+        // Detach properly
+        cmd.stdout(std::process::Stdio::null());
+        cmd.stderr(std::process::Stdio::null());
+
+        match cmd.spawn() {
+            Ok(_) => {
+                println!("✓ Server started on port {}", port);
+                // Give it a moment to bind?
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+            Err(e) => anyhow::bail!("Failed to spawn server: {}", e),
+        }
+    } else {
+        handle_serve_http(Some(port), true, false, config).await?;
+    }
+    Ok(())
+}
+
 async fn handle_service_restart(port: u16, config: AppConfig) -> anyhow::Result<()> {
     println!("Restarting server on port {}...", port);
 
+    // Stop existing
     if let Some(pid) = find_pid_on_port(port) {
         println!("Stopping existing server (PID {})...", pid);
         kill_process(pid)?;
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        // Wait for port release
+        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
     }
 
-    println!("Starting server on port {}...", port);
-    handle_serve_http(Some(port), true, false, config).await?;
+    // Start in background (default for restart)
+    handle_service_start(port, true, config).await?;
 
     Ok(())
 }
@@ -1335,6 +1389,9 @@ async fn main() -> anyhow::Result<()> {
             InstallCommands::Alias { force } => handle_install_alias(force)?,
         },
         Some(Commands::Service(args)) => match args.command {
+            ServiceCommands::Start { port, background } => {
+                handle_service_start(port, background, config).await?
+            }
             ServiceCommands::Stop { port } => handle_service_stop(port)?,
             ServiceCommands::Status { port } => handle_service_status(port).await?,
             ServiceCommands::Restart { port } => handle_service_restart(port, config).await?,
