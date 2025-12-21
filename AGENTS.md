@@ -562,7 +562,61 @@ ubs .
 
 **What it does**: Production-grade async coordination for multi-agent workflows via messaging, file reservations, and build slot management. Provides "Gmail for coding agents" — 45 MCP tools for agent coordination.
 
-**Server**: `http://localhost:8765` (start with `make dev-api`)
+**IMPORTANT**: MCP Agent Mail is available as an **MCP server**. Do NOT treat it as a CLI you must shell out to. If MCP tools are not available, flag to the user — they may need to start the server.
+
+**Server**: `http://localhost:8765`
+
+#### Starting the Server
+
+```bash
+# Option 1: Using the 'am' alias (after running: mcp-agent-mail install alias)
+am
+
+# Option 2: Direct CLI
+mcp-agent-mail serve http
+
+# Option 3: With custom port
+mcp-agent-mail serve http --port 9000
+
+# Option 4: MCP stdio mode (for Claude Desktop integration)
+mcp-agent-mail serve mcp --transport stdio
+
+# Option 5: MCP SSE mode
+mcp-agent-mail serve mcp --transport sse --port 3000
+```
+
+#### Server Management
+
+```bash
+# Check if server is running
+mcp-agent-mail service status --port 8765
+
+# Stop the server
+mcp-agent-mail service stop --port 8765
+
+# Restart the server
+mcp-agent-mail service restart --port 8765
+
+# Health check
+mcp-agent-mail health --url http://localhost:8765
+```
+
+#### Robot-Readable Help
+
+```bash
+# Get full CLI documentation in JSON (for AI agents)
+mcp-agent-mail --robot-help
+
+# Get CLI documentation in YAML
+mcp-agent-mail --robot-help --format yaml
+
+# List all MCP tools
+mcp-agent-mail tools
+
+# Export tool schemas (JSON or Markdown)
+mcp-agent-mail schema --format json
+mcp-agent-mail schema --format markdown --output tools.md
+```
 
 #### When to Use
 
@@ -614,46 +668,63 @@ ubs .
 
 #### Setup Workflow
 
+**Step 1: Start Server (if not running)**
+
 ```bash
-# 1. Start server (if not running)
-make dev-api  # Starts on :8765
+# Using alias (recommended)
+am
 
-# 2. Register identity (MCP call)
-ensure_project(slug="/path/to/repo", human_key="my-project")
-register_agent(
-  project_slug="/path/to/repo",
-  name="claude-1",
-  program="claude-code",
-  model="claude-opus-4",
-  task_description="General development tasks"
-)
-
-# 3. Reserve files before editing (prevents conflicts)
-file_reservation_paths(
-  project_slug="/path/to/repo",
-  agent_name="claude-1",
-  paths=["src/**/*.rs", "Cargo.toml"],
-  ttl_seconds=3600,
-  exclusive=true
-)
-
-# 4. Communicate via threads
-send_message(
-  project_slug="/path/to/repo",
-  sender_name="claude-1",
-  to="claude-2",  # comma-separated for multiple: "agent1,agent2"
-  subject="Found issue in auth module",
-  body_md="See src/auth.rs:42...",
-  thread_id="FEAT-123"
-)
-
-# 5. Check for messages
-check_inbox(project_slug="/path/to/repo", agent_name="claude-1", unread_only=true)
-acknowledge_message(project_slug="/path/to/repo", message_id=123, agent_name="claude-1")
-
-# 6. Release reservations when done
-release_reservation(project_slug="/path/to/repo", reservation_id=1)
+# Or direct CLI
+mcp-agent-mail serve http --port 8765
 ```
+
+**Step 2: Register Identity (via MCP tools)**
+
+Use the `ensure_project` and `register_agent` MCP tools:
+
+| Tool | Parameters |
+|------|------------|
+| `ensure_project` | `slug`: absolute repo path (e.g., `/Users/me/myrepo`)<br>`human_key`: friendly name (e.g., `my-project`) |
+| `register_agent` | `project_slug`: from ensure_project<br>`name`: unique agent name<br>`program`: e.g., `claude-code`<br>`model`: e.g., `claude-opus-4`<br>`task_description`: what this agent does |
+
+**Step 3: Reserve Files Before Editing**
+
+Use `file_reservation_paths` to prevent conflicts:
+
+| Parameter | Description |
+|-----------|-------------|
+| `project_slug` | Project from step 2 |
+| `agent_name` | Your agent name |
+| `paths` | Array of glob patterns: `["src/**/*.rs", "Cargo.toml"]` |
+| `ttl_seconds` | Reservation duration (e.g., `3600` for 1 hour) |
+| `exclusive` | `true` for write access, `false` for read-only |
+
+**Step 4: Communicate via Threads**
+
+Use `send_message` for async communication:
+
+| Parameter | Description |
+|-----------|-------------|
+| `project_slug` | Project identifier |
+| `sender_name` | Your agent name |
+| `to` | Recipient(s), comma-separated: `"agent1,agent2"` |
+| `subject` | Message subject |
+| `body_md` | Markdown message body |
+| `thread_id` | Thread identifier (e.g., `"FEAT-123"`) |
+| `importance` | `low`, `normal`, `high`, `urgent` (optional) |
+| `ack_required` | `true` if acknowledgment needed (optional) |
+
+**Step 5: Check for Messages**
+
+| Tool | Purpose |
+|------|---------|
+| `check_inbox` | Get unread messages: `agent_name`, `unread_only=true` |
+| `acknowledge_message` | Mark message acknowledged: `message_id`, `agent_name` |
+| `mark_message_read` | Mark as read without ack: `message_id`, `agent_name` |
+
+**Step 6: Release Reservations**
+
+Use `release_reservation` with `reservation_id` when done editing files.
 
 #### REST API Reference (Alternative to MCP)
 
@@ -770,7 +841,56 @@ The `resource://` scheme provides read-only access to data. Supports lazy loadin
 
 **Legacy Scheme:** `agent-mail://{project}/{resource}/{id}` still supported for backwards compatibility.
 
-**Tip**: Set `AGENT_NAME` env var for pre-commit guard to block conflicting commits.
+#### Pre-Commit Guard
+
+The pre-commit guard prevents commits that conflict with file reservations. Install via MCP tools (`install_precommit_guard`) or configure behavior via environment variables.
+
+**Environment Variables:**
+
+| Variable | Values | Description |
+|----------|--------|-------------|
+| `AGENT_NAME` | string | Your agent identity for reservation checks |
+| `AGENT_MAIL_BYPASS` | `1` | Skip all guard checks (emergency only) |
+| `AGENT_MAIL_GUARD_MODE` | `enforce` (default) | Block conflicting commits |
+| | `warn` / `advisory` | Warn but allow commits |
+| `WORKTREES_ENABLED` | `1` | Enable worktree-aware features |
+| `GIT_IDENTITY_ENABLED` | `1` | Enable git identity features |
+
+#### Archive & Disaster Recovery
+
+```bash
+# Create a backup archive
+mcp-agent-mail archive save --label "pre-refactor"
+mcp-agent-mail archive save --include-git  # Include git storage
+
+# List available restore points
+mcp-agent-mail archive list
+mcp-agent-mail archive list --json
+
+# Restore from archive
+mcp-agent-mail archive restore data/archives/archive_pre-refactor_20250101_120000.zip
+mcp-agent-mail archive restore <file> --yes  # Skip confirmation
+
+# Clear all data (creates backup first if --archive)
+mcp-agent-mail archive clear-and-reset --archive --label "pre-wipe"
+mcp-agent-mail archive clear-and-reset --yes  # Skip confirmation (DESTRUCTIVE)
+```
+
+#### Share & Export
+
+```bash
+# Generate signing keypair
+mcp-agent-mail share keypair
+mcp-agent-mail share keypair --output keys.json
+
+# Verify export manifest signature
+mcp-agent-mail share verify --manifest export_manifest.json
+mcp-agent-mail share verify --manifest export_manifest.json --public-key <key>
+
+# Encrypt/decrypt (placeholder - use Python version for now)
+mcp-agent-mail share encrypt --project my-project --passphrase <pass>
+mcp-agent-mail share decrypt --input file.age --passphrase <pass>
+```
 
 ---
 
@@ -1486,7 +1606,7 @@ This document should be updated when:
 - Project-specific sections need updating
 
 **Version**: 1.2.0
-**Last Updated**: 2025-12-18
+**Last Updated**: 2025-12-21
 **Maintainer**: Avyukth
 
 ---
@@ -1660,42 +1780,34 @@ await page.screenshot({ path: 'mobile.png' });
 
 ### Phase 1: Task Claim (Worker Agent)
 
+**Step 1-2: Find and claim work (CLI)**
+
 ```bash
-# 1. Check for available work
+# Find available work
 bd ready --json
 
-# 2. Claim the task
+# Claim the task
 bd update <task-id> --status in_progress --json
-
-# 3. Register as worker agent
-ensure_project(slug="<project-slug>", human_key="mcp-agent-mail-rs")
-register_agent(
-  project_slug="<project-slug>",  # e.g., "users-amrit-documents-projects-rust-mouchak-mcp-agent-mail-rs"
-  name="worker-<task-id>",
-  program="claude-code",
-  model="claude-opus-4",
-  task_description="Working on task <task-id>: <task-title>"
-)
-
-# 4. Reserve files for exclusive access
-file_reservation_paths(
-  project_slug="<project-slug>",
-  agent_name="worker-<task-id>",
-  paths=["src/**/*.rs", "Cargo.toml"],  # Based on task scope
-  ttl_seconds=7200,  # 2 hours
-  exclusive=true
-)
-
-# 5. (Optional) Notify reviewer that work started
-send_message(
-  project_slug="<project-slug>",
-  sender_name="worker-<task-id>",
-  to="reviewer",  # comma-separated for multiple
-  subject="[TASK_STARTED] <task-id>: <task-title>",
-  body_md="Starting work on task. ETA: <estimate>",
-  thread_id="TASK-<task-id>"
-)
 ```
+
+**Step 3: Register as worker agent (MCP tools)**
+
+| Tool | Parameters |
+|------|------------|
+| `ensure_project` | `slug`: repo absolute path<br>`human_key`: `"mcp-agent-mail-rs"` |
+| `register_agent` | `project_slug`: from ensure_project<br>`name`: `"worker-<task-id>"`<br>`program`: `"claude-code"`<br>`model`: `"claude-opus-4"`<br>`task_description`: `"Working on task <task-id>: <task-title>"` |
+
+**Step 4: Reserve files for exclusive access (MCP tool)**
+
+| Tool | Parameters |
+|------|------------|
+| `file_reservation_paths` | `project_slug`: from step 3<br>`agent_name`: `"worker-<task-id>"`<br>`paths`: `["src/**/*.rs", "Cargo.toml"]` (based on task scope)<br>`ttl_seconds`: `7200` (2 hours)<br>`exclusive`: `true` |
+
+**Step 5: (Optional) Notify reviewer (MCP tool)**
+
+| Tool | Parameters |
+|------|------------|
+| `send_message` | `project_slug`: from step 3<br>`sender_name`: `"worker-<task-id>"`<br>`to`: `"reviewer"`<br>`subject`: `"[TASK_STARTED] <task-id>: <task-title>"`<br>`body_md`: `"Starting work on task. ETA: <estimate>"`<br>`thread_id`: `"TASK-<task-id>"` |
 
 ### Phase 2: Implementation (Worker Agent)
 
@@ -1776,21 +1888,19 @@ cargo test -p <affected-crate>
 ```
 ```
 
-**MCP Call**:
+**MCP Tool: `send_message`**
 
-```python
-send_message(
-  project_slug="<project-slug>",
-  sender_name="worker-<task-id>",
-  to="reviewer",  # or "human" if no reviewer; comma-separated for multiple
-  cc="human",  # Human CCed for audit trail
-  subject="[COMPLETION] <task-id>: <task-title>",
-  body_md="<markdown report above>",
-  thread_id="TASK-<task-id>",
-  importance="high",  # Options: low, normal, high, urgent
-  ack_required=True  # Requires reviewer acknowledgment
-)
-```
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `sender_name` | `"worker-<task-id>"` |
+| `to` | `"reviewer"` (or `"human"` if no reviewer; comma-separated for multiple) |
+| `cc` | `"human"` (human CCed for audit trail) |
+| `subject` | `"[COMPLETION] <task-id>: <task-title>"` |
+| `body_md` | `"<markdown report above>"` |
+| `thread_id` | `"TASK-<task-id>"` |
+| `importance` | `"high"` (options: `low`, `normal`, `high`, `urgent`) |
+| `ack_required` | `true` (requires reviewer acknowledgment) |
 
 **Note**: Human is CCed so they see all completions even before review.
 
@@ -1827,34 +1937,28 @@ The Reviewer Agent asynchronously picks up [COMPLETION] mails and handles review
 
 #### 4.1 Check Inbox and State
 
-```python
-# Check for completion mails
-inbox = fetch_inbox(
-  project_slug="<project-slug>",
-  agent_name="reviewer",
-  unread_only=true
-)
+**Step 1: Check for completion mails**
 
-# Filter for COMPLETION mails
-completion_mails = [m for m in inbox if "[COMPLETION]" in m.subject]
+Use MCP tool `check_inbox`:
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `agent_name` | `"reviewer"` |
+| `unread_only` | `true` |
 
-# For each completion mail, check thread state before reviewing
-for mail in completion_mails:
-    thread = get_thread(
-      project_slug="<project-slug>",
-      thread_id=mail.thread_id
-    )
+Filter results for messages where subject contains `[COMPLETION]`.
 
-    # Skip if already reviewed or being reviewed
-    subjects = [m.subject for m in thread.messages]
-    if any("[APPROVED]" in s or "[FIXED]" in s for s in subjects):
-        continue  # Already reviewed
-    if any("[REVIEWING]" in s for s in subjects):
-        continue  # Another reviewer claimed it
+**Step 2: For each completion mail, check thread state**
 
-    # Claim and review this task
-    claim_review(mail)
-```
+Use MCP tool `list_threads` or `summarize_thread` with `thread_id` from the mail.
+
+**Decision Logic:**
+
+| Thread Contains | Action |
+|-----------------|--------|
+| `[APPROVED]` or `[FIXED]` | Skip — already reviewed |
+| `[REVIEWING]` | Skip — another reviewer claimed it |
+| Only `[COMPLETION]` | Proceed — claim and review |
 
 #### 4.2 Validation Checklist
 
@@ -1970,31 +2074,36 @@ Document any gaps found:
 
 #### 4.3 If Review PASSES
 
-```python
-# 1. First, claim the review (sends [REVIEWING] message)
-# Note: reply_message automatically:
-#   - Sends to original sender
-#   - Uses same thread_id
-#   - Prefixes subject with "Re: "
-reviewing_msg = reply_message(
-  project_slug="<project-slug>",
-  message_id=<completion-mail-id>,
-  sender_name="reviewer",
-  body_md="[REVIEWING] Review claimed. Starting validation..."
-)
+**Step 1: Claim the review**
 
-# 2. Perform validation (steps 1-7 from checklist)
-# ... validation work ...
+Use MCP tool `reply_message` (auto-sends to original sender, same thread):
 
-# 3. Send approval (reply to REVIEWING message)
-# For multi-recipient or CC, use send_message instead of reply_message
-send_message(
-  project_slug="<project-slug>",
-  sender_name="reviewer",
-  to="worker-<task-id>",
-  cc="human",  # Human CCed for audit
-  subject="[APPROVED] <task-id>: <task-title>",
-  body_md="""
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `message_id` | `<completion-mail-id>` |
+| `sender_name` | `"reviewer"` |
+| `body_md` | `"[REVIEWING] Review claimed. Starting validation..."` |
+
+**Step 2: Perform validation** (steps 1-7 from checklist)
+
+**Step 3: Send approval**
+
+Use MCP tool `send_message` (for CC support):
+
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `sender_name` | `"reviewer"` |
+| `to` | `"worker-<task-id>"` |
+| `cc` | `"human"` |
+| `subject` | `"[APPROVED] <task-id>: <task-title>"` |
+| `body_md` | (see template below) |
+| `thread_id` | `"TASK-<task-id>"` |
+
+**Approval body template:**
+
+```markdown
 ## Review Complete - APPROVED
 
 **Task ID**: <task-id>
@@ -2011,28 +2120,20 @@ send_message(
 <list of files>
 
 No issues found. Ready for production.
-  """,
-  thread_id="TASK-<task-id>"
-)
-
-# 4. Mark task complete in beads
-bd close <task-id> --reason "Implementation verified by reviewer"
-
-# 5. Acknowledge worker's original mail
-acknowledge_message(
-  project_slug="<project-slug>",
-  message_id=<completion-mail-id>,
-  agent_name="reviewer"
-)
-
-# 6. Mark worker's original mail as read
-mark_message_read(
-  project_slug="<project-slug>",
-  message_id=<completion-mail-id>,
-  agent_name="reviewer"
-)
-
 ```
+
+**Step 4: Close beads task**
+
+```bash
+bd close <task-id> --reason "Implementation verified by reviewer"
+```
+
+**Step 5-6: Acknowledge and mark as read**
+
+| Tool | Parameters |
+|------|------------|
+| `acknowledge_message` | `project_slug`, `message_id`: `<completion-mail-id>`, `agent_name`: `"reviewer"` |
+| `mark_message_read` | `project_slug`, `message_id`: `<completion-mail-id>`, `agent_name`: `"reviewer"` |
 
 #### 4.4 If Review FAILS (Fix Flow)
 
@@ -2067,17 +2168,23 @@ git worktree remove .sandboxes/reviewer-fix-<task-id>
 git branch -d fix/<task-id>
 ```
 
-Then send fix completion mail (reply to REVIEWING message):
+**Then send fix completion mail:**
 
-```python
-# Send [FIXED] notification with CC (use send_message for CC support)
-send_message(
-  project_slug="<project-slug>",
-  sender_name="reviewer",
-  to="worker-<task-id>",
-  cc="human",  # Human CCed for audit trail
-  subject="[FIXED] <task-id>: <task-title>",
-  body_md="""
+Use MCP tool `send_message`:
+
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `sender_name` | `"reviewer"` |
+| `to` | `"worker-<task-id>"` |
+| `cc` | `"human"` |
+| `subject` | `"[FIXED] <task-id>: <task-title>"` |
+| `body_md` | (see template below) |
+| `thread_id` | `"TASK-<task-id>"` |
+
+**Fixed body template:**
+
+```markdown
 ## Review Complete - FIXED
 
 **Task ID**: <task-id>
@@ -2101,11 +2208,11 @@ send_message(
 ### Commits
 - `<worker-sha>` - Original implementation
 - `<fix-sha>` - Reviewer fixes
-  """,
-  thread_id="TASK-<task-id>"
-)
+```
 
-# Close task in beads
+**Close beads task:**
+
+```bash
 bd close <task-id> --reason "Fixed by reviewer"
 ```
 
@@ -2117,39 +2224,38 @@ Human agent receives final report and can:
 2. **Request Changes** - Send message back to reviewer/worker
 3. **Close Loop** - Mark beads task as done
 
-```python
-# Human acknowledges completion
-acknowledge_message(
-  project_slug="<project-slug>",
-  message_id=<completion-mail-id>,
-  agent_name="human"
-)
+**Human actions:**
 
-# Human closes task (if not already closed)
-bd close <task-id> --reason "Verified by human"
-```
+| Action | Tool/Command |
+|--------|--------------|
+| Acknowledge | MCP `acknowledge_message`: `project_slug`, `message_id`, `agent_name`: `"human"` |
+| Close task | `bd close <task-id> --reason "Verified by human"` |
 
 ### Single-Agent Fallback Mode
 
 When **no Reviewer agent is present**, Worker performs self-review:
 
-```python
-# Check if reviewer exists
-agents = list_agents(project_slug="<project-slug>")
-reviewer_exists = any(a.name == "reviewer" for a in agents)
+**Step 1: Check if reviewer exists**
 
-if not reviewer_exists:
-    # Self-review: Worker validates own work
-    # 1. Re-run quality gates
-    # 2. Verify acceptance criteria
-    # 3. Send directly to Human
+Use MCP tool `list_agents` with `project_slug`. Check if any agent has `name == "reviewer"`.
 
-    send_message(
-      project_slug="<project-slug>",
-      sender_name="worker-<task-id>",
-      to="human",  # Skip reviewer, go direct
-      subject="[COMPLETION] <task-id>: <task-title> (Self-Reviewed)",
-      body_md="""
+**Step 2: If no reviewer, self-review and send directly to Human**
+
+1. Re-run quality gates
+2. Verify acceptance criteria
+3. Send directly to Human using `send_message`:
+
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `sender_name` | `"worker-<task-id>"` |
+| `to` | `"human"` (skip reviewer, go direct) |
+| `subject` | `"[COMPLETION] <task-id>: <task-title> (Self-Reviewed)"` |
+| `thread_id` | `"TASK-<task-id>"` |
+
+**Self-reviewed completion body:**
+
+```markdown
 ## Task Completion Report (Self-Reviewed)
 
 **Note**: No reviewer agent present. Worker performed self-review.
@@ -2161,9 +2267,6 @@ if not reviewer_exists:
 - [x] Acceptance criteria met
 - [x] Quality gates passed
 - [x] Code follows project standards
-      """,
-      thread_id="TASK-<task-id>"
-    )
 ```
 
 ### Agent Registration Protocol
@@ -2179,34 +2282,13 @@ At session start, each agent type registers with ALL required fields:
 | `model` | string | Model being used (e.g., `claude-opus-4`, `claude-sonnet-4`) |
 | `task_description` | string | Description of agent's task/responsibilities |
 
-```python
-# Worker agent registration
-register_agent(
-  project_slug="<project-slug>",  # e.g., "users-amrit-documents-projects-rust-mouchak-mcp-agent-mail-rs"
-  name="worker-<session-id>",
-  program="claude-code",
-  model="claude-opus-4",
-  task_description="Implements features and fixes based on beads tasks"
-)
+**Agent registration examples (via MCP `register_agent`):**
 
-# Reviewer agent registration (persistent)
-register_agent(
-  project_slug="<project-slug>",
-  name="reviewer",
-  program="claude-code",
-  model="claude-opus-4",
-  task_description="Reviews implementations, validates code quality, fixes issues"
-)
-
-# Human agent registration (for notifications)
-register_agent(
-  project_slug="<project-slug>",
-  name="human",
-  program="human-operator",
-  model="human",
-  task_description="Final oversight and approval of completed work"
-)
-```
+| Agent Type | `name` | `program` | `model` | `task_description` |
+|------------|--------|-----------|---------|-------------------|
+| Worker | `"worker-<session-id>"` | `"claude-code"` | `"claude-opus-4"` | `"Implements features and fixes based on beads tasks"` |
+| Reviewer | `"reviewer"` | `"claude-code"` | `"claude-opus-4"` | `"Reviews implementations, validates code quality, fixes issues"` |
+| Human | `"human"` | `"human-operator"` | `"human"` | `"Final oversight and approval of completed work"` |
 
 ### Message Thread Conventions
 
@@ -2245,70 +2327,46 @@ register_agent(
 
 #### Check Thread State Before Review
 
-```python
-# Reviewer: Check if already reviewed
-thread = get_thread(
-  project_slug="<project-slug>",
-  thread_id="TASK-<task-id>"
-)
+**Step 1:** Use MCP tool `list_threads` or `summarize_thread` with `thread_id="TASK-<task-id>"`.
 
-# Parse thread to determine current state
-states_found = []
-for msg in thread.messages:
-    if "[APPROVED]" in msg.subject:
-        states_found.append("APPROVED")
-    elif "[REJECTED]" in msg.subject:
-        states_found.append("REJECTED")
-    elif "[FIXED]" in msg.subject:
-        states_found.append("FIXED")
-    elif "[REVIEWING]" in msg.subject:
-        states_found.append("REVIEWING")
-    elif "[COMPLETION]" in msg.subject:
-        states_found.append("COMPLETED")
+**Step 2:** Parse thread message subjects to determine state:
 
-# Decision logic
-if "APPROVED" in states_found or "FIXED" in states_found:
-    # Already reviewed and passed - skip
-    print(f"Task {task_id} already reviewed")
-    return
-
-if "REVIEWING" in states_found:
-    # Another reviewer claimed it - skip
-    print(f"Task {task_id} being reviewed by another agent")
-    return
-
-if "COMPLETED" in states_found:
-    # Ready for review - proceed
-    claim_and_review(task_id)
-```
+| Subject Contains | State | Decision |
+|------------------|-------|----------|
+| `[APPROVED]` or `[FIXED]` | Already reviewed | Skip — task complete |
+| `[REVIEWING]` | Claimed by other | Skip — another reviewer has it |
+| Only `[COMPLETION]` | Ready | Proceed — claim and review |
 
 #### Review Claim Protocol (Prevent Duplicates)
 
 Before starting review, Reviewer sends a `[REVIEWING]` message to claim the task:
 
-```python
-# Step 1: Claim the review (simple reply to mark status)
-reply_message(
-  project_slug="<project-slug>",
-  message_id=<completion-mail-id>,  # Reply to completion mail
-  sender_name="reviewer",
-  body_md="[REVIEWING] Review claimed by reviewer. Starting validation..."
-)
+**Step 1: Claim the review**
 
-# Step 2: Perform review (validation checklist)
-# ... detailed review steps ...
+Use MCP tool `reply_message`:
 
-# Step 3: Send result with CC support (use send_message for CC)
-send_message(
-  project_slug="<project-slug>",
-  sender_name="reviewer",
-  to="worker-<task-id>",
-  cc="human",  # Human CCed on all outcomes
-  subject="[APPROVED] <task-id>: <task-title>",
-  body_md="<review results>",
-  thread_id="TASK-<task-id>"
-)
-```
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `message_id` | `<completion-mail-id>` |
+| `sender_name` | `"reviewer"` |
+| `body_md` | `"[REVIEWING] Review claimed by reviewer. Starting validation..."` |
+
+**Step 2:** Perform review (validation checklist from 4.2)
+
+**Step 3: Send result with CC**
+
+Use MCP tool `send_message` (for CC support):
+
+| Parameter | Value |
+|-----------|-------|
+| `project_slug` | `"<project-slug>"` |
+| `sender_name` | `"reviewer"` |
+| `to` | `"worker-<task-id>"` |
+| `cc` | `"human"` |
+| `subject` | `"[APPROVED] <task-id>: <task-title>"` |
+| `body_md` | `"<review results>"` |
+| `thread_id` | `"TASK-<task-id>"` |
 
 #### CC/BCC Usage for Audit Trail
 
@@ -2357,27 +2415,11 @@ Thread: TASK-abc123
 
 #### Query Review History
 
-```python
-# Get full review history for a task
-thread = get_thread(
-  project_slug="<project-slug>",
-  thread_id="TASK-<task-id>",
-  include_bodies=True
-)
-
-# Summarize thread for quick status
-summary = summarize_thread(
-  project_slug="<project-slug>",
-  thread_id="TASK-<task-id>"
-)
-
-# Search for all reviewed tasks
-reviewed = search_messages(
-  project_slug="<project-slug>",
-  query="[APPROVED] OR [FIXED]",
-  agent_name="reviewer"
-)
-```
+| Task | MCP Tool | Key Parameters |
+|------|----------|----------------|
+| Full review history | `list_threads` | `project_slug`, `thread_id="TASK-<task-id>"`, `include_bodies=true` |
+| Quick status | `summarize_thread` | `project_slug`, `thread_id="TASK-<task-id>"` |
+| All reviewed tasks | `search_messages` | `project_slug`, `query="[APPROVED] OR [FIXED]"`, `agent_name="reviewer"` |
 
 #### State Transition Rules
 
