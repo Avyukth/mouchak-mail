@@ -101,6 +101,9 @@ enum Commands {
 
     /// Show version info
     Version,
+
+    /// Product management
+    Products(ProductsArgs),
 }
 
 #[derive(Args)]
@@ -140,6 +143,69 @@ enum InstallCommands {
 struct ServiceArgs {
     #[command(subcommand)]
     command: ServiceCommands,
+}
+
+#[derive(Args)]
+struct ProductsArgs {
+    #[command(subcommand)]
+    command: ProductsCommands,
+}
+
+#[derive(Subcommand)]
+enum ProductsCommands {
+    /// Ensure a product exists
+    Ensure {
+        /// Product UID (e.g. "p-123")
+        product_uid: String,
+        /// Human-readable name
+        #[arg(long)]
+        name: String,
+    },
+    /// Link a product to a project
+    Link {
+        /// Product UID
+        product_uid: String,
+        /// Project identifier (slug or human key)
+        project: String,
+    },
+    /// Show product status
+    Status {
+        /// Product UID
+        product_uid: String,
+    },
+    /// Search messages within a product
+    Search {
+        /// Product UID
+        product_uid: String,
+        /// Search query
+        query: String,
+        #[arg(long, default_value = "50")]
+        limit: i64,
+    },
+    /// Get inbox for an agent within a product context
+    Inbox {
+        /// Product UID
+        product_uid: String,
+        /// Agent name
+        agent: String,
+        /// Only urgent messages
+        #[arg(long)]
+        urgent_only: bool,
+        /// Include message bodies
+        #[arg(long)]
+        include_bodies: bool,
+    },
+    /// Summarize a thread
+    SummarizeThread {
+        /// Product UID
+        product_uid: String,
+        /// Thread ID
+        thread_id: String,
+        #[arg(long, default_value = "100")]
+        per_thread_limit: i64,
+        #[arg(long)]
+        no_llm: bool,
+    },
 }
 
 #[derive(Args)]
@@ -1136,6 +1202,62 @@ async fn handle_summarize(args: SummarizeArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn handle_products_link(product_uid: String, project: String) -> anyhow::Result<()> {
+    let url =
+        std::env::var("MCP_AGENT_MAIL_URL").unwrap_or_else(|_| "http://localhost:8765".into());
+    let client = reqwest::Client::new();
+
+    #[derive(serde::Serialize)]
+    struct McpRequest {
+        jsonrpc: String,
+        id: i32,
+        method: String,
+        params: serde_json::Value,
+    }
+
+    let params = serde_json::json!({
+        "product_uid": product_uid,
+        "project_slug": project
+    });
+
+    let req = McpRequest {
+        jsonrpc: "2.0".to_string(),
+        id: 1,
+        method: "tools/call".to_string(),
+        params: serde_json::json!({
+            "name": "link_project_to_product",
+            "arguments": params
+        }),
+    };
+
+    match client.post(format!("{}/mcp", url)).json(&req).send().await {
+        Ok(resp) if resp.status().is_success() => match resp.json::<serde_json::Value>().await {
+            Ok(json) => {
+                if let Some(result) = json.get("result") {
+                    if let Some(content) = result.get("content") {
+                        if let Some(content_array) = content.as_array() {
+                            if let Some(first) = content_array.first() {
+                                if let Some(text) = first.get("text") {
+                                    println!("{}", text.as_str().unwrap_or("Success"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Err(e) => println!("Error parsing response: {}", e),
+        },
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            println!("HTTP {}: {}", status, body);
+        }
+        Err(e) => println!("Request failed: {}", e),
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Install panic hook FIRST, before anything else
@@ -1208,6 +1330,7 @@ async fn main() -> anyhow::Result<()> {
         },
         Some(Commands::Archive(args)) => handle_archive_command(args.command).await?,
         Some(Commands::Summarize(args)) => handle_summarize(args).await?,
+        Some(Commands::Products(args)) => handle_products(args).await?,
         Some(Commands::Version) => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
         None => {
             Cli::command().print_help()?;
@@ -1507,4 +1630,177 @@ fn read_archive_metadata(path: &std::path::Path) -> serde_json::Value {
     }
 
     serde_json::from_str(&content).unwrap_or_else(|_| serde_json::json!({}))
+}
+
+async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
+    use lib_core::ctx::Ctx;
+    use lib_core::model::ModelManager;
+
+    let config = load_config();
+    let mm = ModelManager::new(std::sync::Arc::new(config.clone())).await?;
+    let ctx = Ctx::root_ctx();
+
+    match args.command {
+        ProductsCommands::Ensure { product_uid, name } => {
+            let product =
+                lib_core::model::product::ProductBmc::ensure(&ctx, &mm, &product_uid, &name)
+                    .await?;
+            println!(
+                "Ensured product: {} ({})",
+                product.name, product.product_uid
+            );
+        }
+        ProductsCommands::Link {
+            product_uid,
+            project,
+        } => {
+            let product =
+                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+            let project =
+                lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, &mm, &project)
+                    .await?;
+
+            lib_core::model::product::ProductBmc::link_project(&ctx, &mm, product.id, project.id)
+                .await?;
+            println!(
+                "Linked project '{}' to product '{}'",
+                project.human_key, product.name
+            );
+        }
+        ProductsCommands::Status { product_uid } => {
+            let product =
+                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+            let project_ids =
+                lib_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                    .await?;
+
+            println!("Product: {} ({})", product.name, product.product_uid);
+            println!("Linked Projects: {}", project_ids.len());
+            for pid in project_ids {
+                if let Ok(proj) = lib_core::model::project::ProjectBmc::get(&ctx, &mm, pid).await {
+                    println!("  - {} ({})", proj.human_key, proj.slug);
+                } else {
+                    println!("  - Unknown Project ID: {}", pid);
+                }
+            }
+        }
+        ProductsCommands::Search {
+            product_uid,
+            query,
+            limit,
+        } => {
+            // Search logic needs to search across all linked projects
+            let product =
+                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+            let project_ids =
+                lib_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                    .await?;
+
+            let mut all_matches = Vec::new();
+            for pid in project_ids {
+                if let Ok(messages) =
+                    lib_core::model::message::MessageBmc::search(&ctx, &mm, pid, &query, limit)
+                        .await
+                {
+                    all_matches.extend(messages);
+                }
+            }
+
+            // Sort by date desc
+            all_matches.sort_by(|a, b| b.created_ts.cmp(&a.created_ts));
+            all_matches.truncate(limit as usize);
+
+            println!(
+                "Found {} matches in product '{}':",
+                all_matches.len(),
+                product.name
+            );
+            for msg in all_matches {
+                println!(
+                    "  - [{}] {}: {}",
+                    msg.created_ts.date(),
+                    msg.sender_name,
+                    msg.subject
+                );
+            }
+        }
+        ProductsCommands::Inbox {
+            product_uid,
+            agent,
+            urgent_only,
+            include_bodies,
+        } => {
+            // Inbox logic: Get all projects, find agent ID in each, fetch inbox
+            let product =
+                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+            let project_ids =
+                lib_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                    .await?;
+
+            println!("Inbox for agent '{}' in product '{}':", agent, product.name);
+
+            let mut found_any = false;
+            for pid in project_ids {
+                // We need to find the agent in this project
+                // Agent names are unique per project, not globally.
+                // But typically a "user" agent might have same name across projects?
+                // Or we look for agent with that name in that project.
+
+                // We don't have get_by_name(project_id, name) easily available on AgentBmc exposed here?
+                // Let's check AgentBmc.
+                // Actually MessageBmc::list_inbox_for_agent takes agent_id.
+                // We need to resolve agent name -> id per project.
+
+                // For now, let's skip deep implementation of this and Search/SummarizeThread until basic struct is verified with tests.
+                // But I'll put a placeholder implementation.
+
+                // Assuming we can fix this in next iteration or if I have AgentBmc::get_by_name_and_project
+                use lib_core::model::agent::AgentBmc;
+                // We need to implement get_by_name_in_project in AgentBmc or similar logic
+                // For now, let's iterate all agents in project and match name (slow but works for CLI)
+                if let Ok(agents) = AgentBmc::list_all_for_project(&ctx, &mm, pid).await {
+                    if let Some(agent_obj) = agents.into_iter().find(|a| a.name == agent) {
+                        if let Ok(messages) =
+                            lib_core::model::message::MessageBmc::list_inbox_for_agent(
+                                &ctx,
+                                &mm,
+                                pid,
+                                agent_obj.id,
+                                50,
+                            )
+                            .await
+                        {
+                            for msg in messages {
+                                if urgent_only
+                                    && msg.importance != "high"
+                                    && msg.importance != "urgent"
+                                {
+                                    continue;
+                                }
+                                found_any = true;
+                                println!(
+                                    "  [{}] {}: {} ({})",
+                                    msg.created_ts.date(),
+                                    msg.sender_name,
+                                    msg.subject,
+                                    msg.importance
+                                );
+                                if include_bodies {
+                                    println!("    {}", msg.body_md);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if !found_any {
+                println!("  (No messages found)");
+            }
+        }
+        ProductsCommands::SummarizeThread { .. } => {
+            println!("Summarize thread not fully implemented yet in CLI");
+        }
+    }
+
+    Ok(())
 }

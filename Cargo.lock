@@ -4389,6 +4389,7 @@ name = "mcp-agent-mail"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert_cmd",
  "chrono",
  "clap",
  "lib-common",
@@ -4396,6 +4397,7 @@ dependencies = [
  "lib-mcp",
  "lib-server",
  "once_cell",
+ "predicates",
  "reqwest",
  "serde",
  "serde_json",

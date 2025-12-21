@@ -1253,31 +1253,173 @@ Key variables (see `.env.example` for all 35+):
 
 ### Git Workflow
 
-- **Main branch**: `main`
-- **Feature branches**: `feature/<id>` (for worktree isolation)
-- **Worktree location**: `.sandboxes/agent-<id>/`
-- Always sync `.beads/issues.jsonl` with code changes
+### MANDATORY: Parallel Agent Workflow (ULTRA Pattern)
 
-#### Multi-Agent Worktree Isolation
+All agents MUST follow this workflow. No exceptions. Failure to follow causes merge conflicts and coordination failures.
 
-Each agent works in an isolated git worktree:
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 1: FILE RESERVATIONS (Agent Mail - logical locks)    │
+│  - Reserve files BEFORE editing (exclusive for writes)      │
+│  - Prevents same-file conflicts between parallel agents     │
+│  - TTL-based expiry (default 3600s)                         │
+└─────────────────────────────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 2: WORKTREES (Physical isolation - no stash needed)  │
+│  - Each agent: .sandboxes/agent-<id>/                       │
+│  - Independent working directories                          │
+│  - No git stash/pop complexity                              │
+└─────────────────────────────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  LAYER 3: BEADS-SYNC (Integration branch)                   │
+│  - All agent work merges here first                         │
+│  - bd sync commits issue state                              │
+│  - Coordinator merges to main                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Branch Structure
+
+```
+main (protected/stable)
+  │
+  └── beads-sync (integration branch - bd sync commits here)
+        │
+        ├── .sandboxes/agent-001/ → feature/task-abc
+        ├── .sandboxes/agent-002/ → feature/task-def
+        └── .sandboxes/agent-003/ → feature/task-ghi
+```
+
+#### Phase 1: Agent Startup (MANDATORY)
 
 ```bash
-# Create worktree for task
-git worktree add .sandboxes/agent-<id> feature/<id>
-cd .sandboxes/agent-<id>
+# 1. Sync beads-sync with main (coordinator does this once)
+git checkout beads-sync
+git pull origin beads-sync
+git merge main --no-edit
+git push origin beads-sync
 
-# On success: merge to main
-cd ../..
-git checkout main
-git merge feature/<id>
-git worktree remove .sandboxes/agent-<id>
-git branch -d feature/<id>
+# 2. Register with Agent Mail (MANDATORY - before any work)
+export AGENT_ID=$(uuidgen | cut -c1-8)
+curl -X POST http://localhost:8765/api/agent/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_slug":"mcp-agent-mail-rs",
+    "name":"agent-'$AGENT_ID'",
+    "model":"claude-opus-4",
+    "task_description":"<task from beads>"
+  }'
 
-# On failure (WITH PERMISSION ONLY)
-git worktree remove --force .sandboxes/agent-<id>
-git branch -D feature/<id>
+# 3. Reserve files BEFORE creating worktree (CRITICAL)
+curl -X POST http://localhost:8765/api/file_reservations/paths \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_slug":"mcp-agent-mail-rs",
+    "agent_name":"agent-'$AGENT_ID'",
+    "patterns":["crates/libs/lib-core/**","crates/services/mcp-agent-mail/**"],
+    "ttl_seconds":3600,
+    "exclusive":true
+  }'
+# If reservation fails (another agent has lock) → STOP, coordinate via Agent Mail
+
+# 4. Create isolated worktree FROM beads-sync
+git worktree add .sandboxes/agent-$AGENT_ID -b feature/<task-id> beads-sync
+cd .sandboxes/agent-$AGENT_ID
+
+# 5. Claim task in beads
+bd --no-daemon update <task-id> --status=in_progress
 ```
+
+#### Phase 2: Agent Work (MANDATORY)
+
+```bash
+# Work in worktree (isolated from other agents)
+cd .sandboxes/agent-$AGENT_ID
+
+# Renew reservation if work takes longer than TTL
+curl -X POST http://localhost:8765/api/file_reservations/renew \
+  -d '{"project_slug":"...","agent_name":"agent-'$AGENT_ID'","ttl_seconds":3600}'
+
+# Commit code + beads together (atomic)
+git add -A
+git commit -m "feat(<scope>): <description>"
+
+# Communicate via Agent Mail (NEVER use filesystem for coordination)
+curl -X POST http://localhost:8765/api/message/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_slug":"mcp-agent-mail-rs",
+    "sender":"agent-'$AGENT_ID'",
+    "recipients":["coordinator"],
+    "subject":"Progress update on <task-id>",
+    "body":"Completed X, moving to Y..."
+  }'
+```
+
+#### Phase 3: Agent Completion (MANDATORY)
+
+```bash
+# 1. Release file reservations FIRST
+curl -X POST http://localhost:8765/api/file_reservations/release \
+  -d '{"project_slug":"mcp-agent-mail-rs","agent_name":"agent-'$AGENT_ID'"}'
+
+# 2. Close beads task
+bd --no-daemon close <task-id>
+git add .beads/ && git commit -m "chore(beads): close <task-id>"
+
+# 3. Return to main repo
+cd ../..
+
+# 4. Merge worktree to beads-sync
+git checkout beads-sync
+git merge feature/<task-id> --no-edit
+git push origin beads-sync
+
+# 5. Clean up worktree
+git worktree remove .sandboxes/agent-$AGENT_ID
+git branch -d feature/<task-id>
+
+# 6. Notify completion via Agent Mail
+curl -X POST http://localhost:8765/api/message/send \
+  -d '{"project_slug":"...","sender":"agent-'$AGENT_ID'","recipients":["coordinator"],"subject":"COMPLETED: <task-id>",...}'
+```
+
+#### Phase 4: Coordinator Merges to Main
+
+```bash
+# Only coordinator does this (after reviewing agent work)
+git checkout main
+git merge beads-sync --no-edit
+git push origin main
+
+# Sync beads-sync with updated main
+git checkout beads-sync
+git merge main --no-edit
+git push origin beads-sync
+```
+
+#### Why Each Layer is Mandatory
+
+| Layer | Problem Solved | What Happens Without It |
+|-------|----------------|------------------------|
+| **File Reservations** | Prevents same-file edits | Merge conflicts, lost work |
+| **Worktrees** | Eliminates stash/pop | Complex state, errors |
+| **Beads-sync** | bd sync works | Worktree conflict with main |
+| **Agent Mail** | Async coordination | Agents step on each other |
+
+#### Anti-Patterns (NEVER DO)
+
+| ❌ Bad | ✅ Good |
+|--------|--------|
+| `git stash` / `git stash pop` | Use worktree per agent |
+| Edit files without reservation | Reserve BEFORE editing |
+| Work directly on main/beads-sync | Work in worktree only |
+| Skip Agent Mail registration | Always register first |
+| Force push to shared branches | Only merge, never force |
 
 ### Quality Gates
 
@@ -2538,94 +2680,32 @@ bd sync               # Commit and push changes
 - **Types**: task, bug, feature, epic, question, docs
 - **Blocking**: `bd dep add <issue> <depends-on>` to add dependencies
 
-### Branching Strategy
+### Branching & Workflow
 
-This project uses the **sync-branch workflow** (same as [NTM](https://github.com/Dicklesworthstone/ntm)).
+**See [MANDATORY: Parallel Agent Workflow (ULTRA Pattern)](#mandatory-parallel-agent-workflow-ultra-pattern) above for the complete workflow.**
 
-```
-main (protected/stable)
-  │
-  └── beads-sync (working branch + beads commits)
-        │
-        ├── feature/task-xxx (agent work)
-        └── feature/task-yyy (agent work)
-```
-
-**Setup (one-time):**
-
-```bash
-# Configure sync branch
-bd config set sync.branch beads-sync
-
-# Create the sync branch if it doesn't exist
-git checkout -b beads-sync main
-git push -u origin beads-sync
-git checkout main
-```
-
-**Agent Workflow:**
-
-```bash
-# 1. Start from beads-sync (keep it updated from main)
-git checkout beads-sync
-git pull origin beads-sync
-git merge main --no-edit          # Get latest code from main
-
-# 2. Create feature branch
-git checkout -b feature/task-xxx
-
-# 3. Find and claim work
-bd ready
-bd update <task-id> --status=in_progress
-
-# 4. Implement (code + beads in same commits)
-# ... write code ...
-git add -A
-git commit -m "feat: implement xxx"
-
-# 5. Complete task
-bd close <task-id>
-git add .beads/
-git commit -m "chore(beads): close task-xxx"
-
-# 6. Merge back to beads-sync
-git checkout beads-sync
-git merge feature/task-xxx --no-edit
-git push origin beads-sync
-
-# 7. Periodically: merge beads-sync → main (or PR)
-git checkout main
-git merge beads-sync --no-edit
-git push origin main
-```
-
-**Why this approach?**
-- `main` stays clean (only merged, complete work)
-- `beads-sync` is the integration point (code + issue state)
-- Feature branches isolate work-in-progress
-- `bd sync` works (never conflicts with current branch)
-- Hash-based IDs prevent multi-agent collisions
-
-See: [Beads Protected Branches Docs](https://github.com/steveyegge/beads/blob/main/docs/PROTECTED_BRANCHES.md)
+Key points:
+- **beads-sync** is the integration branch (configured via `bd config set sync.branch beads-sync`)
+- **Worktrees** provide physical isolation (`.sandboxes/agent-<id>/`)
+- **File reservations** prevent same-file conflicts
+- **Agent Mail** is mandatory for all coordination
 
 ### Session Protocol
 
-**Before ending any session:**
-
 ```bash
-git status                              # Check changes
-git add -A && git commit -m "..."       # Commit code + beads
-git checkout beads-sync
-git merge <your-branch> --no-edit
-git push origin beads-sync              # Push to sync branch
+# Before ending any session:
+# 1. Release file reservations
+curl -X POST http://localhost:8765/api/file_reservations/release \
+  -d '{"project_slug":"...","agent_name":"..."}'
+
+# 2. Commit and merge
+git add -A && git commit -m "..."
+cd ../.. && git checkout beads-sync
+git merge feature/<task-id> --no-edit
+git push origin beads-sync
+
+# 3. Clean up worktree
+git worktree remove .sandboxes/agent-$AGENT_ID
 ```
-
-### Best Practices
-
-- Check `bd ready` at session start to find available work
-- Update status as you work (in_progress → closed)
-- Create new issues with `bd create` when you discover tasks
-- Use descriptive titles and set appropriate priority/type
-- Always `bd sync` before ending session
 
 <!-- end-bv-agent-instructions -->
