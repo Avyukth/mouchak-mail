@@ -96,6 +96,9 @@ enum Commands {
     /// Archive management (disaster recovery)
     Archive(ArchiveArgs),
 
+    /// Summarize thread(s) in a project
+    Summarize(SummarizeArgs),
+
     /// Show version info
     Version,
 }
@@ -209,6 +212,29 @@ enum ServiceCommands {
 struct ArchiveArgs {
     #[command(subcommand)]
     command: ArchiveCommands,
+}
+
+#[derive(Args)]
+struct SummarizeArgs {
+    /// Project slug or path
+    #[arg(short, long)]
+    project: String,
+
+    /// Thread ID(s) to summarize (comma-separated for multiple)
+    #[arg(short, long)]
+    thread_id: String,
+
+    /// Maximum messages per thread to include in summary (default: 100)
+    #[arg(long, default_value = "100")]
+    per_thread_limit: i64,
+
+    /// Skip LLM-based summarization, return raw aggregation only
+    #[arg(long, default_value = "false")]
+    no_llm: bool,
+
+    /// Output format: json or text
+    #[arg(short, long, default_value = "json")]
+    format: String,
 }
 
 #[derive(Subcommand)]
@@ -1023,6 +1049,93 @@ fn handle_robot_examples(format: &str, args: &[String]) -> u8 {
     0
 }
 
+async fn handle_summarize(args: SummarizeArgs) -> anyhow::Result<()> {
+    let url =
+        std::env::var("MCP_AGENT_MAIL_URL").unwrap_or_else(|_| "http://localhost:8765".into());
+    let client = reqwest::Client::new();
+
+    let thread_ids: Vec<&str> = args.thread_id.split(',').map(|s| s.trim()).collect();
+
+    #[derive(serde::Serialize)]
+    struct SummarizeRequest {
+        project_slug: String,
+        thread_id: String,
+        per_thread_limit: Option<i64>,
+        no_llm: Option<bool>,
+    }
+
+    #[derive(serde::Deserialize, serde::Serialize)]
+    struct SummarizeResponse {
+        thread_id: String,
+        message_count: usize,
+        participants: Vec<String>,
+        subject: String,
+        summary: String,
+    }
+
+    let mut results: Vec<SummarizeResponse> = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+
+    for tid in &thread_ids {
+        let req = SummarizeRequest {
+            project_slug: args.project.clone(),
+            thread_id: tid.to_string(),
+            per_thread_limit: Some(args.per_thread_limit),
+            no_llm: Some(args.no_llm),
+        };
+
+        match client
+            .post(format!("{}/api/thread/summarize", url))
+            .json(&req)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                match resp.json::<SummarizeResponse>().await {
+                    Ok(summary) => results.push(summary),
+                    Err(e) => errors.push(format!("{}: parse error: {}", tid, e)),
+                }
+            }
+            Ok(resp) => {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                errors.push(format!("{}: HTTP {}: {}", tid, status, body));
+            }
+            Err(e) => errors.push(format!("{}: request failed: {}", tid, e)),
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct Output {
+        summaries: Vec<SummarizeResponse>,
+        errors: Vec<String>,
+    }
+
+    let output = Output {
+        summaries: results,
+        errors,
+    };
+
+    if args.format == "text" {
+        for s in &output.summaries {
+            println!("Thread: {} ({})", s.thread_id, s.subject);
+            println!(
+                "Messages: {}, Participants: {}",
+                s.message_count,
+                s.participants.join(", ")
+            );
+            println!("Summary: {}\n", s.summary);
+        }
+        for e in &output.errors {
+            eprintln!("Error: {}", e);
+        }
+    } else {
+        println!("{}", serde_json::to_string_pretty(&output)?);
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Install panic hook FIRST, before anything else
@@ -1094,6 +1207,7 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         Some(Commands::Archive(args)) => handle_archive_command(args.command).await?,
+        Some(Commands::Summarize(args)) => handle_summarize(args).await?,
         Some(Commands::Version) => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
         None => {
             Cli::command().print_help()?;

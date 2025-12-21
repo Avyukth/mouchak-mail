@@ -2090,6 +2090,14 @@ pub async fn invoke_macro(
 pub struct SummarizeThreadPayload {
     pub project_slug: String,
     pub thread_id: String,
+    #[serde(default = "default_per_thread_limit")]
+    pub per_thread_limit: i64,
+    #[serde(default)]
+    pub no_llm: bool,
+}
+
+fn default_per_thread_limit() -> i64 {
+    100
 }
 
 #[derive(Serialize)]
@@ -2160,13 +2168,18 @@ pub async fn summarize_thread(
     let project =
         lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
             .await?;
-    let messages = lib_core::model::message::MessageBmc::list_by_thread(
+    let all_messages = lib_core::model::message::MessageBmc::list_by_thread(
         &ctx,
         mm,
         project.id,
         &payload.thread_id,
     )
     .await?;
+
+    let messages: Vec<_> = all_messages
+        .into_iter()
+        .take(payload.per_thread_limit as usize)
+        .collect();
 
     let mut participants: Vec<String> = messages.iter().map(|m| m.sender_name.clone()).collect();
     participants.sort();
@@ -2177,13 +2190,7 @@ pub async fn summarize_thread(
         .map(|m| m.subject.clone())
         .unwrap_or_default();
 
-    // Try LLM summarization
-    let llm_summary = call_openai_summarize(&messages).await?;
-
-    let summary = if !llm_summary.is_empty() {
-        llm_summary
-    } else {
-        // Fallback
+    let summary = if payload.no_llm {
         format!(
             "Thread with {} messages from {} participants. Latest: {}",
             messages.len(),
@@ -2193,6 +2200,21 @@ pub async fn summarize_thread(
                 .map(|m| m.body_md.chars().take(100).collect::<String>())
                 .unwrap_or_default()
         )
+    } else {
+        let llm_summary = call_openai_summarize(&messages).await?;
+        if !llm_summary.is_empty() {
+            llm_summary
+        } else {
+            format!(
+                "Thread with {} messages from {} participants. Latest: {}",
+                messages.len(),
+                participants.len(),
+                messages
+                    .last()
+                    .map(|m| m.body_md.chars().take(100).collect::<String>())
+                    .unwrap_or_default()
+            )
+        }
     };
 
     Ok(Json(SummarizeThreadResponse {

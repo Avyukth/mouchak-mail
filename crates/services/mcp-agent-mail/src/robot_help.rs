@@ -542,6 +542,91 @@ pub static EXAMPLE_REGISTRY: Lazy<RobotHelpOutput> = Lazy::new(|| RobotHelpOutpu
             ],
         },
         CommandSchema {
+            name: "summarize".to_string(),
+            description: "Summarize thread(s) in a project".to_string(),
+            examples: vec![
+                Example {
+                    invocation: "mcp-agent-mail summarize -p my-project -t THREAD-123".to_string(),
+                    description: "Summarize a single thread".to_string(),
+                },
+                Example {
+                    invocation: "mcp-agent-mail summarize -p my-project -t THREAD-1,THREAD-2"
+                        .to_string(),
+                    description: "Summarize multiple threads".to_string(),
+                },
+                Example {
+                    invocation: "mcp-agent-mail summarize -p my-project -t THREAD-123 --no-llm"
+                        .to_string(),
+                    description: "Get raw aggregation without LLM summarization".to_string(),
+                },
+                Example {
+                    invocation:
+                        "mcp-agent-mail summarize -p my-project -t THREAD-123 --per-thread-limit 50"
+                            .to_string(),
+                    description: "Limit to 50 messages per thread".to_string(),
+                },
+            ],
+            parameters: vec![
+                ParameterSchema {
+                    name: "project".to_string(),
+                    long: Some("--project".to_string()),
+                    short: Some('p'),
+                    description: "Project slug or path".to_string(),
+                    param_type: Some("string".to_string()),
+                    default: None,
+                    required: true,
+                    possible_values: vec![],
+                    env_var: None,
+                },
+                ParameterSchema {
+                    name: "thread_id".to_string(),
+                    long: Some("--thread-id".to_string()),
+                    short: Some('t'),
+                    description: "Thread ID(s) to summarize (comma-separated)".to_string(),
+                    param_type: Some("string".to_string()),
+                    default: None,
+                    required: true,
+                    possible_values: vec![],
+                    env_var: None,
+                },
+                ParameterSchema {
+                    name: "per_thread_limit".to_string(),
+                    long: Some("--per-thread-limit".to_string()),
+                    short: None,
+                    description: "Maximum messages per thread (default: 100)".to_string(),
+                    param_type: Some("integer".to_string()),
+                    default: Some("100".to_string()),
+                    required: false,
+                    possible_values: vec![],
+                    env_var: None,
+                },
+                ParameterSchema {
+                    name: "no_llm".to_string(),
+                    long: Some("--no-llm".to_string()),
+                    short: None,
+                    description: "Skip LLM summarization, return raw aggregation".to_string(),
+                    param_type: Some("boolean".to_string()),
+                    default: Some("false".to_string()),
+                    required: false,
+                    possible_values: vec![],
+                    env_var: None,
+                },
+                ParameterSchema {
+                    name: "format".to_string(),
+                    long: Some("--format".to_string()),
+                    short: Some('f'),
+                    description: "Output format".to_string(),
+                    param_type: Some("string".to_string()),
+                    default: Some("json".to_string()),
+                    required: false,
+                    possible_values: vec!["json".to_string(), "text".to_string()],
+                    env_var: None,
+                },
+            ],
+            exit_codes: Default::default(),
+            subcommands: vec![],
+        },
+        CommandSchema {
             name: "version".to_string(),
             description: "Show version info".to_string(),
             examples: vec![],
