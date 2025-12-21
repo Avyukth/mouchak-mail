@@ -675,3 +675,151 @@ pub fn attachment_download_url(id: i64, project_slug: &str) -> String {
         urlencoding::encode(project_slug)
     )
 }
+
+// -- Archive Browser API --
+
+/// Commit summary from archive browser.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommitSummary {
+    pub sha: String,
+    pub short_sha: String,
+    pub message: String,
+    pub author: String,
+    pub timestamp: String,
+    pub files_changed: usize,
+}
+
+/// Commit details from archive browser.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommitDetails {
+    pub sha: String,
+    pub short_sha: String,
+    pub message: String,
+    pub author: String,
+    pub timestamp: String,
+    #[serde(default)]
+    pub parent_sha: Option<String>,
+    #[serde(default)]
+    pub files_added: Vec<String>,
+    #[serde(default)]
+    pub files_modified: Vec<String>,
+    #[serde(default)]
+    pub files_deleted: Vec<String>,
+}
+
+/// File entry in archive browser.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileEntry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    #[serde(default)]
+    pub size: Option<i64>,
+}
+
+/// File content from archive browser.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileContent {
+    pub path: String,
+    pub content: String,
+    #[serde(default)]
+    pub is_binary: bool,
+    #[serde(default)]
+    pub size: i64,
+}
+
+/// Activity summary from archive browser.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActivitySummary {
+    pub total_commits: usize,
+    pub authors: Vec<String>,
+    #[serde(default)]
+    pub files_changed: usize,
+    #[serde(default)]
+    pub additions: usize,
+    #[serde(default)]
+    pub deletions: usize,
+}
+
+/// Get archive commits.
+pub async fn get_archive_commits(limit: Option<usize>) -> Result<Vec<CommitSummary>, ApiError> {
+    let mut url = format!("{}/api/archive/commits", api_base_url());
+    if let Some(lim) = limit {
+        url.push_str(&format!("?limit={}", lim));
+    }
+
+    let response = Request::get(&url).send().await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to get commits: {}", response.status()),
+        })
+    }
+}
+
+/// Get archive commit details.
+pub async fn get_archive_commit(sha: &str) -> Result<CommitDetails, ApiError> {
+    let url = format!("{}/api/archive/commits/{}", api_base_url(), sha);
+    let response = Request::get(&url).send().await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to get commit: {}", response.status()),
+        })
+    }
+}
+
+/// List files at a specific commit.
+pub async fn get_archive_files(sha: &str, path: Option<&str>) -> Result<Vec<FileEntry>, ApiError> {
+    let mut url = format!("{}/api/archive/files/{}", api_base_url(), sha);
+    if let Some(p) = path {
+        url.push_str(&format!("?path={}", urlencoding::encode(p)));
+    }
+
+    let response = Request::get(&url).send().await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to list files: {}", response.status()),
+        })
+    }
+}
+
+/// Get file content at a specific commit.
+pub async fn get_archive_file_content(sha: &str, path: &str) -> Result<FileContent, ApiError> {
+    let url = format!(
+        "{}/api/archive/file/{}?path={}",
+        api_base_url(),
+        sha,
+        urlencoding::encode(path)
+    );
+    let response = Request::get(&url).send().await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to get file content: {}", response.status()),
+        })
+    }
+}
+
+/// Get archive activity summary.
+pub async fn get_archive_activity() -> Result<ActivitySummary, ApiError> {
+    let url = format!("{}/api/archive/activity", api_base_url());
+    let response = Request::get(&url).send().await?;
+
+    if response.ok() {
+        Ok(response.json().await?)
+    } else {
+        Err(ApiError {
+            message: format!("Failed to get activity: {}", response.status()),
+        })
+    }
+}

@@ -2624,3 +2624,167 @@ pub async fn list_pending_reviews(
     })
     .into_response())
 }
+
+// =============================================================================
+// ARCHIVE BROWSER API
+// =============================================================================
+
+// --- list_archive_commits ---
+#[derive(Deserialize)]
+pub struct ListArchiveCommitsQuery {
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub path: Option<String>,
+    #[serde(default)]
+    pub since: Option<String>,
+    #[serde(default)]
+    pub until: Option<String>,
+    #[serde(default = "default_commits_limit")]
+    pub limit: usize,
+}
+
+fn default_commits_limit() -> usize {
+    50
+}
+
+pub async fn list_archive_commits(
+    State(app_state): State<AppState>,
+    Query(params): Query<ListArchiveCommitsQuery>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let filter = if params.author.is_some() || params.path.is_some() {
+        Some(lib_core::model::archive_browser::CommitFilter {
+            author: params.author,
+            path: params.path,
+            since: params.since.and_then(|s| {
+                chrono::DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|d| d.with_timezone(&chrono::Utc))
+            }),
+            until: params.until.and_then(|s| {
+                chrono::DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|d| d.with_timezone(&chrono::Utc))
+            }),
+            message_contains: None,
+        })
+    } else {
+        None
+    };
+
+    let commits = lib_core::model::archive_browser::ArchiveBrowserBmc::list_commits(
+        &ctx,
+        mm,
+        filter,
+        params.limit,
+    )
+    .await?;
+
+    Ok(Json(commits).into_response())
+}
+
+// --- get_archive_commit ---
+pub async fn get_archive_commit(
+    State(app_state): State<AppState>,
+    Path(sha): Path<String>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let details =
+        lib_core::model::archive_browser::ArchiveBrowserBmc::commit_details(&ctx, mm, &sha).await?;
+
+    Ok(Json(details).into_response())
+}
+
+// --- list_archive_files ---
+#[derive(Deserialize)]
+pub struct ListArchiveFilesQuery {
+    #[serde(default)]
+    pub path: Option<String>,
+}
+
+pub async fn list_archive_files(
+    State(app_state): State<AppState>,
+    Path(sha): Path<String>,
+    Query(params): Query<ListArchiveFilesQuery>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let dir_path = params.path.unwrap_or_default();
+    let files = lib_core::model::archive_browser::ArchiveBrowserBmc::list_files_at(
+        &ctx, mm, &sha, &dir_path,
+    )
+    .await?;
+
+    Ok(Json(files).into_response())
+}
+
+// --- get_archive_file_content ---
+#[derive(Deserialize)]
+pub struct GetArchiveFileContentQuery {
+    pub path: String,
+}
+
+pub async fn get_archive_file_content(
+    State(app_state): State<AppState>,
+    Path(sha): Path<String>,
+    Query(params): Query<GetArchiveFileContentQuery>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let content = lib_core::model::archive_browser::ArchiveBrowserBmc::file_content_at(
+        &ctx,
+        mm,
+        &sha,
+        &params.path,
+    )
+    .await?;
+
+    Ok(Json(content).into_response())
+}
+
+// --- get_archive_activity ---
+#[derive(Deserialize)]
+pub struct GetArchiveActivityQuery {
+    #[serde(default = "default_since")]
+    pub since: String,
+    #[serde(default = "default_until")]
+    pub until: String,
+}
+
+fn default_since() -> String {
+    (chrono::Utc::now() - chrono::Duration::days(30)).to_rfc3339()
+}
+
+fn default_until() -> String {
+    chrono::Utc::now().to_rfc3339()
+}
+
+pub async fn get_archive_activity(
+    State(app_state): State<AppState>,
+    Query(params): Query<GetArchiveActivityQuery>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let since = chrono::DateTime::parse_from_rfc3339(&params.since)
+        .map(|d| d.with_timezone(&chrono::Utc))
+        .unwrap_or_else(|_| chrono::Utc::now() - chrono::Duration::days(30));
+
+    let until = chrono::DateTime::parse_from_rfc3339(&params.until)
+        .map(|d| d.with_timezone(&chrono::Utc))
+        .unwrap_or_else(|_| chrono::Utc::now());
+
+    let activity = lib_core::model::archive_browser::ArchiveBrowserBmc::activity_timeline(
+        &ctx, mm, since, until,
+    )
+    .await?;
+
+    Ok(Json(activity).into_response())
+}
