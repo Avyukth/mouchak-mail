@@ -601,21 +601,60 @@ mcp-agent-mail service restart --port 8765
 mcp-agent-mail health --url http://localhost:8765
 ```
 
-#### Robot-Readable Help
+#### Agent Self-Discovery (Robot Commands)
+
+**MANDATORY**: Agents MUST use these commands to learn Agent Mail capabilities before starting work.
 
 ```bash
-# Get full CLI documentation in JSON (for AI agents)
-mcp-agent-mail --robot-help
+# ═══════════════════════════════════════════════════════════════════
+# STEP 1: DISCOVER ALL CAPABILITIES (run this first)
+# ═══════════════════════════════════════════════════════════════════
+am --robot-help                    # Full CLI documentation (JSON)
+am --robot-help --format yaml      # YAML format
 
-# Get CLI documentation in YAML
-mcp-agent-mail --robot-help --format yaml
+# ═══════════════════════════════════════════════════════════════════
+# STEP 2: CHECK SYSTEM HEALTH
+# ═══════════════════════════════════════════════════════════════════
+am --robot-status                  # System health check (JSON)
+am --robot-status --format yaml    # YAML format
 
-# List all MCP tools
-mcp-agent-mail tools
+# ═══════════════════════════════════════════════════════════════════
+# STEP 3: GET EXAMPLES FOR SPECIFIC COMMANDS
+# ═══════════════════════════════════════════════════════════════════
+# Examples for subcommands
+am --robot-examples serve          # How to use 'serve'
+am --robot-examples serve http     # How to use 'serve http'
+am --robot-examples archive save   # How to use 'archive save'
 
-# Export tool schemas (JSON or Markdown)
-mcp-agent-mail schema --format json
-mcp-agent-mail schema --format markdown --output tools.md
+# Examples for flags
+am --robot-examples --port         # How to use --port flag
+am --robot-examples --format       # How to use --format flag
+
+# Self-documenting (meta)
+am --robot-examples --robot-help   # How to use --robot-help itself
+
+# ═══════════════════════════════════════════════════════════════════
+# STEP 4: LIST MCP TOOLS AND SCHEMAS
+# ═══════════════════════════════════════════════════════════════════
+am tools                           # List all 45 MCP tools
+am schema --format json            # Full JSON schema for all tools
+am schema --format markdown        # Markdown documentation
+```
+
+#### Essential API Endpoints (curl)
+
+```bash
+# Health check
+am health --url http://localhost:8765
+
+# Or via curl:
+curl http://localhost:8765/api/health
+
+# List all projects
+curl http://localhost:8765/api/projects
+
+# List file locks (check what's reserved)
+curl http://localhost:8765/api/locks
 ```
 
 #### When to Use
