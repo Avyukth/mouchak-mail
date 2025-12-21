@@ -998,6 +998,49 @@ fn get_all_tool_schemas() -> Vec<ToolSchema> {
                 },
             ],
         },
+        // Product-level cross-project tools
+        ToolSchema {
+            name: "search_messages_product".into(),
+            description: "Search messages across all projects linked to a product.".into(),
+            parameters: vec![
+                ParameterSchema {
+                    name: "product_uid".into(),
+                    param_type: "string".into(),
+                    required: true,
+                    description: "Product UID".into(),
+                },
+                ParameterSchema {
+                    name: "query".into(),
+                    param_type: "string".into(),
+                    required: true,
+                    description: "Search query".into(),
+                },
+                ParameterSchema {
+                    name: "limit".into(),
+                    param_type: "integer".into(),
+                    required: false,
+                    description: "Maximum results per project".into(),
+                },
+            ],
+        },
+        ToolSchema {
+            name: "summarize_thread_product".into(),
+            description: "Summarize a thread across all projects in a product.".into(),
+            parameters: vec![
+                ParameterSchema {
+                    name: "product_uid".into(),
+                    param_type: "string".into(),
+                    required: true,
+                    description: "Product UID".into(),
+                },
+                ParameterSchema {
+                    name: "thread_id".into(),
+                    param_type: "string".into(),
+                    required: true,
+                    description: "Thread ID to summarize".into(),
+                },
+            ],
+        },
     ]
 }
 
