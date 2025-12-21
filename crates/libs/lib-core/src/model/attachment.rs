@@ -17,12 +17,13 @@
 //! use lib_core::ctx::Ctx;
 //!
 //! # async fn example() -> lib_core::Result<()> {
-//! let mm = ModelManager::new().await?;
+//! let mm = ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?;
 //! let ctx = Ctx::root_ctx();
 //!
 //! // Create attachment record (file already written to disk)
 //! let attachment = AttachmentForCreate {
 //!     project_id: 1,
+//!     agent_id: None,
 //!     filename: "report.pdf".to_string(),
 //!     stored_path: "/data/uploads/abc123.pdf".to_string(),
 //!     media_type: "application/pdf".to_string(),
@@ -119,6 +120,21 @@ impl AttachmentBmc {
         mm: &ModelManager,
         attachment_c: AttachmentForCreate,
     ) -> Result<i64> {
+        // Enforce Quota
+        if mm.app_config.quota.enabled {
+            let limit = mm.app_config.quota.attachments_limit_bytes as i64;
+            if limit > 0 {
+                let current_usage =
+                    Self::get_total_project_usage(_ctx, mm, attachment_c.project_id).await?;
+                if current_usage + attachment_c.size_bytes > limit {
+                    return Err(crate::Error::QuotaExceeded(format!(
+                        "Attachments limit reached. Current: {} bytes, New: {} bytes, Limit: {} bytes",
+                        current_usage, attachment_c.size_bytes, limit
+                    )));
+                }
+            }
+        }
+
         let db = mm.db();
         let now = chrono::Utc::now().naive_utc();
         let created_ts = now.format("%Y-%m-%d %H:%M:%S").to_string();
@@ -250,6 +266,26 @@ impl AttachmentBmc {
             size_bytes: row.get(6)?,
             created_ts: row.get(7)?,
         })
+    }
+
+    /// Calculate total attachment size in bytes for a project.
+    pub async fn get_total_project_usage(
+        _ctx: &Ctx,
+        mm: &ModelManager,
+        project_id: i64,
+    ) -> Result<i64> {
+        let db = mm.db();
+        // COALESCE ensures we get 0 instead of NULL if no rows match
+        let stmt = db
+            .prepare("SELECT COALESCE(SUM(size_bytes), 0) FROM attachments WHERE project_id = ?")
+            .await?;
+        let mut rows = stmt.query([project_id]).await?;
+
+        if let Some(row) = rows.next().await? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(0)
+        }
     }
 }
 

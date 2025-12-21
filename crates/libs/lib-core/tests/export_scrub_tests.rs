@@ -8,7 +8,8 @@ use uuid::Uuid;
 
 #[tokio::test]
 async fn test_export_scrubbing() -> lib_core::Result<()> {
-    let mm = ModelManager::new().await?;
+    let mm =
+        ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?;
     let ctx = Ctx::root_ctx();
 
     // 1. Setup

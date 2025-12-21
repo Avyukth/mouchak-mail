@@ -585,7 +585,9 @@ exit 0
 )]
 mod tests {
     use super::*;
+    use lib_common::config::AppConfig;
     use serial_test::serial;
+    use std::sync::Arc;
     use tempfile::TempDir;
 
     // ============================================================================
@@ -753,7 +755,11 @@ mod tests {
                     let db_path = temp_dir.path().join("test.db");
                     let db = Builder::new_local(&db_path).build().await.unwrap();
                     let conn = db.connect().unwrap();
-                    ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+                    ModelManager::new_for_test(
+                        conn,
+                        temp_dir.path().to_path_buf(),
+                        Arc::new(AppConfig::default()),
+                    )
                 };
 
                 // With env vars unset, should skip and return Ok(None)
@@ -793,7 +799,11 @@ mod tests {
                         let db_path = temp_dir.path().join("test.db");
                         let db = Builder::new_local(&db_path).build().await.unwrap();
                         let conn = db.connect().unwrap();
-                        ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+                        ModelManager::new_for_test(
+                            conn,
+                            temp_dir.path().to_path_buf(),
+                            std::sync::Arc::new(lib_common::config::AppConfig::default()),
+                        )
                     };
 
                     // With WORKTREES_ENABLED=1, should run check (currently passes through)
@@ -957,7 +967,11 @@ mod tests {
                         let db_path = temp_dir.path().join("test.db");
                         let db = Builder::new_local(&db_path).build().await.unwrap();
                         let conn = db.connect().unwrap();
-                        ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+                        ModelManager::new_for_test(
+                            conn,
+                            temp_dir.path().to_path_buf(),
+                            Arc::new(AppConfig::default()),
+                        )
                     };
 
                     let result = PrecommitGuardBmc::check_reservations(
@@ -996,7 +1010,11 @@ mod tests {
             let db_path = temp_dir.path().join("test.db");
             let db = Builder::new_local(&db_path).build().await.unwrap();
             let conn = db.connect().unwrap();
-            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+            ModelManager::new_for_test(
+                conn,
+                temp_dir.path().to_path_buf(),
+                Arc::new(AppConfig::default()),
+            )
         };
 
         // Test install (both hooks)
@@ -1049,7 +1067,11 @@ mod tests {
             let db_path = temp_dir.path().join("test.db");
             let db = Builder::new_local(&db_path).build().await.unwrap();
             let conn = db.connect().unwrap();
-            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+            ModelManager::new_for_test(
+                conn,
+                temp_dir.path().to_path_buf(),
+                Arc::new(AppConfig::default()),
+            )
         };
 
         // Install with custom server URL
@@ -1277,7 +1299,11 @@ mod tests {
             let db_path = temp_dir.path().join("test.db");
             let db = Builder::new_local(&db_path).build().await.unwrap();
             let conn = db.connect().unwrap();
-            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+            ModelManager::new_for_test(
+                conn,
+                temp_dir.path().to_path_buf(),
+                Arc::new(AppConfig::default()),
+            )
         };
 
         // Install hooks
@@ -1555,7 +1581,11 @@ exit 0
             let db_path = temp_dir.path().join("test.db");
             let db = Builder::new_local(&db_path).build().await.unwrap();
             let conn = db.connect().unwrap();
-            ModelManager::new_for_test(conn, temp_dir.path().to_path_buf())
+            ModelManager::new_for_test(
+                conn,
+                temp_dir.path().to_path_buf(),
+                Arc::new(AppConfig::default()),
+            )
         };
 
         // Install hooks in worktree path

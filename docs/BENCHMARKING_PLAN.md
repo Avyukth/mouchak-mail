@@ -129,7 +129,7 @@ use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
 
 fn bench_message_create(c: &mut Criterion) {
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let mm = rt.block_on(ModelManager::new()).unwrap();
+    let mm = rt.block_on(ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default()))).unwrap();
 
     c.bench_function("message_create_db_only", |b| {
         b.iter(|| {

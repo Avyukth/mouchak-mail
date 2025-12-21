@@ -5,9 +5,34 @@
 //! - Full keyboard navigation (Arrow, Home, End, Tab, Escape, type-ahead)
 //! - Accessible ARIA attributes (combobox pattern)
 //! - Consistent theming with shadcn design tokens
-//! - Lucide icons support
+//! - Lucide icons support (auto-initialized on dropdown open)
 
 use leptos::prelude::*;
+use wasm_bindgen::prelude::*;
+
+// JavaScript interop to reinitialize Lucide icons after DOM updates
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = lucide, js_name = createIcons)]
+    fn create_icons();
+}
+
+/// Reinitialize Lucide icons (call after dynamic DOM updates)
+fn refresh_icons() {
+    // Use request_animation_frame to ensure DOM is updated before refreshing
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::closure::Closure;
+        let callback = Closure::once(Box::new(|| {
+            create_icons();
+        }) as Box<dyn FnOnce()>);
+
+        if let Some(window) = web_sys::window() {
+            let _ = window.request_animation_frame(callback.as_ref().unchecked_ref());
+        }
+        callback.forget(); // Prevent closure from being dropped
+    }
+}
 
 /// Option for the Select component - shadcn/ui style.
 #[derive(Clone, PartialEq)]
@@ -91,7 +116,13 @@ pub fn Select(
     let options_for_nav = options.clone();
     let option_count = options.len() as i32;
 
-    // Generate unique IDs
+    // Refresh Lucide icons when dropdown opens (new DOM elements need initialization)
+    Effect::new(move |_| {
+        if is_open.get() {
+            refresh_icons();
+        }
+    });
+
     let listbox_id = format!("{}-listbox", id);
     let listbox_id_clone = listbox_id.clone();
 

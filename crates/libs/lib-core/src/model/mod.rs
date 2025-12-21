@@ -60,6 +60,7 @@ use crate::store::archive_lock::{ArchiveLock, LockGuard};
 use crate::store::repo_cache::RepoCache;
 use crate::store::{self, Db};
 use git2::Repository;
+use lib_common::config::AppConfig;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -87,11 +88,13 @@ pub struct ModelManager {
     /// Handles stale lock cleanup from crashed processes.
     /// NIST Control: AU-9 (Audit Log Protection)
     archive_lock: Arc<ArchiveLock>,
+    /// Application configuration.
+    pub app_config: Arc<AppConfig>,
 }
 
 impl ModelManager {
     /// Constructor
-    pub async fn new() -> Result<Self> {
+    pub async fn new(app_config: Arc<AppConfig>) -> Result<Self> {
         let db = store::new_db_pool().await?;
         // Default to "data/archive" for now, similar to Python's default or configurable
         let repo_root = std::env::current_dir()?.join("data").join("archive");
@@ -116,12 +119,13 @@ impl ModelManager {
             git_lock: Arc::new(Mutex::new(())),
             repo_cache: Arc::new(RepoCache::new(cache_size)),
             archive_lock,
+            app_config,
         })
     }
 
     /// Constructor for testing with custom db connection and paths
     /// This is public so integration tests can use it
-    pub fn new_for_test(db: Db, repo_root: PathBuf) -> Self {
+    pub fn new_for_test(db: Db, repo_root: PathBuf, app_config: Arc<AppConfig>) -> Self {
         let archive_lock = Arc::new(ArchiveLock::new(&repo_root));
         ModelManager {
             db,
@@ -129,6 +133,7 @@ impl ModelManager {
             git_lock: Arc::new(Mutex::new(())),
             repo_cache: Arc::new(RepoCache::default()),
             archive_lock,
+            app_config,
         }
     }
 

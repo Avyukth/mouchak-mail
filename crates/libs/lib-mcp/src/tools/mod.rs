@@ -3,6 +3,7 @@
 //! This module defines all MCP tools that wrap the lib-core functionality.
 
 use anyhow::Result;
+use lib_common::config::AppConfig;
 use rmcp::{
     ErrorData as McpError,
     handler::server::{ServerHandler, tool::ToolRouter, wrapper::Parameters},
@@ -1021,7 +1022,9 @@ impl AgentMailService {
     ///
     /// Worktrees are disabled by default. Use `new_with_config()` to enable.
     pub async fn new() -> Result<Self> {
-        Self::new_with_config(false).await
+        // When using ::new(), we rely on env vars or defaults for AppConfig
+        let config = AppConfig::load().unwrap_or_default();
+        Self::new_with_config(config).await
     }
 
     /// Create a new AgentMailService with explicit worktrees configuration.
@@ -1029,8 +1032,10 @@ impl AgentMailService {
     /// When `worktrees_enabled` is true, build slot tools (acquire, release, renew)
     /// are registered and available. When false, they are hidden from the tool list
     /// and calls to them will return an error.
-    pub async fn new_with_config(worktrees_enabled: bool) -> Result<Self> {
-        let mm = Arc::new(ModelManager::new().await?);
+    pub async fn new_with_config(config: AppConfig) -> Result<Self> {
+        let worktrees_enabled = config.mcp.worktrees_active();
+        let app_config = Arc::new(config);
+        let mm = Arc::new(ModelManager::new(app_config).await?);
         let tool_router = Self::tool_router();
 
         if worktrees_enabled {

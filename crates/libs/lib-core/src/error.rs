@@ -207,6 +207,12 @@ pub enum Error {
     /// Automatically converted from [`crate::utils::image_processing::ImageError`] via `From`.
     #[error("Image Error: {0}")]
     Image(#[from] crate::utils::image_processing::ImageError),
+
+    /// Quota exceeded error.
+    ///
+    /// The contained structure provides details about the limit and usage.
+    #[error("Quota exceeded: {0}")]
+    QuotaExceeded(String),
 }
 
 impl Error {

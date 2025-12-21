@@ -21,6 +21,7 @@
     clippy::inefficient_to_string
 )]
 
+use lib_common::config::AppConfig;
 use lib_core::ctx::Ctx;
 use lib_core::model::ModelManager;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
@@ -28,6 +29,7 @@ use lib_core::model::export::{ExportBmc, ExportFormat, ScrubMode};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
 use libsql::Builder;
+use std::sync::Arc;
 use std::time::Instant;
 use tempfile::TempDir;
 
@@ -57,7 +59,8 @@ async fn create_test_mm() -> (ModelManager, TempDir) {
         conn.execute_batch(migration).await.expect("run migration");
     }
 
-    let mm = ModelManager::new_for_test(conn, temp_dir.path().to_path_buf());
+    let app_config = Arc::new(AppConfig::default());
+    let mm = ModelManager::new_for_test(conn, temp_dir.path().to_path_buf(), app_config);
     (mm, temp_dir)
 }
 

@@ -12,7 +12,9 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_resources_gap_features() -> anyhow::Result<()> {
     // 1. Setup Data
-    let mm = Arc::new(ModelManager::new().await?);
+    let mm = Arc::new(
+        ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?,
+    );
     let ctx = lib_core::ctx::Ctx::root_ctx();
 
     // Create Project

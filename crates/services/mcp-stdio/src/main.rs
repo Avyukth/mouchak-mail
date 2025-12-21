@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use lib_common::config::McpConfig;
+use lib_common::config::{AppConfig, McpConfig};
 use lib_mcp::{run_sse, run_stdio, tools::get_tool_schemas};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -45,16 +45,21 @@ fn setup_logging() -> Result<()> {
 
 async fn handle_serve(transport: String, port: u16) -> Result<()> {
     setup_logging()?;
-    let config = McpConfig {
-        transport: transport.clone(),
-        port,
-        worktrees_enabled: std::env::var("WORKTREES_ENABLED")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false),
-        git_identity_enabled: std::env::var("GIT_IDENTITY_ENABLED")
-            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-            .unwrap_or(false),
+
+    let config = AppConfig {
+        mcp: McpConfig {
+            transport: transport.clone(),
+            port,
+            worktrees_enabled: std::env::var("WORKTREES_ENABLED")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false),
+            git_identity_enabled: std::env::var("GIT_IDENTITY_ENABLED")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+                .unwrap_or(false),
+        },
+        ..Default::default()
     };
+
     if transport == "sse" {
         run_sse(config).await
     } else {

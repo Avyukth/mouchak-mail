@@ -18,7 +18,7 @@
 //! use lib_core::ctx::Ctx;
 //!
 //! # async fn example() -> lib_core::Result<()> {
-//! let mm = ModelManager::new().await?;
+//! let mm = ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?;
 //! let ctx = Ctx::root_ctx();
 //!
 //! // Acquire a build slot

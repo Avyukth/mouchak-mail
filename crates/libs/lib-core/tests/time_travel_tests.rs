@@ -11,11 +11,13 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use chrono::{DateTime, Duration, Utc};
+use lib_common::config::AppConfig;
 use lib_core::ctx::Ctx;
 use lib_core::model::ModelManager;
 use lib_core::model::time_travel::{TimeTravelBmc, parse_timestamp};
 use libsql::Builder;
 use std::path::Path;
+use std::sync::Arc;
 use tempfile::TempDir;
 
 /// Test context with temporary database and git repo
@@ -41,7 +43,8 @@ impl TestContext {
             .expect("Build db");
         let conn = db.connect().expect("Connect to db");
 
-        let mm = ModelManager::new_for_test(conn, repo_path);
+        let app_config = Arc::new(AppConfig::default());
+        let mm = ModelManager::new_for_test(conn, repo_path, app_config);
         let ctx = Ctx::root_ctx();
 
         Self {

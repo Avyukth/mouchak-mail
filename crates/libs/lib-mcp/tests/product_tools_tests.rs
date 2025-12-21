@@ -27,7 +27,9 @@ fn extract_text(result: &rmcp::model::CallToolResult) -> String {
 
 #[tokio::test]
 async fn test_search_messages_product() -> anyhow::Result<()> {
-    let mm = Arc::new(ModelManager::new().await?);
+    let mm = Arc::new(
+        ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?,
+    );
     let ctx = lib_core::ctx::Ctx::root_ctx();
 
     // Create product (name must be unique)
@@ -142,7 +144,9 @@ async fn test_search_messages_product() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_summarize_thread_product() -> anyhow::Result<()> {
-    let mm = Arc::new(ModelManager::new().await?);
+    let mm = Arc::new(
+        ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?,
+    );
     let ctx = lib_core::ctx::Ctx::root_ctx();
 
     // Create product (name must be unique)
@@ -259,7 +263,9 @@ async fn test_summarize_thread_product() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_search_messages_product_no_matches() -> anyhow::Result<()> {
-    let mm = Arc::new(ModelManager::new().await?);
+    let mm = Arc::new(
+        ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?,
+    );
     let ctx = lib_core::ctx::Ctx::root_ctx();
 
     // Create product with a project but no matching messages (name must be unique)
@@ -293,7 +299,9 @@ async fn test_search_messages_product_no_matches() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_summarize_thread_product_not_found() -> anyhow::Result<()> {
-    let mm = Arc::new(ModelManager::new().await?);
+    let mm = Arc::new(
+        ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?,
+    );
     let ctx = lib_core::ctx::Ctx::root_ctx();
 
     // Create product with a project but no matching thread (name must be unique)

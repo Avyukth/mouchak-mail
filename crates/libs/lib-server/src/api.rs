@@ -130,6 +130,8 @@ pub fn routes() -> Router<AppState> {
         .route("/api/project/info", post(tools::get_project_info))
         .route("/api/get_project_info", post(tools::get_project_info)) // Python alias
         .route("/api/project_info", post(tools::get_project_info)) // Python alias (short)
+        .route("/api/quota/status", post(tools::get_quota_status))
+        .route("/api/get_quota_status", post(tools::get_quota_status)) // Python alias
         .route("/api/agent/profile", post(tools::get_agent_profile))
         .route("/api/get_agent_profile", post(tools::get_agent_profile)) // Python alias
         .route("/api/agent_profile", post(tools::get_agent_profile)) // Python alias (short)

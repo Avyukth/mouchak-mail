@@ -27,7 +27,6 @@ use utoipa::{OpenApi, ToSchema};
 
 use auth::{AuthConfig, JwksClient, auth_middleware};
 pub use error::ServerError;
-use lib_common::config::ServerConfig;
 pub use lib_core::ModelManager;
 
 // --- Application State
@@ -63,14 +62,54 @@ pub fn setup_metrics() -> PrometheusHandle {
         .clone()
 }
 
-pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
+pub async fn run(config: lib_common::config::AppConfig) -> std::result::Result<(), ServerError> {
     // Initialize tracing is handled by caller (main binary) now
 
     // Initialize metrics
     let metrics_handle = setup_metrics();
 
     // Initialize ModelManager
-    let mm = ModelManager::new().await?;
+    let mm = ModelManager::new(std::sync::Arc::new(config.clone())).await?;
+
+    // Start Escalation Background Service
+    if config.escalation.escalation_enabled {
+        let mm_clone = mm.clone();
+        let config_clone = config.escalation.clone();
+        tokio::spawn(async move {
+            tracing::info!("Starting Escalation Background Service");
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_secs(
+                    config_clone.scan_interval_seconds,
+                ))
+                .await;
+
+                // Use root context for background tasks
+                let ctx = lib_core::ctx::Ctx::root_ctx();
+
+                match lib_core::model::escalation::EscalationBmc::escalate_overdue(
+                    &ctx,
+                    &mm_clone,
+                    config_clone.ack_ttl_seconds as i64,
+                    config_clone.escalation_mode,
+                    false, // Not a dry run
+                )
+                .await
+                {
+                    Ok(results) => {
+                        if !results.is_empty() {
+                            tracing::info!(
+                                "Escalation Service: Processed {} overdue messages",
+                                results.len()
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Escalation Service Error: {}", e);
+                    }
+                }
+            }
+        });
+    }
 
     // Create MCP routes with shared ModelManager (clone before move)
     let mcp_routes = mcp::mcp_routes(mm.clone());
@@ -155,7 +194,7 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
 
     // Conditionally add embedded web UI routes
     #[cfg(feature = "with-web-ui")]
-    if config.serve_ui {
+    if config.server.serve_ui {
         tracing::info!("Web UI enabled at /");
         app = app.fallback(static_files::serve_embedded_file);
     } else {
@@ -169,7 +208,7 @@ pub async fn run(config: ServerConfig) -> std::result::Result<(), ServerError> {
 
     let app = app.with_state(app_state);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.server.port));
     tracing::info!("MCP Agent Mail Server starting on {}", addr);
     tracing::info!("Health check: http://{}/health", addr);
 

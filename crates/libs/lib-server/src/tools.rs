@@ -1265,6 +1265,58 @@ pub async fn get_project_info(
     .into_response())
 }
 
+#[derive(Deserialize)]
+pub struct GetQuotaStatusPayload {
+    pub project_slug: String,
+    pub agent_name: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct QuotaStatusResponse {
+    pub project_slug: String,
+    pub quota_enabled: bool,
+    pub attachments_limit_bytes: i64,
+    pub attachments_usage_bytes: i64,
+    pub inbox_limit_count: i64,
+    pub agent_inbox_usage: Option<i64>,
+}
+
+pub async fn get_quota_status(
+    State(app_state): State<AppState>,
+    Json(payload): Json<GetQuotaStatusPayload>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+    let config = &mm.app_config.quota;
+
+    let project =
+        lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
+            .await?;
+
+    let attachments_usage =
+        lib_core::model::attachment::AttachmentBmc::get_total_project_usage(&ctx, mm, project.id)
+            .await?;
+
+    let mut agent_usage = None;
+    if let Some(agent_name) = &payload.agent_name {
+        let agent =
+            lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, agent_name).await?;
+        let count =
+            lib_core::model::message::MessageBmc::get_inbox_count(&ctx, mm, agent.id).await?;
+        agent_usage = Some(count);
+    }
+
+    Ok(Json(QuotaStatusResponse {
+        project_slug: project.slug,
+        quota_enabled: config.enabled,
+        attachments_limit_bytes: config.attachments_limit_bytes as i64,
+        attachments_usage_bytes: attachments_usage,
+        inbox_limit_count: config.inbox_limit_count as i64,
+        agent_inbox_usage: agent_usage,
+    })
+    .into_response())
+}
+
 // --- get_agent_profile ---
 // Extended profile info compared to basic whois
 #[derive(Serialize)]

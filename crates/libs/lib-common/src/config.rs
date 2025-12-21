@@ -8,6 +8,8 @@ pub struct AppConfig {
     pub mcp: McpConfig,
     #[serde(default)]
     pub escalation: EscalationConfig,
+    #[serde(default)]
+    pub quota: QuotaConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -105,6 +107,34 @@ pub struct McpConfig {
     pub git_identity_enabled: bool,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct QuotaConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_quota_attachments_limit_bytes")]
+    pub attachments_limit_bytes: u64,
+    #[serde(default = "default_quota_inbox_limit_count")]
+    pub inbox_limit_count: u64,
+}
+
+fn default_quota_attachments_limit_bytes() -> u64 {
+    100 * 1024 * 1024 // 100 MB
+}
+
+fn default_quota_inbox_limit_count() -> u64 {
+    1000
+}
+
+impl Default for QuotaConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            attachments_limit_bytes: default_quota_attachments_limit_bytes(),
+            inbox_limit_count: default_quota_inbox_limit_count(),
+        }
+    }
+}
+
 impl McpConfig {
     /// Check if worktree features should be active
     /// Returns true if either WORKTREES_ENABLED or GIT_IDENTITY_ENABLED is set
@@ -149,6 +179,7 @@ impl Default for AppConfig {
                 git_identity_enabled: false,
             },
             escalation: EscalationConfig::default(),
+            quota: QuotaConfig::default(),
         }
     }
 }
@@ -216,6 +247,20 @@ impl AppConfig {
         if let Ok(interval) = env::var("ACK_SCAN_INTERVAL_SECONDS") {
             if let Ok(secs) = interval.parse::<i64>() {
                 builder = builder.set_override("escalation.scan_interval_seconds", secs)?;
+            }
+        }
+
+        if parse_bool_env("QUOTA_ENABLED") {
+            builder = builder.set_override("quota.enabled", true)?;
+        }
+        if let Ok(bytes) = env::var("QUOTA_ATTACHMENTS_LIMIT_BYTES") {
+            if let Ok(limit) = bytes.parse::<u64>() {
+                builder = builder.set_override("quota.attachments_limit_bytes", limit)?;
+            }
+        }
+        if let Ok(count) = env::var("QUOTA_INBOX_LIMIT_COUNT") {
+            if let Ok(limit) = count.parse::<u64>() {
+                builder = builder.set_override("quota.inbox_limit_count", limit)?;
             }
         }
 
@@ -317,6 +362,7 @@ mod tests {
 
     #[test]
     fn test_escalation_config_from_env() {
+        // Test 1: Full config override
         unsafe {
             std::env::set_var("ACK_TTL_ENABLED", "true");
             std::env::set_var("ACK_TTL_SECONDS", "3600");
@@ -339,10 +385,8 @@ mod tests {
             std::env::remove_var("ACK_ESCALATION_MODE");
             std::env::remove_var("ACK_SCAN_INTERVAL_SECONDS");
         }
-    }
 
-    #[test]
-    fn test_escalation_mode_from_env_overseer() {
+        // Test 2: Overseer mode
         unsafe {
             std::env::set_var("ACK_ESCALATION_MODE", "overseer");
         }
@@ -351,10 +395,8 @@ mod tests {
         unsafe {
             std::env::remove_var("ACK_ESCALATION_MODE");
         }
-    }
 
-    #[test]
-    fn test_escalation_mode_from_env_invalid_falls_back() {
+        // Test 3: Invalid fallback
         unsafe {
             std::env::set_var("ACK_ESCALATION_MODE", "invalid_mode");
         }

@@ -364,16 +364,25 @@ async fn main() -> Result<()> {
             handle_guard_command(GuardCommands::Install).await?;
         }
         Commands::Migrate => {
-            let _ = ModelManager::new().await?;
+            let _ = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             tracing::info!("Running database migrations");
             println!("Migrations completed successfully.");
         }
         Commands::CreateProject { slug, human_key } => {
-            let mm = ModelManager::new().await?;
+            let mm = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             handle_create_project(&ctx, &mm, &slug, &human_key).await?;
         }
         Commands::CreateAgent { project_slug, name } => {
-            let mm = ModelManager::new().await?;
+            let mm = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             handle_create_agent(&ctx, &mm, &project_slug, name).await?;
         }
         Commands::SendMessage {
@@ -383,11 +392,17 @@ async fn main() -> Result<()> {
             subject,
             body,
         } => {
-            let mm = ModelManager::new().await?;
+            let mm = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             handle_send_message(&ctx, &mm, &project_slug, &from, to, subject, body).await?;
         }
         Commands::Projects { command } => {
-            let mm = ModelManager::new().await?;
+            let mm = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             handle_projects_command(command, &ctx, &mm).await?;
         }
         Commands::Guard { command } => {
@@ -398,7 +413,10 @@ async fn main() -> Result<()> {
             dry_run,
             mode,
         } => {
-            let mm = ModelManager::new().await?;
+            let mm = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             let ctx = Ctx::root_ctx();
 
             let config = lib_common::config::EscalationConfig::from_env();
@@ -444,7 +462,10 @@ async fn main() -> Result<()> {
             scrub,
             output,
         } => {
-            let mm = ModelManager::new().await?;
+            let mm = ModelManager::new(std::sync::Arc::new(
+                lib_common::config::AppConfig::load().unwrap_or_default(),
+            ))
+            .await?;
             let ctx = Ctx::root_ctx();
 
             let format_enum = lib_core::model::export::ExportFormat::from_str(&format)

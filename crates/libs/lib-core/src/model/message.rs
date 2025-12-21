@@ -20,7 +20,7 @@
 //! use lib_core::ctx::Ctx;
 //!
 //! # async fn example() -> lib_core::Result<()> {
-//! let mm = ModelManager::new().await?;
+//! let mm = ModelManager::new(std::sync::Arc::new(lib_common::config::AppConfig::default())).await?;
 //! let ctx = Ctx::root_ctx();
 //!
 //! // Send a message
@@ -219,6 +219,54 @@ impl MessageBmc {
         Ok(overdue)
     }
 
+    pub async fn get_inbox_count(_ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<i64> {
+        let db = mm.db();
+        let stmt = db
+            .prepare("SELECT COUNT(*) FROM message_recipients WHERE agent_id = ?")
+            .await?;
+        let mut rows = stmt.query([agent_id]).await?;
+        if let Some(row) = rows.next().await? {
+            Ok(row.get(0)?)
+        } else {
+            Ok(0)
+        }
+    }
+
+    async fn check_inbox_quotas(mm: &ModelManager, agent_ids: &[i64], limit: i64) -> Result<()> {
+        let db = mm.db();
+        if agent_ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut unique_ids = agent_ids.to_vec();
+        unique_ids.sort_unstable();
+        unique_ids.dedup();
+
+        let placeholders = unique_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        let query = format!(
+            "SELECT agent_id, COUNT(*) FROM message_recipients WHERE agent_id IN ({}) GROUP BY agent_id HAVING COUNT(*) >= ?",
+            placeholders
+        );
+
+        let mut params: Vec<libsql::Value> = unique_ids.iter().map(|&id| id.into()).collect();
+        params.push(limit.into());
+
+        let stmt = db.prepare(&query).await?;
+        let mut rows = stmt
+            .query(libsql::params::Params::Positional(params))
+            .await?;
+
+        if let Some(row) = rows.next().await? {
+            let agent_id: i64 = row.get(0)?;
+            let count: i64 = row.get(1)?;
+            return Err(crate::Error::QuotaExceeded(format!(
+                "Inbox limit reached for agent {}. Current: {}, Limit: {}",
+                agent_id, count, limit
+            )));
+        }
+        Ok(())
+    }
+
     /// Creates a new message and sends it to one or more recipients.
     ///
     /// This method:
@@ -260,6 +308,21 @@ impl MessageBmc {
     /// # }
     /// ```
     pub async fn create(_ctx: &Ctx, mm: &ModelManager, msg_c: MessageForCreate) -> Result<i64> {
+        // Enforce Quota
+        if mm.app_config.quota.enabled {
+            let limit = mm.app_config.quota.inbox_limit_count as i64;
+            if limit > 0 {
+                let mut targets = msg_c.recipient_ids.clone();
+                if let Some(cc) = &msg_c.cc_ids {
+                    targets.extend(cc);
+                }
+                if let Some(bcc) = &msg_c.bcc_ids {
+                    targets.extend(bcc);
+                }
+                Self::check_inbox_quotas(mm, &targets, limit).await?;
+            }
+        }
+
         let db = mm.db();
 
         // 1. Insert into DB

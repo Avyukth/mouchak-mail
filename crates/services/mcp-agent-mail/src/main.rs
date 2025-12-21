@@ -1,5 +1,8 @@
-use clap::{Args, Parser, Subcommand};
-use lib_common::config::AppConfig;
+use clap::{Args, CommandFactory, Parser, Subcommand};
+use lib_common::{
+    config::AppConfig,
+    robot::{RobotArg, RobotCommand, RobotHelp},
+};
 use lib_mcp::{docs::generate_markdown_docs, run_sse, run_stdio, tools::get_tool_schemas};
 use std::io::Write;
 use std::net::TcpListener;
@@ -14,11 +17,19 @@ mod panic_hook;
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 
     /// Log format: plain or json
     #[arg(long, default_value = "plain", global = true)]
     log_format: String,
+
+    /// Output help in machine-readable JSON format
+    #[arg(
+        long,
+        global = true,
+        help = "Output help in machine-readable JSON format"
+    )]
+    robot_help: bool,
 }
 
 #[derive(Subcommand)]
@@ -367,7 +378,7 @@ async fn handle_serve_http(
     }
 
     info!("Starting HTTP Server on port {}...", config.server.port);
-    lib_server::run(config.server).await?;
+    lib_server::run(config).await?;
     Ok(())
 }
 
@@ -380,9 +391,9 @@ async fn handle_serve_mcp(
     config.mcp.port = port;
     info!("Starting MCP Server ({})", transport);
     if transport == "sse" {
-        run_sse(config.mcp).await?;
+        run_sse(config).await?;
     } else {
-        run_stdio(config.mcp).await?;
+        run_stdio(config).await?;
     }
     Ok(())
 }
@@ -790,6 +801,52 @@ fn handle_config_command(cmd: ConfigCommands) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[allow(clippy::unwrap_used)] // JSON serialization of RobotHelp is infallible
+fn handle_robot_help() {
+    let cmd = Cli::command();
+    let help = build_robot_help(cmd);
+    println!("{}", serde_json::to_string_pretty(&help).unwrap());
+}
+
+fn build_robot_help(cmd: clap::Command) -> RobotHelp {
+    RobotHelp {
+        program: cmd.get_name().to_string(),
+        version: cmd.get_version().unwrap_or("unknown").to_string(),
+        description: cmd.get_about().unwrap_or_default().to_string(),
+        commands: cmd
+            .get_subcommands()
+            .map(|sub| build_robot_command(sub.clone()))
+            .collect(),
+    }
+}
+
+fn build_robot_command(cmd: clap::Command) -> RobotCommand {
+    RobotCommand {
+        name: cmd.get_name().to_string(),
+        about: cmd.get_about().unwrap_or_default().to_string(),
+        args: cmd.get_arguments().map(build_robot_arg).collect(),
+        subcommands: cmd
+            .get_subcommands()
+            .map(|sub| build_robot_command(sub.clone()))
+            .collect(),
+    }
+}
+
+fn build_robot_arg(arg: &clap::Arg) -> RobotArg {
+    RobotArg {
+        name: arg.get_id().to_string(),
+        long: arg.get_long().map(|s| format!("--{}", s)),
+        short: arg.get_short(),
+        help: arg.get_help().map(|s| s.to_string()).unwrap_or_default(),
+        required: arg.is_required_set(),
+        possible_values: arg
+            .get_possible_values()
+            .iter()
+            .map(|v| v.get_name().to_string())
+            .collect(),
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Install panic hook FIRST, before anything else
@@ -797,11 +854,17 @@ async fn main() -> anyhow::Result<()> {
     panic_hook::init_panic_hook();
 
     let cli = Cli::parse();
+
+    if cli.robot_help {
+        handle_robot_help();
+        return Ok(());
+    }
+
     setup_tracing(cli.log_format == "json")?;
     let config = load_config();
 
     match cli.command {
-        Commands::Serve(args) => match args.command {
+        Some(Commands::Serve(args)) => match args.command {
             ServeCommands::Http {
                 port,
                 with_ui,
@@ -811,19 +874,19 @@ async fn main() -> anyhow::Result<()> {
                 handle_serve_mcp(transport, port, config).await?
             }
         },
-        Commands::Health { url } => handle_health(url).await?,
-        Commands::Config(args) => handle_config_command(args.command)?,
-        Commands::Schema { format, output } => handle_schema(format, output)?,
-        Commands::Tools => handle_tools(),
-        Commands::Install(args) => match args.command {
+        Some(Commands::Health { url }) => handle_health(url).await?,
+        Some(Commands::Config(args)) => handle_config_command(args.command)?,
+        Some(Commands::Schema { format, output }) => handle_schema(format, output)?,
+        Some(Commands::Tools) => handle_tools(),
+        Some(Commands::Install(args)) => match args.command {
             InstallCommands::Alias { force } => handle_install_alias(force)?,
         },
-        Commands::Service(args) => match args.command {
+        Some(Commands::Service(args)) => match args.command {
             ServiceCommands::Stop { port } => handle_service_stop(port)?,
             ServiceCommands::Status { port } => handle_service_status(port).await?,
             ServiceCommands::Restart { port } => handle_service_restart(port, config).await?,
         },
-        Commands::Share(args) => match args.command {
+        Some(Commands::Share(args)) => match args.command {
             ShareCommands::Keypair { output } => handle_share_keypair(output)?,
             ShareCommands::Verify {
                 manifest,
@@ -836,8 +899,11 @@ async fn main() -> anyhow::Result<()> {
                 println!("Age decryption not yet implemented - use Python version");
             }
         },
-        Commands::Archive(args) => handle_archive_command(args.command).await?,
-        Commands::Version => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
+        Some(Commands::Archive(args)) => handle_archive_command(args.command).await?,
+        Some(Commands::Version) => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
+        None => {
+            Cli::command().print_help()?;
+        }
     }
 
     Ok(())

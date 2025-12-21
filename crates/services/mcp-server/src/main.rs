@@ -20,6 +20,6 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Loaded config: {:?}", config.server);
 
     // 3. Run Server
-    run(config.server).await?;
+    run(config).await?;
     Ok(())
 }

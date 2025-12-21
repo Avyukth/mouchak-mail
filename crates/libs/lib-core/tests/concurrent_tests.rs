@@ -12,6 +12,7 @@
 
 use chrono::{Duration, Utc};
 use futures::future::join_all;
+use lib_common::config::AppConfig;
 use lib_core::ctx::Ctx;
 use lib_core::model::ModelManager;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
@@ -40,7 +41,8 @@ async fn create_test_mm() -> (ModelManager, TempDir) {
         conn.execute_batch(migration).await.expect("run migration");
     }
 
-    let mm = ModelManager::new_for_test(conn, temp_dir.path().to_path_buf());
+    let app_config = Arc::new(AppConfig::default());
+    let mm = ModelManager::new_for_test(conn, temp_dir.path().to_path_buf(), app_config);
     (mm, temp_dir)
 }
 

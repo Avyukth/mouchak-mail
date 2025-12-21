@@ -1,5 +1,5 @@
 use anyhow::Result;
-use lib_common::config::McpConfig;
+use lib_common::config::AppConfig;
 use rmcp::ServiceExt;
 use tokio::io::{stdin, stdout};
 
@@ -10,7 +10,7 @@ pub use tools::{
     UnregisterMacroParams,
 };
 
-pub async fn run_stdio(config: McpConfig) -> Result<()> {
+pub async fn run_stdio(config: AppConfig) -> Result<()> {
     // Initializing logging to stderr is crucial for MCP stdio transport
     // This might be already handled by the caller (unified binary), but stdio mode specifically
     // requires logs to go to stderr. The unified binary setup_tracing usually does this if not json.
@@ -22,8 +22,7 @@ pub async fn run_stdio(config: McpConfig) -> Result<()> {
     tracing::info!("Starting MCP Agent Mail server (stdio mode)...");
 
     // Initialize the service with worktrees config
-    let worktrees_enabled = config.worktrees_active();
-    let service = AgentMailService::new_with_config(worktrees_enabled).await?;
+    let service = AgentMailService::new_with_config(config).await?;
 
     // Run over stdio
     let transport = (stdin(), stdout());
@@ -38,7 +37,7 @@ pub async fn run_stdio(config: McpConfig) -> Result<()> {
     Ok(())
 }
 
-pub async fn run_sse(config: McpConfig) -> Result<()> {
+pub async fn run_sse(config: AppConfig) -> Result<()> {
     use rmcp::transport::streamable_http_server::{
         session::local::LocalSessionManager,
         tower::{StreamableHttpServerConfig, StreamableHttpService},
@@ -46,7 +45,7 @@ pub async fn run_sse(config: McpConfig) -> Result<()> {
     use std::net::SocketAddr;
     use std::sync::Arc;
 
-    let addr: SocketAddr = format!("0.0.0.0:{}", config.port).parse()?;
+    let addr: SocketAddr = format!("0.0.0.0:{}", config.mcp.port).parse()?;
     tracing::info!(
         "Starting MCP Agent Mail server (HTTP/SSE mode) on http://{}",
         addr
@@ -56,7 +55,6 @@ pub async fn run_sse(config: McpConfig) -> Result<()> {
     let session_manager = Arc::new(LocalSessionManager::default());
 
     // Configure the HTTP server
-    let worktrees_enabled = config.worktrees_active();
     let server_config = StreamableHttpServerConfig::default();
 
     // Create a service factory that creates a new AgentMailService for each connection
@@ -65,7 +63,7 @@ pub async fn run_sse(config: McpConfig) -> Result<()> {
         // We'll use a blocking approach here for simplicity, or handle via tokio::spawn if structure allows
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
-            AgentMailService::new_with_config(worktrees_enabled)
+            AgentMailService::new_with_config(config.clone())
                 .await
                 .map_err(|e| std::io::Error::other(e.to_string()))
         })

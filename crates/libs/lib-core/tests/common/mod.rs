@@ -9,8 +9,10 @@
 
 #![allow(dead_code)]
 
+use lib_common::config::AppConfig;
 use lib_core::{Ctx, ModelManager, Result};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tempfile::TempDir;
 
@@ -29,7 +31,12 @@ pub struct TestContext {
 
 impl TestContext {
     /// Create a new test context with isolated database and git repo
+    /// Create a new test context with isolated database and git repo
     pub async fn new() -> Result<Self> {
+        Self::new_with_config(AppConfig::default()).await
+    }
+
+    pub async fn new_with_config(config: AppConfig) -> Result<Self> {
         // Create unique temp directory for this test
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
 
@@ -46,7 +53,8 @@ impl TestContext {
         let db = create_test_db(&db_path).await?;
 
         // Create ModelManager with test paths using the test constructor
-        let mm = ModelManager::new_for_test(db, archive_root);
+        let app_config = Arc::new(config);
+        let mm = ModelManager::new_for_test(db, archive_root, app_config);
         let ctx = Ctx::root_ctx();
 
         Ok(Self { mm, ctx, temp_dir })

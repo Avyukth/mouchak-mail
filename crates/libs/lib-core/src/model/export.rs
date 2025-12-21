@@ -995,3 +995,5 @@ impl ExportBmc {
         Ok((exported, manifest))
     }
 }
+#[cfg(test)]
+mod export_scrub_tests;
