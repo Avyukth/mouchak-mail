@@ -107,6 +107,9 @@ enum Commands {
 
     /// Pre-commit guard management
     Guard(GuardArgs),
+
+    /// Mail/project status information
+    Mail(MailArgs),
 }
 
 #[derive(Args)]
@@ -299,6 +302,12 @@ struct GuardArgs {
 }
 
 #[derive(Args)]
+struct MailArgs {
+    #[command(subcommand)]
+    command: MailCommands,
+}
+
+#[derive(Args)]
 struct SummarizeArgs {
     /// Project slug or path
     #[arg(short, long)]
@@ -363,6 +372,23 @@ enum ArchiveCommands {
 #[derive(Subcommand)]
 enum GuardCommands {
     /// Show guard status information
+    Status,
+
+    /// Check file paths against active reservations
+    Check {
+        /// Read paths from stdin (null-separated)
+        #[arg(long)]
+        stdin_nul: bool,
+
+        /// Advisory mode (warn instead of fail)
+        #[arg(long)]
+        advisory: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum MailCommands {
+    /// Show mail/project status information
     Status,
 }
 
@@ -1330,9 +1356,129 @@ async fn handle_guard_status() -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn handle_guard_check(stdin_nul: bool, advisory: bool) -> anyhow::Result<()> {
+    use std::io::{self, Read};
+
+    // Read paths from stdin
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input)?;
+
+    // Parse paths (null-separated if --stdin-nul, otherwise newline-separated)
+    let paths: Vec<String> = if stdin_nul {
+        input
+            .split('\0')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect()
+    } else {
+        input.lines().map(|s| s.to_string()).collect()
+    };
+
+    if paths.is_empty() {
+        if advisory {
+            eprintln!("Warning: No paths provided to check");
+            return Ok(());
+        } else {
+            eprintln!("Error: No paths provided to check");
+            std::process::exit(1);
+        }
+    }
+
+    // Get active file reservations from MCP API
+    let url =
+        std::env::var("MCP_AGENT_MAIL_URL").unwrap_or_else(|_| "http://localhost:8765".into());
+    let client = reqwest::Client::new();
+
+    let reservations_result = client
+        .post(format!("{}/api/file_reservations/list", url))
+        .json(&serde_json::json!({
+            "project_slug": "mcp-agent-mail-rs"
+        }))
+        .send()
+        .await;
+
+    let mut conflicting_paths = Vec::new();
+
+    match reservations_result {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.json::<serde_json::Value>().await {
+                Ok(json) => {
+                    if let Some(reservations) = json.get("reservations").and_then(|r| r.as_array())
+                    {
+                        for path in &paths {
+                            for reservation in reservations {
+                                if let Some(pattern) =
+                                    reservation.get("path_pattern").and_then(|p| p.as_str())
+                                {
+                                    // Simple pattern matching - check if path starts with or contains the pattern
+                                    if path.starts_with(pattern)
+                                        || path.contains(&format!("/{}", pattern))
+                                    {
+                                        conflicting_paths.push((path.clone(), pattern.to_string()));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    if advisory {
+                        eprintln!("Warning: Could not query file reservations: {}", e);
+                    } else {
+                        eprintln!("Error: Could not query file reservations: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+        _ => {
+            if advisory {
+                eprintln!("Warning: Could not connect to MCP server at {}", url);
+            } else {
+                eprintln!("Error: Could not connect to MCP server at {}", url);
+                std::process::exit(1);
+            }
+        }
+    }
+
+    if conflicting_paths.is_empty() {
+        // All paths are clear
+        if advisory {
+            eprintln!("All {} paths are available for editing", paths.len());
+        }
+        Ok(())
+    } else {
+        // Some paths are reserved
+        if advisory {
+            eprintln!(
+                "Warning: {} path(s) are currently reserved:",
+                conflicting_paths.len()
+            );
+            for (path, pattern) in &conflicting_paths {
+                eprintln!("  {} (reserved by: {})", path, pattern);
+            }
+        } else {
+            eprintln!(
+                "Error: {} path(s) are currently reserved:",
+                conflicting_paths.len()
+            );
+            for (path, pattern) in &conflicting_paths {
+                eprintln!("  {} (reserved by: {})", path, pattern);
+            }
+            std::process::exit(1);
+        }
+        Ok(())
+    }
+}
+
 async fn handle_guard(args: GuardArgs) -> anyhow::Result<()> {
     match args.command {
         GuardCommands::Status => handle_guard_status().await,
+        GuardCommands::Check {
+            stdin_nul,
+            advisory,
+        } => handle_guard_check(stdin_nul, advisory).await,
     }
 }
 
@@ -1413,6 +1559,7 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Summarize(args)) => handle_summarize(args).await?,
         Some(Commands::Products(args)) => handle_products(args).await?,
         Some(Commands::Guard(args)) => handle_guard(args).await?,
+        Some(Commands::Mail(args)) => handle_mail(args).await?,
         Some(Commands::Version) => println!("mcp-agent-mail v{}", env!("CARGO_PKG_VERSION")),
         None => {
             Cli::command().print_help()?;
@@ -1885,4 +2032,109 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+async fn handle_mail_status() -> anyhow::Result<()> {
+    println!("Mail Status");
+    println!("===========");
+
+    // resolved project_key for a directory
+    let project_slug = std::env::var("MCP_AGENT_MAIL_PROJECT_SLUG")
+        .unwrap_or_else(|_| "mcp-agent-mail-rs".to_string());
+    println!("Project: {}", project_slug);
+
+    // registration status - check if we're registered with Agent Mail
+    let agent_registered = std::env::var("MCP_AGENT_MAIL_URL").is_ok();
+    println!(
+        "Agent Registration: {}",
+        if agent_registered {
+            "registered"
+        } else {
+            "not registered"
+        }
+    );
+
+    // active file reservations - query MCP API
+    if let Ok(url) = std::env::var("MCP_AGENT_MAIL_URL") {
+        let client = reqwest::Client::new();
+
+        // Check file reservations
+        match client
+            .post(format!("{}/api/file_reservations/list", url))
+            .json(&serde_json::json!({
+                "project_slug": project_slug
+            }))
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                match resp.json::<serde_json::Value>().await {
+                    Ok(json) => {
+                        if let Some(reservations) =
+                            json.get("reservations").and_then(|r| r.as_array())
+                        {
+                            println!("Active File Reservations: {} active", reservations.len());
+                            for reservation in reservations {
+                                if let (Some(path), Some(expires)) = (
+                                    reservation.get("path_pattern").and_then(|p| p.as_str()),
+                                    reservation.get("expires_ts").and_then(|e| e.as_str()),
+                                ) {
+                                    println!("  - {} (expires: {})", path, expires);
+                                }
+                            }
+                        } else {
+                            println!("Active File Reservations: 0 active");
+                        }
+                    }
+                    Err(_) => println!("Active File Reservations: unable to query"),
+                }
+            }
+            _ => println!("Active File Reservations: unable to query"),
+        }
+    } else {
+        println!("Active File Reservations: MCP server not configured");
+    }
+
+    // product linkage - check if project is linked to products
+    if let Ok(url) = std::env::var("MCP_AGENT_MAIL_URL") {
+        let client = reqwest::Client::new();
+
+        match client
+            .post(format!("{}/api/product/list", url))
+            .json(&serde_json::json!({
+                "project_slug": project_slug
+            }))
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                match resp.json::<serde_json::Value>().await {
+                    Ok(json) => {
+                        if let Some(products) = json.get("products").and_then(|p| p.as_array()) {
+                            println!("Product Linkage: {} linked", products.len());
+                            for product in products {
+                                if let Some(name) = product.get("name").and_then(|n| n.as_str()) {
+                                    println!("  - {}", name);
+                                }
+                            }
+                        } else {
+                            println!("Product Linkage: no linked products");
+                        }
+                    }
+                    Err(_) => println!("Product Linkage: unable to query"),
+                }
+            }
+            _ => println!("Product Linkage: unable to query"),
+        }
+    } else {
+        println!("Product Linkage: MCP server not configured");
+    }
+
+    Ok(())
+}
+
+async fn handle_mail(args: MailArgs) -> anyhow::Result<()> {
+    match args.command {
+        MailCommands::Status => handle_mail_status().await,
+    }
 }

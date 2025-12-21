@@ -36,7 +36,8 @@ pub struct RobotExamplesOutput {
     pub examples: Vec<Example>,
 }
 
-pub static EXAMPLE_REGISTRY: Lazy<RobotHelpOutput> = Lazy::new(|| RobotHelpOutput {
+pub static EXAMPLE_REGISTRY: Lazy<RobotHelpOutput> = Lazy::new(|| {
+    RobotHelpOutput {
     schema_version: ROBOT_HELP_SCHEMA_VERSION.to_string(),
     tool: "mcp-agent-mail".to_string(),
     version: env!("CARGO_PKG_VERSION").to_string(),
@@ -903,5 +904,63 @@ pub static EXAMPLE_REGISTRY: Lazy<RobotHelpOutput> = Lazy::new(|| RobotHelpOutpu
                 subcommands: vec![],
             }],
         },
+        CommandSchema {
+            name: "mail".to_string(),
+            description: "Mail/project status information".to_string(),
+            examples: vec![Example {
+                invocation: "mcp-agent-mail mail status".to_string(),
+                description: "Show mail/project status information".to_string(),
+            }],
+            parameters: vec![],
+            exit_codes: Default::default(),
+            subcommands: vec![CommandSchema {
+                name: "status".to_string(),
+                description: "Show guard status information".to_string(),
+                examples: vec![],
+                parameters: vec![],
+                exit_codes: Default::default(),
+                subcommands: vec![],
+            }, CommandSchema {
+                name: "check".to_string(),
+                description: "Check file paths against active reservations".to_string(),
+                examples: vec![
+                    Example {
+                        invocation: "echo 'file.txt' | mcp-agent-mail guard check".to_string(),
+                        description: "Check if file.txt is reserved".to_string(),
+                    },
+                    Example {
+                        invocation: "echo -e 'file1.txt\\nfile2.txt' | mcp-agent-mail guard check --advisory".to_string(),
+                        description: "Check multiple files with advisory mode".to_string(),
+                    },
+                ],
+                parameters: vec![
+                    ParameterSchema {
+                        name: "stdin_nul".to_string(),
+                        long: Some("--stdin-nul".to_string()),
+                        short: None,
+                        description: "Read paths from stdin (null-separated)".to_string(),
+                        param_type: Some("boolean".to_string()),
+                        default: Some("false".to_string()),
+                        required: false,
+                        possible_values: vec![],
+                        env_var: None,
+                    },
+                    ParameterSchema {
+                        name: "advisory".to_string(),
+                        long: Some("--advisory".to_string()),
+                        short: None,
+                        description: "Advisory mode (warn instead of fail)".to_string(),
+                        param_type: Some("boolean".to_string()),
+                        default: Some("false".to_string()),
+                        required: false,
+                        possible_values: vec![],
+                        env_var: None,
+                    },
+                ],
+                exit_codes: Default::default(),
+                subcommands: vec![],
+            }],
+        },
     ],
+}
 });
