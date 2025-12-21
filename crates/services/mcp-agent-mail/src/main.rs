@@ -2192,3 +2192,253 @@ mod guard_pattern_tests {
         assert!(!path_matches_pattern("resource/file.rs", "src"));
     }
 }
+
+// =============================================================================
+// Tests for robot-* flag handlers (TDD - mcp-agent-mail-rs-vgs4)
+// =============================================================================
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod robot_handler_tests {
+    use super::robot_help::{EXAMPLE_REGISTRY, RobotExamplesOutput, RobotStatusOutput};
+
+    #[test]
+    fn test_robot_help_json_valid() {
+        // The EXAMPLE_REGISTRY should serialize to valid JSON
+        let registry = &*EXAMPLE_REGISTRY;
+        let json_str = serde_json::to_string_pretty(registry).expect("must serialize to JSON");
+
+        // Parse it back to verify it's valid JSON
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json_str).expect("must be valid JSON");
+        assert!(parsed.is_object());
+
+        // Should have robot-* entries
+        assert!(
+            parsed.get("--robot-help").is_some(),
+            "--robot-help must be in registry"
+        );
+        assert!(
+            parsed.get("--robot-examples").is_some(),
+            "--robot-examples must be in registry"
+        );
+        assert!(
+            parsed.get("--robot-status").is_some(),
+            "--robot-status must be in registry"
+        );
+    }
+
+    #[test]
+    fn test_robot_examples_self_documenting() {
+        // robot-examples should include examples for robot-examples itself
+        let registry = &*EXAMPLE_REGISTRY;
+
+        let robot_examples_entry = registry
+            .get("--robot-examples")
+            .expect("--robot-examples must exist in registry");
+
+        // Verify it has the target_type "flag"
+        assert_eq!(robot_examples_entry.target_type, "flag");
+
+        // Verify it has examples
+        assert!(
+            !robot_examples_entry.examples.is_empty(),
+            "--robot-examples must have examples"
+        );
+
+        // Verify at least one example mentions robot-examples
+        let has_self_example = robot_examples_entry
+            .examples
+            .iter()
+            .any(|ex| ex.invocation.contains("robot-examples"));
+        assert!(
+            has_self_example,
+            "--robot-examples must have examples that reference itself"
+        );
+    }
+
+    #[test]
+    fn test_robot_status_output_structure() {
+        // Verify RobotStatusOutput has all required fields
+        use std::collections::HashMap;
+
+        let output = RobotStatusOutput {
+            schema_version: "1.0.0".to_string(),
+            tool: "mcp-agent-mail".to_string(),
+            version: "0.3.0".to_string(),
+            timestamp: "2024-12-22T00:00:00Z".to_string(),
+            status: "healthy".to_string(),
+            checks: HashMap::new(),
+            exit_code: 0,
+        };
+
+        let json = serde_json::to_value(&output).expect("must serialize");
+
+        // Verify all required fields are present
+        assert!(json.get("schema_version").is_some());
+        assert!(json.get("tool").is_some());
+        assert!(json.get("version").is_some());
+        assert!(json.get("timestamp").is_some());
+        assert!(json.get("status").is_some());
+        assert!(json.get("checks").is_some());
+        assert!(json.get("exit_code").is_some());
+
+        // Verify exit_code is a number
+        assert!(json["exit_code"].is_number());
+        assert_eq!(json["exit_code"].as_u64().unwrap(), 0);
+    }
+
+    #[test]
+    fn test_robot_status_exit_codes_match() {
+        use super::robot_help::CheckResult;
+        use std::collections::HashMap;
+
+        // Test healthy case - exit_code should be 0
+        let mut healthy_checks = HashMap::new();
+        healthy_checks.insert(
+            "database".to_string(),
+            CheckResult {
+                status: "ok".to_string(),
+                path: Some("data/test.db".to_string()),
+                port: None,
+                details: None,
+            },
+        );
+
+        let healthy_output = RobotStatusOutput {
+            schema_version: "1.0.0".to_string(),
+            tool: "mcp-agent-mail".to_string(),
+            version: "0.3.0".to_string(),
+            timestamp: "2024-12-22T00:00:00Z".to_string(),
+            status: "healthy".to_string(),
+            checks: healthy_checks,
+            exit_code: 0,
+        };
+        assert_eq!(healthy_output.exit_code, 0);
+        assert_eq!(healthy_output.status, "healthy");
+
+        // Test degraded case - exit_code should be 1
+        let mut degraded_checks = HashMap::new();
+        degraded_checks.insert(
+            "database".to_string(),
+            CheckResult {
+                status: "missing".to_string(),
+                path: Some("data/test.db".to_string()),
+                port: None,
+                details: None,
+            },
+        );
+
+        let degraded_output = RobotStatusOutput {
+            schema_version: "1.0.0".to_string(),
+            tool: "mcp-agent-mail".to_string(),
+            version: "0.3.0".to_string(),
+            timestamp: "2024-12-22T00:00:00Z".to_string(),
+            status: "degraded".to_string(),
+            checks: degraded_checks,
+            exit_code: 1,
+        };
+        assert_eq!(degraded_output.exit_code, 1);
+        assert_eq!(degraded_output.status, "degraded");
+    }
+
+    #[test]
+    fn test_robot_examples_output_structure() {
+        // Verify RobotExamplesOutput serializes correctly
+        use lib_common::robot::Example;
+
+        let output = RobotExamplesOutput {
+            schema_version: "1.0".to_string(),
+            target: "--robot-examples".to_string(),
+            target_type: "flag".to_string(),
+            examples: vec![Example {
+                invocation: "mcp-agent-mail --robot-examples serve".to_string(),
+                description: "Examples for serve command".to_string(),
+            }],
+        };
+
+        let json = serde_json::to_value(&output).expect("must serialize");
+
+        // Verify structure
+        assert_eq!(json["schema_version"], "1.0");
+        assert_eq!(json["target"], "--robot-examples");
+        assert_eq!(json["target_type"], "flag");
+        assert!(json["examples"].is_array());
+        assert_eq!(json["examples"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_example_registry_has_all_commands() {
+        // The registry should have entries for all major commands
+        let registry = &*EXAMPLE_REGISTRY;
+
+        // Core subcommands
+        let core_commands = vec![
+            "serve",
+            "serve http",
+            "serve mcp",
+            "health",
+            "config",
+            "schema",
+            "tools",
+            "install",
+            "service",
+            "share",
+            "archive",
+            "summarize",
+            "version",
+            "products",
+            "guard",
+            "mail",
+        ];
+
+        for cmd in core_commands {
+            assert!(
+                registry.contains_key(cmd),
+                "Registry must contain command: {}",
+                cmd
+            );
+        }
+
+        // Robot flags
+        let robot_flags = vec!["--robot-help", "--robot-examples", "--robot-status"];
+
+        for flag in robot_flags {
+            assert!(
+                registry.contains_key(flag),
+                "Registry must contain flag: {}",
+                flag
+            );
+        }
+    }
+
+    #[test]
+    fn test_example_registry_entries_have_examples() {
+        // Every entry should have at least one example
+        let registry = &*EXAMPLE_REGISTRY;
+
+        for (key, entry) in registry.iter() {
+            assert!(
+                !entry.examples.is_empty(),
+                "Entry '{}' must have at least one example",
+                key
+            );
+
+            // Each example should have non-empty invocation and description
+            for (i, ex) in entry.examples.iter().enumerate() {
+                assert!(
+                    !ex.invocation.is_empty(),
+                    "Entry '{}' example {} must have invocation",
+                    key,
+                    i
+                );
+                assert!(
+                    !ex.description.is_empty(),
+                    "Entry '{}' example {} must have description",
+                    key,
+                    i
+                );
+            }
+        }
+    }
+}

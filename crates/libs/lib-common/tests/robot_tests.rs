@@ -345,3 +345,118 @@ fn test_backward_compatibility_legacy_robot_help_still_works() {
     assert_eq!(json["commands"][0]["about"], "Run the app");
     assert_eq!(json["commands"][0]["args"][0]["help"], "Config file path");
 }
+
+// =============================================================================
+// Tests for robot-* flag schema validation (TDD RED phase - mcp-agent-mail-rs-vgs4)
+// =============================================================================
+
+#[test]
+fn test_robot_help_output_has_required_schema_version() {
+    // Schema version must be "1.0.0" for the current API
+    let output = RobotHelpOutput {
+        schema_version: ROBOT_HELP_SCHEMA_VERSION.to_string(),
+        tool: "mcp-agent-mail".to_string(),
+        version: "0.3.0".to_string(),
+        description: "Gmail for coding agents".to_string(),
+        commands: vec![],
+        robot_flags: vec![],
+    };
+
+    assert_eq!(output.schema_version, "1.0.0");
+
+    // Parse as JSON and verify field exists
+    let json = serde_json::to_value(&output).unwrap();
+    assert!(json.get("schema_version").is_some());
+    assert_eq!(json["schema_version"].as_str().unwrap(), "1.0.0");
+}
+
+#[test]
+fn test_robot_help_output_valid_json_with_all_robot_flags() {
+    // A valid RobotHelpOutput should include all three robot-* flags
+    let output = RobotHelpOutput {
+        schema_version: ROBOT_HELP_SCHEMA_VERSION.to_string(),
+        tool: "mcp-agent-mail".to_string(),
+        version: "0.3.0".to_string(),
+        description: "Gmail for coding agents".to_string(),
+        commands: vec![],
+        robot_flags: vec![
+            RobotFlagSchema {
+                name: "--robot-help".to_string(),
+                description: "AI-optimized capability discovery".to_string(),
+                output_format: "json".to_string(),
+                examples: vec![Example {
+                    invocation: "mcp-agent-mail --robot-help".to_string(),
+                    description: "Show all capabilities as JSON".to_string(),
+                }],
+            },
+            RobotFlagSchema {
+                name: "--robot-examples".to_string(),
+                description: "Show usage examples".to_string(),
+                output_format: "json".to_string(),
+                examples: vec![],
+            },
+            RobotFlagSchema {
+                name: "--robot-status".to_string(),
+                description: "System health JSON".to_string(),
+                output_format: "json".to_string(),
+                examples: vec![],
+            },
+        ],
+    };
+
+    // Must serialize to valid JSON
+    let json_str = serde_json::to_string_pretty(&output).expect("must serialize to JSON");
+    assert!(!json_str.is_empty());
+
+    // Must deserialize back
+    let parsed: RobotHelpOutput = serde_json::from_str(&json_str).expect("must deserialize");
+    assert_eq!(parsed.robot_flags.len(), 3);
+
+    // Verify all three robot-* flags are present
+    let flag_names: Vec<&str> = parsed.robot_flags.iter().map(|f| f.name.as_str()).collect();
+    assert!(flag_names.contains(&"--robot-help"));
+    assert!(flag_names.contains(&"--robot-examples"));
+    assert!(flag_names.contains(&"--robot-status"));
+}
+
+#[test]
+fn test_robot_examples_must_be_self_documenting() {
+    // The robot_flags output should include examples for itself
+    let output = RobotHelpOutput {
+        schema_version: ROBOT_HELP_SCHEMA_VERSION.to_string(),
+        tool: "mcp-agent-mail".to_string(),
+        version: "0.3.0".to_string(),
+        description: "Gmail for coding agents".to_string(),
+        commands: vec![],
+        robot_flags: vec![RobotFlagSchema {
+            name: "--robot-examples".to_string(),
+            description: "Show usage examples for flags/subcommands".to_string(),
+            output_format: "json".to_string(),
+            examples: vec![
+                Example {
+                    invocation: "mcp-agent-mail --robot-examples serve".to_string(),
+                    description: "Examples for serve command".to_string(),
+                },
+                Example {
+                    invocation: "mcp-agent-mail --robot-examples --robot-examples".to_string(),
+                    description: "Self-documenting: show this very output".to_string(),
+                },
+            ],
+        }],
+    };
+
+    let robot_examples_flag = output
+        .robot_flags
+        .iter()
+        .find(|f| f.name == "--robot-examples")
+        .expect("--robot-examples flag must exist");
+
+    // Must have at least one example that documents itself
+    let has_self_doc = robot_examples_flag.examples.iter().any(|ex| {
+        ex.invocation.contains("--robot-examples") && ex.description.to_lowercase().contains("self")
+    });
+    assert!(
+        has_self_doc,
+        "--robot-examples should be self-documenting with an example for itself"
+    );
+}

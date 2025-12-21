@@ -74,6 +74,7 @@ These tools work across ALL projects. Learn them once, use them everywhere.
 | **Structural code search** | ast-grep | `ast-grep run -l <lang> -p 'pattern'` |
 | **Text search** | ripgrep | `rg "pattern"` |
 | **Multi-agent coordination** | MCP Agent Mail | `file_reservation_paths(...)` |
+| **AI capability discovery** | mcp-agent-mail | `--robot-help`, `--robot-examples`, `--robot-status` |
 
 ---
 
