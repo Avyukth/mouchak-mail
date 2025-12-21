@@ -1,8 +1,13 @@
+//! Integration tests for convenience macros (require running server)
+//! Run with: cargo test -p lib-mcp --test macro_convenience_tests -- --ignored
+
 use reqwest::Client;
 use serde_json::json;
 
 /// Test macro_start_session combines register_agent + file_reservation_paths
 #[tokio::test]
+#[ignore = "Requires running MCP server"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_macro_start_session() {
     let client = Client::new();
     let base_url =
@@ -46,6 +51,8 @@ async fn test_macro_start_session() {
 
 /// Test macro_file_reservation_cycle reserve action
 #[tokio::test]
+#[ignore = "Requires running MCP server"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_macro_file_reservation_cycle_reserve() {
     let client = Client::new();
     let base_url =
@@ -68,6 +75,8 @@ async fn test_macro_file_reservation_cycle_reserve() {
 
 /// Test macro_contact_handshake creates bidirectional contacts
 #[tokio::test]
+#[ignore = "Requires running MCP server"]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_macro_contact_handshake() {
     let client = Client::new();
     let base_url =

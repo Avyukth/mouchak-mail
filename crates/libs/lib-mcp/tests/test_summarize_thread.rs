@@ -19,6 +19,7 @@ use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = temp_dir.path().join("test_summarize.db");
@@ -43,6 +44,7 @@ async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
     (Arc::new(mm), temp_dir)
 }
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn setup_test_data(mm: &ModelManager) -> (i64, i64, i64) {
     let ctx = Ctx::root_ctx();
 
@@ -114,6 +116,7 @@ async fn setup_test_data(mm: &ModelManager) -> (i64, i64, i64) {
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 fn test_thread_id_input_deserializes_single_string() {
     use lib_mcp::tools::ThreadIdInput;
 
@@ -127,6 +130,7 @@ fn test_thread_id_input_deserializes_single_string() {
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 fn test_thread_id_input_deserializes_multiple_strings() {
     use lib_mcp::tools::ThreadIdInput;
 
@@ -145,6 +149,7 @@ fn test_thread_id_input_deserializes_multiple_strings() {
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 fn test_summarize_result_structure() {
     use lib_mcp::tools::{SummarizeResult, ThreadSummaryError, ThreadSummaryItem};
 
@@ -170,6 +175,7 @@ fn test_summarize_result_structure() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_summarize_single_thread() {
     let (mm, _temp) = create_test_mm().await;
     let (project_id, _, _) = setup_test_data(&mm).await;
@@ -190,6 +196,7 @@ async fn test_summarize_single_thread() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_summarize_multiple_threads() {
     let (mm, _temp) = create_test_mm().await;
     let (project_id, _, _) = setup_test_data(&mm).await;
@@ -202,7 +209,7 @@ async fn test_summarize_multiple_threads() {
         let messages = MessageBmc::list_by_thread(&ctx, &mm, project_id, thread_id)
             .await
             .unwrap();
-        summaries.push((thread_id.to_string(), messages.len()));
+        summaries.push(((*thread_id).to_string(), messages.len()));
     }
 
     assert_eq!(summaries.len(), 2);
@@ -211,6 +218,7 @@ async fn test_summarize_multiple_threads() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_summarize_partial_failure() {
     let (mm, _temp) = create_test_mm().await;
     let (project_id, _, _) = setup_test_data(&mm).await;
@@ -224,10 +232,10 @@ async fn test_summarize_partial_failure() {
         let messages = MessageBmc::list_by_thread(&ctx, &mm, project_id, thread_id).await;
         match messages {
             Ok(msgs) if !msgs.is_empty() => {
-                successes.push(thread_id.to_string());
+                successes.push((*thread_id).to_string());
             }
             Ok(_) => {
-                errors.push(thread_id.to_string());
+                errors.push((*thread_id).to_string());
             }
             Err(e) => {
                 errors.push(format!("{}: {}", thread_id, e));
@@ -245,6 +253,7 @@ async fn test_summarize_partial_failure() {
 }
 
 #[test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 fn test_thread_id_input_to_vec() {
     use lib_mcp::tools::ThreadIdInput;
 

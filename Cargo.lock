@@ -3938,6 +3938,7 @@ dependencies = [
  "lib-common",
  "lib-core",
  "libsql",
+ "reqwest",
  "rmcp 0.12.0",
  "schemars",
  "serde",

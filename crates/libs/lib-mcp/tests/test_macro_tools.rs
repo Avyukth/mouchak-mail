@@ -12,6 +12,7 @@ use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = temp_dir.path().join("test_macros.db");
@@ -42,6 +43,7 @@ async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_unregister_macro_removes_from_database() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -57,7 +59,7 @@ async fn test_unregister_macro_removes_from_database() {
         description: "Test workflow".to_string(),
         steps: vec![serde_json::json!({"action": "test"})],
     };
-    let macro_id = MacroDefBmc::create(&ctx, &mm, macro_c).await.unwrap();
+    let _macro_id = MacroDefBmc::create(&ctx, &mm, macro_c).await.unwrap();
 
     // Verify macro exists (along with 5 built-in macros = 6 total)
     let macros = MacroDefBmc::list(&ctx, &mm, project_id).await.unwrap();
@@ -79,6 +81,7 @@ async fn test_unregister_macro_removes_from_database() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_unregister_nonexistent_macro_returns_false() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -95,6 +98,7 @@ async fn test_unregister_nonexistent_macro_returns_false() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_returns_correct_macros() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -129,6 +133,7 @@ async fn test_list_returns_correct_macros() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_create_and_get_macro_by_name() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -156,6 +161,7 @@ async fn test_create_and_get_macro_by_name() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_get_macro_returns_correct_steps() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();

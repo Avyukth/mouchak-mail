@@ -12,6 +12,7 @@ use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = temp_dir.path().join("test_convenience.db");
@@ -42,6 +43,7 @@ async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_builtin_workflows_returns_5_workflows() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -73,6 +75,7 @@ async fn test_list_builtin_workflows_returns_5_workflows() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_quick_standup_sends_to_all_agents() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -125,6 +128,7 @@ async fn test_quick_standup_sends_to_all_agents() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_quick_handoff_sends_message() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -177,6 +181,7 @@ async fn test_quick_handoff_sends_message() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_quick_review_reserves_files_and_sends_message() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();

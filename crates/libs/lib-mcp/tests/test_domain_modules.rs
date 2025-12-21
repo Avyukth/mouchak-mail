@@ -38,6 +38,7 @@ use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = temp_dir.path().join("test_domain.db");
@@ -68,6 +69,7 @@ async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_ensure_project_creates_new() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -87,6 +89,7 @@ async fn test_ensure_project_creates_new() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_ensure_project_returns_existing() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -109,6 +112,7 @@ async fn test_ensure_project_returns_existing() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_projects_returns_all() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -130,6 +134,7 @@ async fn test_list_projects_returns_all() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_get_project_info() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -165,6 +170,7 @@ async fn test_get_project_info() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_register_agent() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -189,6 +195,7 @@ async fn test_register_agent() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_whois_agent() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -224,6 +231,7 @@ async fn test_whois_agent() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_request_contact() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -266,6 +274,7 @@ async fn test_request_contact() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_contacts_empty() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -296,6 +305,7 @@ async fn test_list_contacts_empty() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_set_contact_policy() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -331,6 +341,7 @@ async fn test_set_contact_policy() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_reservations_empty() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -355,6 +366,7 @@ async fn test_list_reservations_empty() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_get_review_state_no_messages() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -377,6 +389,7 @@ async fn test_get_review_state_no_messages() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_get_review_state_with_completion() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -427,6 +440,7 @@ async fn test_get_review_state_with_completion() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_outbox_empty() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -455,6 +469,7 @@ async fn test_list_outbox_empty() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_outbox_with_messages() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -516,6 +531,7 @@ async fn test_list_outbox_with_messages() {
 // ==============================================================================
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_tool_metrics_empty() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -530,6 +546,7 @@ async fn test_list_tool_metrics_empty() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_get_tool_stats() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -544,6 +561,7 @@ async fn test_get_tool_stats() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_activity() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -562,6 +580,7 @@ async fn test_list_activity() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 async fn test_list_pending_reviews() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();

@@ -35,6 +35,8 @@ uuid.workspace = true
 [dev-dependencies]
 tempfile = "3"
 libsql = { version = "0.9", default-features = false }
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 
 [lints]
 workspace = true
