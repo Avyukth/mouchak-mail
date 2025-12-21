@@ -1218,6 +1218,50 @@ async fn handle_guard_status() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Check if a file path matches a reservation pattern.
+///
+/// Pattern matching rules:
+/// - `*` matches all paths
+/// - `src/**` matches all paths under `src/` directory
+/// - `src/main.rs` matches exactly that path or as suffix with path separator
+/// - Empty patterns never match
+fn path_matches_pattern(path: &str, pattern: &str) -> bool {
+    if pattern.is_empty() {
+        return false;
+    }
+
+    // Wildcard matches everything
+    if pattern == "*" {
+        return true;
+    }
+
+    // Double-star suffix (e.g., "src/**") - must have at least one char before /**
+    // Matches paths UNDER the directory, not the directory itself
+    if pattern.len() > 3 && pattern.ends_with("/**") {
+        let prefix = &pattern[..pattern.len() - 3];
+        // Path must start with prefix and have a path separator after it
+        return path.starts_with(prefix)
+            && path.len() > prefix.len()
+            && path[prefix.len()..].starts_with('/');
+    }
+
+    // Exact prefix match
+    if path.starts_with(pattern) {
+        // Must be exact match or followed by path separator
+        return path.len() == pattern.len() || path[pattern.len()..].starts_with('/');
+    }
+
+    // Check if pattern appears as a path segment (not just substring)
+    let search = format!("/{}/", pattern);
+    if path.contains(&search) {
+        return true;
+    }
+
+    // Check if pattern is at the end after a path separator
+    let suffix = format!("/{}", pattern);
+    path.ends_with(&suffix)
+}
+
 async fn handle_guard_check(
     stdin_nul: bool,
     advisory: bool,
@@ -1284,52 +1328,41 @@ async fn handle_guard_check(
     let mut conflicting_paths: Vec<(String, String, String)> = Vec::new();
 
     match reservations_result {
-        Ok(resp) if resp.status().is_success() => {
-            match resp.json::<serde_json::Value>().await {
-                Ok(json) => {
-                    if let Some(reservations) = json.get("reservations").and_then(|r| r.as_array())
-                    {
-                        for path in &paths {
-                            for reservation in reservations {
-                                let pattern = reservation
-                                    .get("path_pattern")
-                                    .and_then(|p| p.as_str())
-                                    .unwrap_or("");
-                                let agent_name = reservation
-                                    .get("agent_name")
-                                    .and_then(|a| a.as_str())
-                                    .unwrap_or("unknown");
+        Ok(resp) if resp.status().is_success() => match resp.json::<serde_json::Value>().await {
+            Ok(json) => {
+                if let Some(reservations) = json.get("reservations").and_then(|r| r.as_array()) {
+                    for path in &paths {
+                        for reservation in reservations {
+                            let pattern = reservation
+                                .get("path_pattern")
+                                .and_then(|p| p.as_str())
+                                .unwrap_or("");
+                            let agent_name = reservation
+                                .get("agent_name")
+                                .and_then(|a| a.as_str())
+                                .unwrap_or("unknown");
 
-                                if !pattern.is_empty() {
-                                    // Pattern matching: exact prefix or contains with path separator
-                                    if path.starts_with(pattern)
-                                        || path.contains(&format!("/{}", pattern))
-                                        || pattern == "*"
-                                        || (pattern.ends_with("/**")
-                                            && path.starts_with(&pattern[..pattern.len() - 3]))
-                                    {
-                                        conflicting_paths.push((
-                                            path.clone(),
-                                            agent_name.to_string(),
-                                            pattern.to_string(),
-                                        ));
-                                        break;
-                                    }
-                                }
+                            if path_matches_pattern(path, pattern) {
+                                conflicting_paths.push((
+                                    path.clone(),
+                                    agent_name.to_string(),
+                                    pattern.to_string(),
+                                ));
+                                break;
                             }
                         }
                     }
                 }
-                Err(e) => {
-                    if advisory {
-                        eprintln!("Warning: Could not query file reservations: {}", e);
-                    } else {
-                        eprintln!("Error: Could not query file reservations: {}", e);
-                        std::process::exit(1);
-                    }
+            }
+            Err(e) => {
+                if advisory {
+                    eprintln!("Warning: Could not query file reservations: {}", e);
+                } else {
+                    eprintln!("Error: Could not query file reservations: {}", e);
+                    std::process::exit(1);
                 }
             }
-        }
+        },
         _ => {
             if advisory {
                 eprintln!("Warning: Could not connect to MCP server at {}", url);
@@ -2082,5 +2115,80 @@ async fn handle_mail_status() -> anyhow::Result<()> {
 async fn handle_mail(args: MailArgs) -> anyhow::Result<()> {
     match args.command {
         MailCommands::Status => handle_mail_status().await,
+    }
+}
+
+#[cfg(test)]
+mod guard_pattern_tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_pattern_never_matches() {
+        assert!(!path_matches_pattern("src/main.rs", ""));
+        assert!(!path_matches_pattern("", ""));
+    }
+
+    #[test]
+    fn test_wildcard_matches_everything() {
+        assert!(path_matches_pattern("src/main.rs", "*"));
+        assert!(path_matches_pattern("", "*"));
+        assert!(path_matches_pattern("any/path/here", "*"));
+    }
+
+    #[test]
+    fn test_double_star_suffix() {
+        // src/** should match anything under src/
+        assert!(path_matches_pattern("src/main.rs", "src/**"));
+        assert!(path_matches_pattern("src/lib/mod.rs", "src/**"));
+        assert!(path_matches_pattern("src/", "src/**"));
+
+        // Should not match src itself without trailing slash
+        assert!(!path_matches_pattern("src", "src/**"));
+
+        // Should not match other directories
+        assert!(!path_matches_pattern("src_backup/main.rs", "src/**"));
+        assert!(!path_matches_pattern("other/src/main.rs", "src/**"));
+    }
+
+    #[test]
+    fn test_double_star_edge_cases() {
+        // Pattern exactly "/**" should not match (needs prefix)
+        assert!(!path_matches_pattern("any/path", "/**"));
+
+        // Pattern "**" alone is not a wildcard (only * is)
+        assert!(!path_matches_pattern("any/path", "**"));
+    }
+
+    #[test]
+    fn test_exact_prefix_match() {
+        // Exact match
+        assert!(path_matches_pattern("src/main.rs", "src/main.rs"));
+
+        // Prefix with path separator
+        assert!(path_matches_pattern("src/main/file.rs", "src/main"));
+
+        // Should not match partial directory names
+        assert!(!path_matches_pattern("src/main_backup/file.rs", "src/main"));
+    }
+
+    #[test]
+    fn test_path_segment_matching() {
+        // Pattern appears as path segment in middle
+        assert!(path_matches_pattern("foo/src/main.rs", "src"));
+
+        // Pattern at end after path separator
+        assert!(path_matches_pattern("foo/bar/src", "src"));
+
+        // Should not match as substring within segment
+        assert!(!path_matches_pattern("mysrc/main.rs", "src"));
+        assert!(!path_matches_pattern("src_old/main.rs", "src"));
+    }
+
+    #[test]
+    fn test_no_false_positives() {
+        // These should NOT match
+        assert!(!path_matches_pattern("src_backup/file.rs", "src"));
+        assert!(!path_matches_pattern("other_src/file.rs", "src"));
+        assert!(!path_matches_pattern("resource/file.rs", "src"));
     }
 }
