@@ -6,6 +6,23 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;
 
+#[derive(Clone, Serialize)]
+pub struct ExampleEntry {
+    pub description: &'static str,
+    pub target_type: &'static str,  // "flag" | "subcommand"
+    pub param_type: Option<&'static str>,  // "u16", "String", etc.
+    pub default: Option<&'static str>,
+    pub examples: Vec<Example>,
+}
+
+// Helper function to create Example with String fields
+fn example(invocation: &str, description: &str) -> Example {
+    Example {
+        invocation: invocation.to_string(),
+        description: description.to_string(),
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct RobotStatusOutput {
     pub schema_version: String,
@@ -36,931 +53,495 @@ pub struct RobotExamplesOutput {
     pub examples: Vec<Example>,
 }
 
-pub static EXAMPLE_REGISTRY: Lazy<RobotHelpOutput> = Lazy::new(|| {
-    RobotHelpOutput {
-    schema_version: ROBOT_HELP_SCHEMA_VERSION.to_string(),
-    tool: "mcp-agent-mail".to_string(),
-    version: env!("CARGO_PKG_VERSION").to_string(),
-    description: "Unified Server/CLI for Agent Mail".to_string(),
-    robot_flags: vec![
-        RobotFlagSchema {
-            name: "robot-help".to_string(),
-            description: "Output help in machine-readable JSON format".to_string(),
-            output_format: "json".to_string(),
-            examples: vec![
-                Example {
-                    invocation: "mcp-agent-mail --robot-help".to_string(),
-                    description: "Get full CLI documentation in JSON".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail --robot-help --format yaml".to_string(),
-                    description: "Get documentation in YAML format".to_string(),
-                },
-            ],
-        },
-        RobotFlagSchema {
-            name: "robot-examples".to_string(),
-            description: "Show usage examples for flags/subcommands".to_string(),
-            output_format: "json".to_string(),
-            examples: vec![
-                Example {
-                    invocation: "mcp-agent-mail --robot-examples --port".to_string(),
-                    description: "Examples for --port flag".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail --robot-examples serve http".to_string(),
-                    description: "Examples for serve http subcommand".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail --robot-examples --robot-examples".to_string(),
-                    description: "Self-documenting examples".to_string(),
-                },
-            ],
-        },
-        RobotFlagSchema {
-            name: "robot-status".to_string(),
-            description: "Output system health status in machine-readable format".to_string(),
-            output_format: "json".to_string(),
-            examples: vec![
-                Example {
-                    invocation: "mcp-agent-mail --robot-status".to_string(),
-                    description: "Check system health (JSON)".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail --robot-status --format yaml".to_string(),
-                    description: "Check system health (YAML)".to_string(),
-                },
-            ],
-        },
-    ],
-    commands: vec![
-        CommandSchema {
-            name: "serve".to_string(),
-            description: "Start a server (HTTP or MCP)".to_string(),
-            examples: vec![
-                Example {
-                    invocation: "mcp-agent-mail serve http".to_string(),
-                    description: "Start HTTP server with default settings".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail serve mcp".to_string(),
-                    description: "Start MCP server on stdio".to_string(),
-                },
-            ],
-            parameters: vec![
-                ParameterSchema {
-                    name: "port".to_string(),
-                    long: Some("--port".to_string()),
-                    short: Some('p'),
-                    description: "Port to bind to".to_string(),
-                    param_type: Some("integer".to_string()),
-                    default: None,
-                    required: false,
-                    possible_values: vec![],
-                    env_var: Some("MCP_AGENT_MAIL_PORT".to_string()),
-                },
-                ParameterSchema {
-                    name: "transport".to_string(),
-                    long: Some("--transport".to_string()),
-                    short: Some('t'),
-                    description: "Transport type (sse or stdio)".to_string(),
-                    param_type: Some("string".to_string()),
-                    default: Some("sse".to_string()),
-                    required: false,
-                    possible_values: vec!["sse".to_string(), "stdio".to_string()],
-                    env_var: None,
-                },
-            ],
-            exit_codes: Default::default(),
-            subcommands: vec![
-                CommandSchema {
-                    name: "http".to_string(),
-                    description: "Start Standard HTTP Server (SSE)".to_string(),
-                    examples: vec![
-                        Example {
-                            invocation: "mcp-agent-mail serve http --port 9000".to_string(),
-                            description: "Start HTTP server on port 9000".to_string(),
-                        },
-                        Example {
-                            invocation: "mcp-agent-mail serve http --no-ui".to_string(),
-                            description: "Start headless HTTP server".to_string(),
-                        },
-                    ],
-                    parameters: vec![ParameterSchema {
-                        name: "no_ui".to_string(),
-                        long: Some("--no-ui".to_string()),
-                        short: None,
-                        description: "Disable Web UI".to_string(),
-                        param_type: Some("boolean".to_string()),
-                        default: Some("false".to_string()),
-                        required: false,
-                        possible_values: vec![],
-                        env_var: None,
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "mcp".to_string(),
-                    description: "Start MCP Server (Stdio)".to_string(),
-                    examples: vec![Example {
-                        invocation: "mcp-agent-mail serve mcp".to_string(),
-                        description: "Start standard MCP server".to_string(),
-                    }],
-                    parameters: vec![],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-            ],
-        },
-        CommandSchema {
-            name: "health".to_string(),
-            description: "Check server health".to_string(),
-            examples: vec![],
-            parameters: vec![ParameterSchema {
-                name: "url".to_string(),
-                long: Some("--url".to_string()),
-                short: None,
-                description: "Server URL to check".to_string(),
-                param_type: Some("string".to_string()),
-                default: Some("http://localhost:8080".to_string()),
-                required: false,
-                possible_values: vec![],
-                env_var: Some("MCP_AGENT_MAIL_URL".to_string()),
-            }],
-            exit_codes: Default::default(),
-            subcommands: vec![],
-        },
-        CommandSchema {
-            name: "config".to_string(),
-            description: "Manage configuration".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![
-                CommandSchema {
-                    name: "set-port".to_string(),
-                    description: "Set the default binding port".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "port".to_string(),
-                        long: None,
-                        short: None,
-                        description: "Port number".to_string(),
-                        param_type: Some("integer".to_string()),
-                        default: None,
-                        required: true,
-                        possible_values: vec![],
-                        env_var: None,
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "show-port".to_string(),
-                    description: "Show the current binding port".to_string(),
-                    examples: vec![],
-                    parameters: vec![],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-            ],
-        },
-        CommandSchema {
-            name: "schema".to_string(),
-            description: "Export JSON schemas for all tools".to_string(),
-            examples: vec![],
-            parameters: vec![
-                ParameterSchema {
-                    name: "format".to_string(),
-                    long: Some("--format".to_string()),
-                    short: Some('f'),
-                    description: "Output format".to_string(),
-                    param_type: Some("string".to_string()),
-                    default: Some("json".to_string()),
-                    required: false,
-                    possible_values: vec!["json".to_string(), "markdown".to_string()],
-                    env_var: None,
-                },
-                ParameterSchema {
-                    name: "output".to_string(),
-                    long: Some("--output".to_string()),
-                    short: Some('o'),
-                    description: "Output file (stdout if not specified)".to_string(),
-                    param_type: Some("string".to_string()),
-                    default: None,
-                    required: false,
-                    possible_values: vec![],
-                    env_var: None,
-                },
-            ],
-            exit_codes: Default::default(),
-            subcommands: vec![],
-        },
-        CommandSchema {
-            name: "tools".to_string(),
-            description: "List all available tools".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![],
-        },
-        CommandSchema {
-            name: "install".to_string(),
-            description: "Install shell alias and configuration".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![CommandSchema {
-                name: "alias".to_string(),
-                description: "Add 'am' shell alias".to_string(),
-                examples: vec![],
-                parameters: vec![ParameterSchema {
-                    name: "force".to_string(),
-                    long: Some("--force".to_string()),
-                    short: None,
-                    description: "Force overwrite existing alias".to_string(),
-                    param_type: Some("boolean".to_string()),
-                    default: Some("false".to_string()),
-                    required: false,
-                    possible_values: vec![],
-                    env_var: None,
-                }],
-                exit_codes: Default::default(),
-                subcommands: vec![],
-            }],
-        },
-        CommandSchema {
-            name: "service".to_string(),
-            description: "Manage the background service".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![
-                CommandSchema {
-                    name: "stop".to_string(),
-                    description: "Stop the running server".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "port".to_string(),
-                        long: Some("--port".to_string()),
-                        short: Some('p'),
-                        description: "Port to stop".to_string(),
-                        param_type: Some("integer".to_string()),
-                        default: None,
-                        required: false,
-                        possible_values: vec![],
-                        env_var: Some("MCP_AGENT_MAIL_PORT".to_string()),
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "status".to_string(),
-                    description: "Check if server is running".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "port".to_string(),
-                        long: Some("--port".to_string()),
-                        short: Some('p'),
-                        description: "Port to check".to_string(),
-                        param_type: Some("integer".to_string()),
-                        default: None,
-                        required: false,
-                        possible_values: vec![],
-                        env_var: Some("MCP_AGENT_MAIL_PORT".to_string()),
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "restart".to_string(),
-                    description: "Restart the server".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "port".to_string(),
-                        long: Some("--port".to_string()),
-                        short: Some('p'),
-                        description: "Port to restart".to_string(),
-                        param_type: Some("integer".to_string()),
-                        default: None,
-                        required: false,
-                        possible_values: vec![],
-                        env_var: Some("MCP_AGENT_MAIL_PORT".to_string()),
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-            ],
-        },
-        CommandSchema {
-            name: "share".to_string(),
-            description: "Export sharing utilities".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![
-                CommandSchema {
-                    name: "keypair".to_string(),
-                    description: "Generate Ed25519 signing keypair".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "output".to_string(),
-                        long: Some("--output".to_string()),
-                        short: Some('o'),
-                        description: "Output file for keys".to_string(),
-                        param_type: Some("string".to_string()),
-                        default: None,
-                        required: false,
-                        possible_values: vec![],
-                        env_var: None,
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "verify".to_string(),
-                    description: "Verify export manifest signature".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "manifest".to_string(),
-                            long: Some("--manifest".to_string()),
-                            short: Some('m'),
-                            description: "Manifest file to verify".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "public_key".to_string(),
-                            long: Some("--public-key".to_string()),
-                            short: Some('p'),
-                            description: "Public key for verification".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-            ],
-        },
-        CommandSchema {
-            name: "archive".to_string(),
-            description: "Archive management (disaster recovery)".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![
-                CommandSchema {
-                    name: "save".to_string(),
-                    description: "Create a restorable snapshot archive".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "label".to_string(),
-                            long: Some("--label".to_string()),
-                            short: Some('l'),
-                            description: "Label for the archive".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "include_git".to_string(),
-                            long: Some("--include-git".to_string()),
-                            short: None,
-                            description: "Include Git storage".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "list".to_string(),
-                    description: "List available restore points".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "json".to_string(),
-                        long: Some("--json".to_string()),
-                        short: None,
-                        description: "Output in JSON format".to_string(),
-                        param_type: Some("boolean".to_string()),
-                        default: Some("false".to_string()),
-                        required: false,
-                        possible_values: vec![],
-                        env_var: None,
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "restore".to_string(),
-                    description: "Restore from a backup archive".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "file".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Archive file (.zip)".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "yes".to_string(),
-                            long: Some("--yes".to_string()),
-                            short: None,
-                            description: "Skip confirmation".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "clear-and-reset".to_string(),
-                    description: "Wipe all state with optional archive".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "archive".to_string(),
-                            long: Some("--archive".to_string()),
-                            short: None,
-                            description: "Archive before wiping".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "label".to_string(),
-                            long: Some("--label".to_string()),
-                            short: None,
-                            description: "Label for archive provided".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "yes".to_string(),
-                            long: Some("--yes".to_string()),
-                            short: None,
-                            description: "Skip confirmation".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-            ],
-        },
-        CommandSchema {
-            name: "summarize".to_string(),
-            description: "Summarize thread(s) in a project".to_string(),
-            examples: vec![
-                Example {
-                    invocation: "mcp-agent-mail summarize -p my-project -t THREAD-123".to_string(),
-                    description: "Summarize a single thread".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail summarize -p my-project -t THREAD-1,THREAD-2"
-                        .to_string(),
-                    description: "Summarize multiple threads".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail summarize -p my-project -t THREAD-123 --no-llm"
-                        .to_string(),
-                    description: "Get raw aggregation without LLM summarization".to_string(),
-                },
-                Example {
-                    invocation:
-                        "mcp-agent-mail summarize -p my-project -t THREAD-123 --per-thread-limit 50"
-                            .to_string(),
-                    description: "Limit to 50 messages per thread".to_string(),
-                },
-            ],
-            parameters: vec![
-                ParameterSchema {
-                    name: "project".to_string(),
-                    long: Some("--project".to_string()),
-                    short: Some('p'),
-                    description: "Project slug or path".to_string(),
-                    param_type: Some("string".to_string()),
-                    default: None,
-                    required: true,
-                    possible_values: vec![],
-                    env_var: None,
-                },
-                ParameterSchema {
-                    name: "thread_id".to_string(),
-                    long: Some("--thread-id".to_string()),
-                    short: Some('t'),
-                    description: "Thread ID(s) to summarize (comma-separated)".to_string(),
-                    param_type: Some("string".to_string()),
-                    default: None,
-                    required: true,
-                    possible_values: vec![],
-                    env_var: None,
-                },
-                ParameterSchema {
-                    name: "per_thread_limit".to_string(),
-                    long: Some("--per-thread-limit".to_string()),
-                    short: None,
-                    description: "Maximum messages per thread (default: 100)".to_string(),
-                    param_type: Some("integer".to_string()),
-                    default: Some("100".to_string()),
-                    required: false,
-                    possible_values: vec![],
-                    env_var: None,
-                },
-                ParameterSchema {
-                    name: "no_llm".to_string(),
-                    long: Some("--no-llm".to_string()),
-                    short: None,
-                    description: "Skip LLM summarization, return raw aggregation".to_string(),
-                    param_type: Some("boolean".to_string()),
-                    default: Some("false".to_string()),
-                    required: false,
-                    possible_values: vec![],
-                    env_var: None,
-                },
-                ParameterSchema {
-                    name: "format".to_string(),
-                    long: Some("--format".to_string()),
-                    short: Some('f'),
-                    description: "Output format".to_string(),
-                    param_type: Some("string".to_string()),
-                    default: Some("json".to_string()),
-                    required: false,
-                    possible_values: vec!["json".to_string(), "text".to_string()],
-                    env_var: None,
-                },
-            ],
-            exit_codes: Default::default(),
-            subcommands: vec![],
-        },
-        CommandSchema {
-            name: "version".to_string(),
-            description: "Show version info".to_string(),
-            examples: vec![],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![],
-        },
-        CommandSchema {
-            name: "products".to_string(),
-            description: "Product management".to_string(),
-            examples: vec![
-                Example {
-                    invocation: "mcp-agent-mail products ensure p-123 --name 'My Product'"
-                        .to_string(),
-                    description: "Ensure a product exists".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail products link p-123 my-project".to_string(),
-                    description: "Link a product to a project".to_string(),
-                },
-                Example {
-                    invocation: "mcp-agent-mail products status p-123".to_string(),
-                    description: "Show product status and linked projects".to_string(),
-                },
-            ],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![
-                CommandSchema {
-                    name: "ensure".to_string(),
-                    description: "Ensure a product exists".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "product_uid".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Product UID".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "name".to_string(),
-                            long: Some("--name".to_string()),
-                            short: None,
-                            description: "Product name".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "link".to_string(),
-                    description: "Link a product to a project".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "product_uid".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Product UID".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "project".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Project identifier".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "status".to_string(),
-                    description: "Show product status".to_string(),
-                    examples: vec![],
-                    parameters: vec![ParameterSchema {
-                        name: "product_uid".to_string(),
-                        long: None,
-                        short: None,
-                        description: "Product UID".to_string(),
-                        param_type: Some("string".to_string()),
-                        default: None,
-                        required: true,
-                        possible_values: vec![],
-                        env_var: None,
-                    }],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "search".to_string(),
-                    description: "Search messages within a product".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "product_uid".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Product UID".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "query".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Search query".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "limit".to_string(),
-                            long: Some("--limit".to_string()),
-                            short: None,
-                            description: "Result limit".to_string(),
-                            param_type: Some("integer".to_string()),
-                            default: Some("50".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "inbox".to_string(),
-                    description: "Get inbox for an agent within a product context".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "product_uid".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Product UID".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "agent".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Agent name".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "urgent_only".to_string(),
-                            long: Some("--urgent-only".to_string()),
-                            short: None,
-                            description: "Only urgent messages".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "include_bodies".to_string(),
-                            long: Some("--include-bodies".to_string()),
-                            short: None,
-                            description: "Include message bodies".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-                CommandSchema {
-                    name: "summarize-thread".to_string(),
-                    description: "Summarize a thread".to_string(),
-                    examples: vec![],
-                    parameters: vec![
-                        ParameterSchema {
-                            name: "product_uid".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Product UID".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "thread_id".to_string(),
-                            long: None,
-                            short: None,
-                            description: "Thread ID".to_string(),
-                            param_type: Some("string".to_string()),
-                            default: None,
-                            required: true,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "per_thread_limit".to_string(),
-                            long: Some("--per-thread-limit".to_string()),
-                            short: None,
-                            description: "Result limit".to_string(),
-                            param_type: Some("integer".to_string()),
-                            default: Some("100".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                        ParameterSchema {
-                            name: "no_llm".to_string(),
-                            long: Some("--no-llm".to_string()),
-                            short: None,
-                            description: "Skip LLM summarization".to_string(),
-                            param_type: Some("boolean".to_string()),
-                            default: Some("false".to_string()),
-                            required: false,
-                            possible_values: vec![],
-                            env_var: None,
-                        },
-                    ],
-                    exit_codes: Default::default(),
-                    subcommands: vec![],
-                },
-            ],
-        },
-        CommandSchema {
-            name: "guard".to_string(),
-            description: "Pre-commit guard management".to_string(),
-            examples: vec![Example {
-                invocation: "mcp-agent-mail guard status".to_string(),
-                description: "Show guard status information".to_string(),
-            }],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![CommandSchema {
-                name: "status".to_string(),
-                description: "Show guard status information".to_string(),
-                examples: vec![],
-                parameters: vec![],
-                exit_codes: Default::default(),
-                subcommands: vec![],
-            }],
-        },
-        CommandSchema {
-            name: "mail".to_string(),
-            description: "Mail/project status information".to_string(),
-            examples: vec![Example {
-                invocation: "mcp-agent-mail mail status".to_string(),
-                description: "Show mail/project status information".to_string(),
-            }],
-            parameters: vec![],
-            exit_codes: Default::default(),
-            subcommands: vec![CommandSchema {
-                name: "status".to_string(),
-                description: "Show guard status information".to_string(),
-                examples: vec![],
-                parameters: vec![],
-                exit_codes: Default::default(),
-                subcommands: vec![],
-            }, CommandSchema {
-                name: "check".to_string(),
-                description: "Check file paths against active reservations".to_string(),
-                examples: vec![
-                    Example {
-                        invocation: "echo 'file.txt' | mcp-agent-mail guard check".to_string(),
-                        description: "Check if file.txt is reserved".to_string(),
-                    },
-                    Example {
-                        invocation: "echo -e 'file1.txt\\nfile2.txt' | mcp-agent-mail guard check --advisory".to_string(),
-                        description: "Check multiple files with advisory mode".to_string(),
-                    },
-                ],
-                parameters: vec![
-                    ParameterSchema {
-                        name: "stdin_nul".to_string(),
-                        long: Some("--stdin-nul".to_string()),
-                        short: None,
-                        description: "Read paths from stdin (null-separated)".to_string(),
-                        param_type: Some("boolean".to_string()),
-                        default: Some("false".to_string()),
-                        required: false,
-                        possible_values: vec![],
-                        env_var: None,
-                    },
-                    ParameterSchema {
-                        name: "advisory".to_string(),
-                        long: Some("--advisory".to_string()),
-                        short: None,
-                        description: "Advisory mode (warn instead of fail)".to_string(),
-                        param_type: Some("boolean".to_string()),
-                        default: Some("false".to_string()),
-                        required: false,
-                        possible_values: vec![],
-                        env_var: None,
-                    },
-                ],
-                exit_codes: Default::default(),
-                subcommands: vec![],
-            }],
-        },
-    ],
-}
+pub static EXAMPLE_REGISTRY: Lazy<HashMap<&'static str, ExampleEntry>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+
+    // ===== GLOBAL FLAGS =====
+    m.insert("--robot-help", ExampleEntry {
+        description: "AI-optimized capability discovery",
+        target_type: "flag",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail --robot-help", "Show all capabilities as JSON"),
+            example("mcp-agent-mail --robot-help --format yaml", "YAML output"),
+        ],
+    });
+
+    m.insert("--robot-examples", ExampleEntry {
+        description: "Show usage examples for flags/subcommands",
+        target_type: "flag",
+        param_type: Some("String"),
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail --robot-examples serve", "Examples for serve command"),
+            example("mcp-agent-mail --robot-examples --port", "Examples for --port flag"),
+        ],
+    });
+
+    m.insert("--robot-status", ExampleEntry {
+        description: "Show system status and health checks",
+        target_type: "flag",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail --robot-status", "Show status in JSON format"),
+            example("mcp-agent-mail --robot-status --format yaml", "YAML status output"),
+        ],
+    });
+
+    m.insert("--format", ExampleEntry {
+        description: "Output format for status/examples",
+        target_type: "flag",
+        param_type: Some("String"),
+        default: Some("json"),
+        examples: vec![
+            example("mcp-agent-mail --robot-status --format yaml", "YAML status output"),
+            example("mcp-agent-mail schema --format markdown", "Markdown schema docs"),
+        ],
+    });
+
+    m.insert("--log-format", ExampleEntry {
+        description: "Log output format",
+        target_type: "flag",
+        param_type: Some("String"),
+        default: Some("pretty"),
+        examples: vec![
+            example("mcp-agent-mail serve --log-format json", "Structured JSON logs"),
+            example("mcp-agent-mail serve --log-format pretty", "Human-readable logs"),
+        ],
+    });
+
+    // ===== SUBCOMMANDS =====
+    m.insert("serve", ExampleEntry {
+        description: "Start server (HTTP or MCP mode)",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail serve http", "Start HTTP REST API server"),
+            example("mcp-agent-mail serve mcp --transport stdio", "Start MCP stdio server"),
+            example("mcp-agent-mail serve mcp --transport sse --port 3000", "Start MCP SSE server"),
+        ],
+    });
+
+    m.insert("serve http", ExampleEntry {
+        description: "Start HTTP REST API server",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail serve http --port 8765", "Start on custom port"),
+            example("mcp-agent-mail serve http --no-ui", "Headless API server"),
+        ],
+    });
+
+    m.insert("serve mcp", ExampleEntry {
+        description: "Start MCP protocol server",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail serve mcp --transport stdio", "For Claude Desktop"),
+            example("mcp-agent-mail serve mcp --transport sse", "For web clients"),
+        ],
+    });
+
+    m.insert("health", ExampleEntry {
+        description: "Check server health and connectivity",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail health", "Check localhost:8765"),
+            example("mcp-agent-mail health --url http://prod.example.com", "Check remote server"),
+        ],
+    });
+
+    m.insert("config", ExampleEntry {
+        description: "Manage configuration settings",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail config set-port 9000", "Set custom port"),
+            example("mcp-agent-mail config show-port", "Show current port"),
+        ],
+    });
+
+    m.insert("config set-port", ExampleEntry {
+        description: "Set the server port",
+        target_type: "subcommand",
+        param_type: Some("u16"),
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail config set-port 3000", "Set port to 3000"),
+        ],
+    });
+
+    m.insert("config show-port", ExampleEntry {
+        description: "Show current server port setting",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail config show-port", "Display current port"),
+        ],
+    });
+
+    m.insert("schema", ExampleEntry {
+        description: "Export JSON schemas for all tools",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail schema", "Export all tool schemas as JSON"),
+            example("mcp-agent-mail schema --format markdown --output docs/tools.md", "Generate markdown docs"),
+        ],
+    });
+
+    m.insert("tools", ExampleEntry {
+        description: "List all available MCP tools",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail tools", "List all 45 MCP tools"),
+        ],
+    });
+
+    m.insert("install", ExampleEntry {
+        description: "Install shell alias and configuration",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail install alias", "Install 'am' shell alias"),
+        ],
+    });
+
+    m.insert("install alias", ExampleEntry {
+        description: "Install shell alias for easier access",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail install alias", "Create 'am' command alias"),
+        ],
+    });
+
+    m.insert("service", ExampleEntry {
+        description: "Manage background service",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail service status", "Check service status"),
+            example("mcp-agent-mail service start", "Start background service"),
+            example("mcp-agent-mail service stop", "Stop background service"),
+        ],
+    });
+
+    m.insert("service status", ExampleEntry {
+        description: "Check background service status",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail service status --port 8765", "Check specific port"),
+        ],
+    });
+
+    m.insert("service start", ExampleEntry {
+        description: "Start background service",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail service start --port 8765", "Start on specific port"),
+        ],
+    });
+
+    m.insert("service stop", ExampleEntry {
+        description: "Stop background service",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail service stop --port 8765", "Stop specific instance"),
+        ],
+    });
+
+    m.insert("service restart", ExampleEntry {
+        description: "Restart background service",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail service restart --port 8765", "Restart with new config"),
+        ],
+    });
+
+    m.insert("share", ExampleEntry {
+        description: "Export sharing utilities (encryption/signing)",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail share keypair", "Generate signing keypair"),
+            example("mcp-agent-mail share verify --manifest manifest.json", "Verify signed manifest"),
+        ],
+    });
+
+    m.insert("share keypair", ExampleEntry {
+        description: "Generate signing keypair for manifests",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail share keypair", "Create new keypair"),
+            example("mcp-agent-mail share keypair --output keys.json", "Save to file"),
+        ],
+    });
+
+    m.insert("share verify", ExampleEntry {
+        description: "Verify signed manifest integrity",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail share verify --manifest export.json", "Verify manifest signature"),
+        ],
+    });
+
+    m.insert("share encrypt", ExampleEntry {
+        description: "Encrypt data with passphrase",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail share encrypt --project myproj --passphrase", "Encrypt project data"),
+        ],
+    });
+
+    m.insert("share decrypt", ExampleEntry {
+        description: "Decrypt age-encrypted data",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail share decrypt --input data.age", "Decrypt with passphrase"),
+        ],
+    });
+
+    m.insert("archive", ExampleEntry {
+        description: "Archive management for disaster recovery",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail archive save --label backup-2024", "Create timestamped backup"),
+            example("mcp-agent-mail archive list", "List available archives"),
+            example("mcp-agent-mail archive restore archive.zip", "Restore from backup"),
+        ],
+    });
+
+    m.insert("archive save", ExampleEntry {
+        description: "Create restorable snapshot archive",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail archive save", "Create timestamped archive"),
+            example("mcp-agent-mail archive save --include-git", "Include git history"),
+        ],
+    });
+
+    m.insert("archive list", ExampleEntry {
+        description: "List available restore points",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail archive list", "Show all archives"),
+            example("mcp-agent-mail archive list --json", "JSON format output"),
+        ],
+    });
+
+    m.insert("archive restore", ExampleEntry {
+        description: "Restore from archive snapshot",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail archive restore backup.zip", "Restore from file"),
+            example("mcp-agent-mail archive restore backup.zip --yes", "Skip confirmation"),
+        ],
+    });
+
+    m.insert("archive clear-and-reset", ExampleEntry {
+        description: "Clear all data (creates backup first)",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail archive clear-and-reset --archive", "Backup then clear"),
+        ],
+    });
+
+    m.insert("summarize", ExampleEntry {
+        description: "Summarize conversation threads",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail summarize --project myproj --thread-id task-123", "Summarize single thread"),
+            example("mcp-agent-mail summarize --project myproj --thread-id task-123,task-456", "Summarize multiple threads"),
+        ],
+    });
+
+    m.insert("version", ExampleEntry {
+        description: "Show version information",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail version", "Display version and build info"),
+        ],
+    });
+
+    m.insert("products", ExampleEntry {
+        description: "Multi-repo coordination management",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products ensure --uid cross-platform --name 'Cross-Platform'", "Create product"),
+            example("mcp-agent-mail products link --uid cross-platform --project /path/to/repo", "Link project to product"),
+        ],
+    });
+
+    m.insert("products ensure", ExampleEntry {
+        description: "Create or get existing product",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products ensure --uid my-product --name 'My Product'", "Create new product"),
+        ],
+    });
+
+    m.insert("products link", ExampleEntry {
+        description: "Link project to product",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products link --uid my-product --project /repo/path", "Add project to product"),
+        ],
+    });
+
+    m.insert("products unlink", ExampleEntry {
+        description: "Remove project from product",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products unlink --uid my-product --project /repo/path", "Remove project link"),
+        ],
+    });
+
+    m.insert("products status", ExampleEntry {
+        description: "Show product status and linked projects",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products status --uid my-product", "Show product details"),
+        ],
+    });
+
+    m.insert("products search", ExampleEntry {
+        description: "Search across product projects",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products search --uid my-product --query 'error'", "Search product messages"),
+        ],
+    });
+
+    m.insert("products inbox", ExampleEntry {
+        description: "View product-wide inbox",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products inbox --uid my-product", "Show product inbox"),
+        ],
+    });
+
+    m.insert("products summarize-thread", ExampleEntry {
+        description: "Summarize thread across product",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail products summarize-thread --uid my-product --thread-id task-123", "Cross-project summary"),
+        ],
+    });
+
+    m.insert("guard", ExampleEntry {
+        description: "Pre-commit guard management",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail guard status", "Check guard status"),
+            example("mcp-agent-mail guard check --stdin-nul", "Validate file reservations"),
+        ],
+    });
+
+    m.insert("guard status", ExampleEntry {
+        description: "Show pre-commit guard status",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail guard status", "Display current settings"),
+        ],
+    });
+
+    m.insert("guard check", ExampleEntry {
+        description: "Check file reservation conflicts",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail guard check --stdin-nul", "Check from stdin"),
+            example("mcp-agent-mail guard check --advisory", "Warn instead of fail"),
+        ],
+    });
+
+    m.insert("mail", ExampleEntry {
+        description: "Direct mail operations",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail mail status", "Show mail system status"),
+        ],
+    });
+
+    m.insert("mail status", ExampleEntry {
+        description: "Show mail system status",
+        target_type: "subcommand",
+        param_type: None,
+        default: None,
+        examples: vec![
+            example("mcp-agent-mail mail status", "Display system health"),
+        ],
+    });
+
+    m
 });

@@ -1103,7 +1103,6 @@ fn handle_robot_status(format: &str) -> u8 {
 
 #[allow(clippy::expect_used)]
 fn handle_robot_examples(format: &str, args: &[String]) -> u8 {
-    use lib_common::robot::{CommandSchema, Example, ROBOT_HELP_SCHEMA_VERSION};
     use robot_help::{EXAMPLE_REGISTRY, RobotExamplesOutput};
 
     let target = args.join(" ");
@@ -1112,90 +1111,31 @@ fn handle_robot_examples(format: &str, args: &[String]) -> u8 {
 
     if args.is_empty() {
         target_type = "all".to_string();
-        // Collect ALL examples
-        for flag in &EXAMPLE_REGISTRY.robot_flags {
-            matching_examples.extend(flag.examples.clone());
-        }
-        fn collect_command_examples(cmd: &CommandSchema, list: &mut Vec<Example>) {
-            list.extend(cmd.examples.clone());
-            for sub in &cmd.subcommands {
-                collect_command_examples(sub, list);
-            }
-        }
-        for cmd in &EXAMPLE_REGISTRY.commands {
-            collect_command_examples(cmd, &mut matching_examples);
-        }
-    } else if target.starts_with("--") {
-        target_type = "flag".to_string();
-        // search robot flags
-        if let Some(flag) = EXAMPLE_REGISTRY
-            .robot_flags
-            .iter()
-            .find(|f| f.name == target.trim_start_matches("--"))
-        {
-            matching_examples.extend(flag.examples.clone());
-        } else {
-            // search ALL examples for the flag string
-            fn search_examples(cmd: &CommandSchema, target: &str, list: &mut Vec<Example>) {
-                for ex in &cmd.examples {
-                    if ex.invocation.contains(target) {
-                        list.push(ex.clone());
-                    }
-                }
-                for sub in &cmd.subcommands {
-                    search_examples(sub, target, list);
-                }
-            }
-            for cmd in &EXAMPLE_REGISTRY.commands {
-                search_examples(cmd, &target, &mut matching_examples);
-            }
-            for flag in &EXAMPLE_REGISTRY.robot_flags {
-                for ex in &flag.examples {
-                    if ex.invocation.contains(&target) {
-                        matching_examples.push(ex.clone());
-                    }
-                }
-            }
+        // Collect ALL examples from the HashMap
+        for entry in EXAMPLE_REGISTRY.values() {
+            matching_examples.extend(entry.examples.clone());
         }
     } else {
-        target_type = "subcommand".to_string();
-        // search commands
-        // exact match path traversal? or just find by name?
-        // "serve http" -> ["serve", "http"]
-        let mut current_level = &EXAMPLE_REGISTRY.commands;
-        let mut found_cmd: Option<&CommandSchema> = None;
+        target_type = if target.starts_with("--") { "flag" } else { "command" }.to_string();
 
-        let parts: Vec<&str> = target.split_whitespace().collect();
-        // Simple traversal
-        'outer: for (i, part) in parts.iter().enumerate() {
-            if let Some(cmd) = current_level.iter().find(|c| c.name == *part) {
-                if i == parts.len() - 1 {
-                    found_cmd = Some(cmd);
-                } else {
-                    current_level = &cmd.subcommands;
+        // Look up the target in the HashMap
+        if let Some(entry) = EXAMPLE_REGISTRY.get(target.as_str()) {
+            matching_examples.extend(entry.examples.clone());
+        } else {
+            // If exact match not found, search all examples containing the target
+            for entry in EXAMPLE_REGISTRY.values() {
+                for example in &entry.examples {
+                    if example.invocation.contains(&target) {
+                        matching_examples.push(example.clone());
+                    }
                 }
-            } else {
-                break 'outer;
             }
         }
-
-        if let Some(cmd) = found_cmd {
-            matching_examples.extend(cmd.examples.clone());
-        }
-    }
-
-    if matching_examples.is_empty() && !args.is_empty() {
-        eprintln!("No examples found for target: {}", target);
-        return 1;
     }
 
     let output = RobotExamplesOutput {
-        schema_version: ROBOT_HELP_SCHEMA_VERSION.to_string(),
-        target: if target.is_empty() {
-            "all".to_string()
-        } else {
-            target
-        },
+        schema_version: "1.0".to_string(),
+        target,
         target_type,
         examples: matching_examples,
     };
@@ -1208,93 +1148,6 @@ fn handle_robot_examples(format: &str, args: &[String]) -> u8 {
 
     println!("{}", json);
     0
-}
-
-async fn handle_summarize(args: SummarizeArgs) -> anyhow::Result<()> {
-    let url =
-        std::env::var("MCP_AGENT_MAIL_URL").unwrap_or_else(|_| "http://localhost:8765".into());
-    let client = reqwest::Client::new();
-
-    let thread_ids: Vec<&str> = args.thread_id.split(',').map(|s| s.trim()).collect();
-
-    #[derive(serde::Serialize)]
-    struct SummarizeRequest {
-        project_slug: String,
-        thread_id: String,
-        per_thread_limit: Option<i64>,
-        no_llm: Option<bool>,
-    }
-
-    #[derive(serde::Deserialize, serde::Serialize)]
-    struct SummarizeResponse {
-        thread_id: String,
-        message_count: usize,
-        participants: Vec<String>,
-        subject: String,
-        summary: String,
-    }
-
-    let mut results: Vec<SummarizeResponse> = Vec::new();
-    let mut errors: Vec<String> = Vec::new();
-
-    for tid in &thread_ids {
-        let req = SummarizeRequest {
-            project_slug: args.project.clone(),
-            thread_id: (*tid).to_string(),
-            per_thread_limit: Some(args.per_thread_limit),
-            no_llm: Some(args.no_llm),
-        };
-
-        match client
-            .post(format!("{}/api/thread/summarize", url))
-            .json(&req)
-            .send()
-            .await
-        {
-            Ok(resp) if resp.status().is_success() => {
-                match resp.json::<SummarizeResponse>().await {
-                    Ok(summary) => results.push(summary),
-                    Err(e) => errors.push(format!("{}: parse error: {}", tid, e)),
-                }
-            }
-            Ok(resp) => {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
-                errors.push(format!("{}: HTTP {}: {}", tid, status, body));
-            }
-            Err(e) => errors.push(format!("{}: request failed: {}", tid, e)),
-        }
-    }
-
-    #[derive(serde::Serialize)]
-    struct Output {
-        summaries: Vec<SummarizeResponse>,
-        errors: Vec<String>,
-    }
-
-    let output = Output {
-        summaries: results,
-        errors,
-    };
-
-    if args.format == "text" {
-        for s in &output.summaries {
-            println!("Thread: {} ({})", s.thread_id, s.subject);
-            println!(
-                "Messages: {}, Participants: {}",
-                s.message_count,
-                s.participants.join(", ")
-            );
-            println!("Summary: {}\n", s.summary);
-        }
-        for e in &output.errors {
-            eprintln!("Error: {}", e);
-        }
-    } else {
-        println!("{}", serde_json::to_string_pretty(&output)?);
-    }
-
-    Ok(())
 }
 
 async fn handle_guard_status() -> anyhow::Result<()> {
@@ -1564,6 +1417,47 @@ async fn main() -> anyhow::Result<()> {
         None => {
             Cli::command().print_help()?;
         }
+    }
+
+    Ok(())
+}
+
+// --- Summarize Command Handler ---
+
+async fn handle_summarize(args: SummarizeArgs) -> anyhow::Result<()> {
+    let url =
+        std::env::var("MCP_AGENT_MAIL_URL").unwrap_or_else(|_| "http://localhost:8765".into());
+    let client = reqwest::Client::new();
+
+    // Parse thread IDs (comma-separated)
+    let thread_ids: Vec<String> = args
+        .thread_id
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    // Call the MCP summarize_thread tool
+    let response = client
+        .post(format!("{}/api/tools/call", url))
+        .json(&serde_json::json!({
+            "name": "summarize_thread",
+            "arguments": {
+                "project_slug": args.project,
+                "thread_id": thread_ids,
+                "per_thread_limit": args.per_thread_limit,
+                "no_llm": args.no_llm
+            }
+        }))
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let result: serde_json::Value = response.json().await?;
+        println!("{}", serde_json::to_string_pretty(&result)?);
+    } else {
+        eprintln!("Error calling summarize_thread: {}", response.status());
+        eprintln!("Response: {}", response.text().await?);
+        std::process::exit(1);
     }
 
     Ok(())
