@@ -473,6 +473,54 @@ pub static EXAMPLE_REGISTRY: Lazy<HashMap<&'static str, ExampleEntry>> = Lazy::n
     );
 
     m.insert(
+        "share deploy",
+        ExampleEntry {
+            description: "Deploy exported data to hosting platforms",
+            target_type: "subcommand",
+            param_type: None,
+            default: None,
+            examples: vec![
+                example(
+                    "mcp-agent-mail share deploy github-pages --repo my-archive --bundle export.zip",
+                    "Deploy to GitHub Pages",
+                ),
+                example(
+                    "mcp-agent-mail share deploy github-pages --repo my-archive --bundle export.zip --private",
+                    "Deploy to private GitHub Pages",
+                ),
+            ],
+        },
+    );
+
+    m.insert(
+        "share deploy github-pages",
+        ExampleEntry {
+            description: "Deploy archive to GitHub Pages for static hosting",
+            target_type: "subcommand",
+            param_type: None,
+            default: None,
+            examples: vec![
+                example(
+                    "mcp-agent-mail share deploy github-pages --repo agent-archive --bundle data/export.zip",
+                    "Basic deployment (uses GITHUB_TOKEN env var)",
+                ),
+                example(
+                    "mcp-agent-mail share deploy github-pages --repo my-archive --owner myorg --bundle export.zip",
+                    "Deploy to organization repo",
+                ),
+                example(
+                    "mcp-agent-mail share deploy github-pages --repo archive --bundle export.zip --custom-domain archive.example.com",
+                    "Deploy with custom domain",
+                ),
+                example(
+                    "mcp-agent-mail share deploy github-pages --repo archive --bundle export.zip --private --token ghp_xxx",
+                    "Private repo with explicit token",
+                ),
+            ],
+        },
+    );
+
+    m.insert(
         "archive",
         ExampleEntry {
             description: "Archive management for disaster recovery",
