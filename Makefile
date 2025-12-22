@@ -99,6 +99,24 @@ build-claude-desktop: build-sidecar-minimal
 	@echo "📋 Add to claude_desktop_config.json:"
 	@echo '  "agent-mail": { "command": "$(PWD)/target/release/mcp-agent-mail", "args": ["serve", "mcp", "--transport", "stdio"] }'
 
+## Install 'am' binary to ~/.local/bin
+install-am: build-sidecar-minimal
+	@echo "📦 Installing 'am' to ~/.local/bin..."
+	@mkdir -p ~/.local/bin
+	@cp target/release/mcp-agent-mail ~/.local/bin/am
+	@chmod +x ~/.local/bin/am
+	@echo "✅ Installed: ~/.local/bin/am"
+	@echo "   Make sure ~/.local/bin is in your PATH"
+
+## Install 'am' binary with embedded web UI
+install-am-full: build-sidecar
+	@echo "📦 Installing 'am' (with UI) to ~/.local/bin..."
+	@mkdir -p ~/.local/bin
+	@cp target/release/mcp-agent-mail ~/.local/bin/am
+	@chmod +x ~/.local/bin/am
+	@echo "✅ Installed: ~/.local/bin/am (with embedded UI)"
+	@echo "   Make sure ~/.local/bin is in your PATH"
+
 # ============================================================================
 # Testing
 # ============================================================================
