@@ -1,7 +1,7 @@
 # MCP Agent Mail - Makefile
 # Unified build and run commands for the Rust implementation
 
-.PHONY: all build build-release build-web dev run run-all clean test test-fast coverage audit quality-gate help
+.PHONY: all build build-release build-web build-web-leptos build-web-svelte dev run run-all clean test test-fast coverage audit quality-gate help
 
 # Default target
 all: build
@@ -22,11 +22,20 @@ build-release:
 	cargo build --workspace --release
 	@echo "✅ Release build complete"
 
-## Build web UI for production
-build-web:
+## Build web UI for production (SvelteKit - default)
+build-web: build-web-svelte
+
+## Build SvelteKit frontend
+build-web-svelte:
+	@echo "🌐 Building SvelteKit frontend..."
+	cd crates/services/web-ui && bun install && bun run build
+	@echo "✅ SvelteKit build complete (web-ui/build)"
+
+## Build Leptos frontend (legacy)
+build-web-leptos:
 	@echo "🌐 Building Leptos frontend..."
 	cd crates/services/web-ui-leptos && trunk build --release
-	@echo "✅ Frontend build complete"
+	@echo "✅ Leptos build complete (web-ui-leptos/dist)"
 
 ## Build everything for production
 build-prod: build-release build-web
@@ -41,10 +50,19 @@ dev-api:
 	@echo "🚀 Starting API server on http://localhost:8000..."
 	cargo run -p mcp-server
 
-## Run web UI (development with hot reload)
+## Run server with embedded web UI on :8765 (SvelteKit - active)
 dev-web:
-	@echo "🌐 Starting Leptos dev server on http://localhost:8080..."
-	cd crates/services/web-ui-leptos && trunk serve --open
+	@echo "🌐 Building SvelteKit UI..."
+	cd crates/services/web-ui && bun install && bun run build
+	@echo "🚀 Starting server with embedded UI on http://localhost:8765..."
+	cargo run -p mcp-agent-mail --features with-web-ui -- serve http --port 8765
+
+## Run server with Leptos UI (requires changing embedded.rs to point to web-ui-leptos/dist)
+dev-web-leptos:
+	@echo "🌐 Building Leptos UI..."
+	cd crates/services/web-ui-leptos && trunk build --release
+	@echo "🚀 Starting server with embedded UI on http://localhost:8765..."
+	cargo run -p mcp-agent-mail --features with-web-ui -- serve http --port 8765
 
 ## Run MCP stdio server
 dev-mcp:
@@ -78,9 +96,18 @@ run-prod: build-prod
 # Sidecar Build Targets
 # ============================================================================
 
-## Build unified sidecar binary with embedded UI
+## Build unified sidecar binary with embedded UI (SvelteKit - active)
 build-sidecar:
-	@echo "🔧 Building web UI..."
+	@echo "🔧 Building SvelteKit UI..."
+	cd crates/services/web-ui && bun install && bun run build
+	@echo "🔧 Building sidecar binary with embedded UI..."
+	cargo build -p mcp-agent-mail --release --features with-web-ui
+	@echo "✅ Binary: target/release/mcp-agent-mail"
+	@ls -lh target/release/mcp-agent-mail
+
+## Build sidecar with Leptos UI (requires changing embedded.rs)
+build-sidecar-leptos:
+	@echo "🔧 Building Leptos UI..."
 	cd crates/services/web-ui-leptos && trunk build --release
 	@echo "🔧 Building sidecar binary with embedded UI..."
 	cargo build -p mcp-agent-mail --release --features with-web-ui
@@ -227,6 +254,7 @@ schema:
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	cargo clean
+	rm -rf crates/services/web-ui/build
 	rm -rf crates/services/web-ui-leptos/dist
 	@echo "✅ Clean complete"
 
@@ -246,10 +274,11 @@ help:
 	@echo "  build-web    Build SvelteKit frontend for production"
 	@echo "  build-prod   Build everything for production"
 	@echo ""
-	@echo "Development (with hot reload):"
+	@echo "Development:"
 	@echo "  dev          Run API + Web UI in parallel"
 	@echo "  dev-api      Run API server only"
-	@echo "  dev-web      Run SvelteKit dev server only"
+	@echo "  dev-web      Build SvelteKit UI and serve on :8765"
+	@echo "  dev-web-leptos  Build Leptos UI and serve on :8765"
 	@echo "  dev-mcp      Run MCP stdio server"
 	@echo ""
 	@echo "Production:"
@@ -257,7 +286,8 @@ help:
 	@echo "  run-prod     Build and run production server"
 	@echo ""
 	@echo "Sidecar (single binary):"
-	@echo "  build-sidecar         Build binary with embedded web UI"
+	@echo "  build-sidecar         Build binary with embedded SvelteKit UI"
+	@echo "  build-sidecar-leptos  Build binary with embedded Leptos UI"
 	@echo "  build-sidecar-minimal Build minimal binary (no UI)"
 	@echo "  build-claude-desktop  Build for Claude Desktop integration"
 	@echo ""
