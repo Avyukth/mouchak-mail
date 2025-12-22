@@ -1,70 +1,85 @@
 /**
  * API Client for MCP Agent Mail backend
- * Backend runs on http://localhost:8000
+ * Expanded with all endpoints for SVELTE-008
  */
 
+import type {
+	Project,
+	Agent,
+	Message,
+	Thread,
+	ThreadSummary,
+	FileReservation,
+	FileReservationGrant,
+	Attachment,
+	UnifiedInboxResponse,
+	ActivityItem,
+	ArchiveCommit,
+	ArchiveFile,
+	BuildSlot,
+	ToolMetric,
+	ToolStats,
+	ApiError,
+	SendMessageRequest,
+	SearchMessagesRequest,
+	FileReservationRequest
+} from './types';
+
 const API_BASE = '/api';
+const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
-export interface Project {
-	id: number;
-	slug: string;
-	human_key: string;
-	created_at: string;
-}
+// ============================================================================
+// Request Helper
+// ============================================================================
 
-export interface Agent {
-	id: number;
-	project_id: number;
-	name: string;
-	program: string;
-	model: string;
-	task_description: string;
-	inception_ts: string;
-	last_active_ts: string;
-}
-
-export interface Message {
-	id: number;
-	project_id: number;
-	sender_id: number;
-	thread_id: string | null;
-	subject: string;
-	body_md: string;
-	importance: string;
-	ack_required: boolean;
-	created_ts: string;
-}
-
-export interface ApiError {
-	error: string;
-	message: string;
-}
-
-async function request<T>(
-	endpoint: string,
-	options: RequestInit = {}
-): Promise<T> {
-	const url = `${API_BASE}${endpoint}`;
-	const response = await fetch(url, {
-		headers: {
-			'Content-Type': 'application/json',
-			...options.headers
-		},
-		...options
-	});
-
-	if (!response.ok) {
-		const error: ApiError = await response.json().catch(() => ({
-			error: 'unknown',
-			message: response.statusText
-		}));
-		throw new Error(error.message || 'Request failed');
+class ApiRequestError extends Error {
+	constructor(
+		public statusCode: number,
+		public apiError: ApiError
+	) {
+		super(apiError.message || 'API request failed');
+		this.name = 'ApiRequestError';
 	}
-
-	return response.json();
 }
 
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+	const url = `${API_BASE}${endpoint}`;
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
+
+	try {
+		const response = await fetch(url, {
+			headers: {
+				'Content-Type': 'application/json',
+				...options.headers
+			},
+			signal: controller.signal,
+			...options
+		});
+
+		if (!response.ok) {
+			const error: ApiError = await response.json().catch(() => ({
+				error: 'unknown',
+				message: response.statusText
+			}));
+			throw new ApiRequestError(response.status, error);
+		}
+
+		// Handle empty responses
+		const text = await response.text();
+		if (!text) {
+			return {} as T;
+		}
+		return JSON.parse(text);
+	} finally {
+		clearTimeout(timeoutId);
+	}
+}
+
+// ============================================================================
 // Projects
+// ============================================================================
+
 export async function getProjects(): Promise<Project[]> {
 	return request<Project[]>('/projects');
 }
@@ -76,7 +91,17 @@ export async function ensureProject(humanKey: string): Promise<Project> {
 	});
 }
 
+export async function getProjectInfo(projectSlug: string): Promise<Project> {
+	return request<Project>('/project/info', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug })
+	});
+}
+
+// ============================================================================
 // Agents
+// ============================================================================
+
 export async function getAgents(projectSlug: string): Promise<Agent[]> {
 	return request<Agent[]>(`/projects/${projectSlug}/agents`);
 }
@@ -100,12 +125,36 @@ export async function registerAgent(
 	});
 }
 
-// Messages
-export async function getInbox(
-	projectSlug: string,
-	agentName: string
-): Promise<Message[]> {
+export async function getAgentProfile(projectSlug: string, agentName: string): Promise<Agent> {
+	return request<Agent>('/agent/profile', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug, agent_name: agentName })
+	});
+}
+
+export async function whois(projectSlug: string, agentName: string): Promise<Agent> {
+	return request<Agent>('/agent/whois', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug, agent_name: agentName })
+	});
+}
+
+// ============================================================================
+// Messages - Inbox/Outbox
+// ============================================================================
+
+export async function getInbox(projectSlug: string, agentName: string): Promise<Message[]> {
 	return request<Message[]>('/inbox', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			agent_name: agentName
+		})
+	});
+}
+
+export async function getOutbox(projectSlug: string, agentName: string): Promise<Message[]> {
+	return request<Message[]>('/outbox', {
 		method: 'POST',
 		body: JSON.stringify({
 			project_slug: projectSlug,
@@ -118,32 +167,322 @@ export async function getMessage(id: number): Promise<Message> {
 	return request<Message>(`/messages/${id}`);
 }
 
-export async function sendMessage(
-	projectSlug: string,
-	senderName: string,
-	recipientNames: string[],
-	subject: string,
-	bodyMd: string,
-	threadId?: string,
-	importance: string = 'normal',
-	ackRequired: boolean = false
-): Promise<Message> {
+export async function sendMessage(req: SendMessageRequest): Promise<Message> {
 	return request<Message>('/message/send', {
 		method: 'POST',
 		body: JSON.stringify({
-			project_slug: projectSlug,
-			sender_name: senderName,
-			recipient_names: recipientNames,
-			subject,
-			body_md: bodyMd,
-			thread_id: threadId,
-			importance,
-			ack_required: ackRequired
+			project_slug: req.project_slug,
+			sender_name: req.sender_name,
+			recipient_names: req.recipient_names,
+			subject: req.subject,
+			body_md: req.body_md,
+			thread_id: req.thread_id,
+			importance: req.importance ?? 'normal',
+			ack_required: req.ack_required ?? false,
+			cc_names: req.cc_names,
+			bcc_names: req.bcc_names
 		})
 	});
 }
 
+export async function markMessageRead(
+	projectSlug: string,
+	messageId: number,
+	agentName: string
+): Promise<void> {
+	await request<void>('/message/read', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			message_id: messageId,
+			agent_name: agentName
+		})
+	});
+}
+
+export async function acknowledgeMessage(
+	projectSlug: string,
+	messageId: number,
+	agentName: string
+): Promise<void> {
+	await request<void>('/message/acknowledge', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			message_id: messageId,
+			agent_name: agentName
+		})
+	});
+}
+
+// ============================================================================
+// Messages - Search
+// ============================================================================
+
+export async function searchMessages(req: SearchMessagesRequest): Promise<Message[]> {
+	return request<Message[]>('/messages/search', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: req.project_slug,
+			query: req.query,
+			limit: req.limit ?? 100
+		})
+	});
+}
+
+// ============================================================================
+// Threads
+// ============================================================================
+
+export async function getThread(projectSlug: string, threadId: string): Promise<Thread> {
+	return request<Thread>('/thread', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug, thread_id: threadId })
+	});
+}
+
+export async function listThreads(projectSlug: string): Promise<ThreadSummary[]> {
+	return request<ThreadSummary[]>('/threads', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug })
+	});
+}
+
+// ============================================================================
+// Unified Inbox (Cross-Project)
+// ============================================================================
+
+export async function fetchUnifiedInbox(limit = 1000): Promise<UnifiedInboxResponse> {
+	return request<UnifiedInboxResponse>(`/unified-inbox?limit=${limit}`);
+}
+
+// ============================================================================
+// File Reservations
+// ============================================================================
+
+export async function reserveFiles(req: FileReservationRequest): Promise<FileReservationGrant> {
+	return request<FileReservationGrant>('/file_reservations/paths', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: req.project_slug,
+			agent_name: req.agent_name,
+			paths: req.paths,
+			ttl_seconds: req.ttl_seconds ?? 3600,
+			exclusive: req.exclusive ?? true,
+			reason: req.reason
+		})
+	});
+}
+
+export async function listFileReservations(projectSlug: string): Promise<FileReservation[]> {
+	return request<FileReservation[]>('/file_reservations/list', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug })
+	});
+}
+
+export async function listAllLocks(): Promise<FileReservation[]> {
+	return request<FileReservation[]>('/locks');
+}
+
+export async function releaseReservation(
+	projectSlug: string,
+	reservationId: number
+): Promise<void> {
+	await request<void>('/file_reservations/release', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug, reservation_id: reservationId })
+	});
+}
+
+export async function forceReleaseReservation(
+	projectSlug: string,
+	reservationId: number,
+	reason: string
+): Promise<void> {
+	await request<void>('/file_reservations/force_release', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			reservation_id: reservationId,
+			reason
+		})
+	});
+}
+
+export async function renewReservation(
+	projectSlug: string,
+	reservationId: number,
+	ttlSeconds: number
+): Promise<FileReservation> {
+	return request<FileReservation>('/file_reservations/renew', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			reservation_id: reservationId,
+			ttl_seconds: ttlSeconds
+		})
+	});
+}
+
+// ============================================================================
+// Attachments
+// ============================================================================
+
+export async function listAttachments(projectSlug?: string): Promise<Attachment[]> {
+	const query = projectSlug ? `?project_slug=${encodeURIComponent(projectSlug)}` : '';
+	return request<Attachment[]>(`/attachments${query}`);
+}
+
+export async function getAttachment(id: number): Promise<Blob> {
+	const response = await fetch(`${API_BASE}/attachments/${id}`);
+	if (!response.ok) {
+		throw new Error('Failed to fetch attachment');
+	}
+	return response.blob();
+}
+
+export async function addAttachment(
+	messageId: number,
+	filename: string,
+	data: Uint8Array
+): Promise<Attachment> {
+	return request<Attachment>('/attachments/add', {
+		method: 'POST',
+		body: JSON.stringify({
+			message_id: messageId,
+			filename,
+			data: Array.from(data) // Convert to number array for JSON
+		})
+	});
+}
+
+// ============================================================================
+// Build Slots
+// ============================================================================
+
+export async function acquireBuildSlot(
+	projectSlug: string,
+	agentName: string,
+	slotType: string,
+	ttlSeconds: number,
+	reason?: string
+): Promise<BuildSlot> {
+	return request<BuildSlot>('/build_slots/acquire', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			agent_name: agentName,
+			slot_type: slotType,
+			ttl_seconds: ttlSeconds,
+			reason
+		})
+	});
+}
+
+export async function releaseBuildSlot(projectSlug: string, slotId: number): Promise<void> {
+	await request<void>('/build_slots/release', {
+		method: 'POST',
+		body: JSON.stringify({ project_slug: projectSlug, slot_id: slotId })
+	});
+}
+
+export async function renewBuildSlot(
+	projectSlug: string,
+	slotId: number,
+	ttlSeconds: number
+): Promise<BuildSlot> {
+	return request<BuildSlot>('/build_slots/renew', {
+		method: 'POST',
+		body: JSON.stringify({
+			project_slug: projectSlug,
+			slot_id: slotId,
+			ttl_seconds: ttlSeconds
+		})
+	});
+}
+
+// ============================================================================
+// Activity
+// ============================================================================
+
+export async function listActivity(projectSlug?: string, limit = 100): Promise<ActivityItem[]> {
+	const params = new URLSearchParams();
+	if (projectSlug) params.set('project_slug', projectSlug);
+	params.set('limit', String(limit));
+	return request<ActivityItem[]>(`/activity?${params.toString()}`);
+}
+
+// ============================================================================
+// Metrics
+// ============================================================================
+
+export async function listToolMetrics(): Promise<ToolMetric[]> {
+	return request<ToolMetric[]>('/metrics/tools');
+}
+
+export async function getToolStats(): Promise<ToolStats> {
+	return request<ToolStats>('/metrics/tools/stats');
+}
+
+// ============================================================================
+// Archive
+// ============================================================================
+
+export async function listArchiveCommits(limit = 20): Promise<ArchiveCommit[]> {
+	return request<ArchiveCommit[]>(`/archive/commits?limit=${limit}`);
+}
+
+export async function getArchiveCommit(sha: string): Promise<ArchiveCommit> {
+	return request<ArchiveCommit>(`/archive/commits/${sha}`);
+}
+
+export async function listArchiveFiles(sha: string): Promise<ArchiveFile[]> {
+	return request<ArchiveFile[]>(`/archive/files/${sha}`);
+}
+
+export async function getArchiveFileContent(sha: string, path: string): Promise<string> {
+	const response = await fetch(
+		`${API_BASE}/archive/file/${sha}?path=${encodeURIComponent(path)}`
+	);
+	if (!response.ok) {
+		throw new Error('Failed to fetch archive file');
+	}
+	return response.text();
+}
+
+// ============================================================================
 // Health
+// ============================================================================
+
 export async function checkHealth(): Promise<{ status: string }> {
 	return request<{ status: string }>('/health');
 }
+
+// ============================================================================
+// Re-export types for convenience
+// ============================================================================
+
+export type {
+	Project,
+	Agent,
+	Message,
+	Thread,
+	ThreadSummary,
+	FileReservation,
+	FileReservationGrant,
+	Attachment,
+	UnifiedInboxResponse,
+	ActivityItem,
+	ArchiveCommit,
+	ArchiveFile,
+	BuildSlot,
+	ToolMetric,
+	ToolStats,
+	ApiError,
+	SendMessageRequest,
+	SearchMessagesRequest,
+	FileReservationRequest
+};
+
+export { ApiRequestError };
