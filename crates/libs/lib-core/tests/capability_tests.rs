@@ -269,3 +269,90 @@ async fn test_duplicate_grant_defaults_fails() {
         "Duplicate grant_defaults should fail due to UNIQUE constraint"
     );
 }
+
+#[tokio::test]
+async fn test_list_for_agent_filters_expired() {
+    use chrono::{Duration, Utc};
+
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    // Setup project and agent
+    let human_key = "/capability/list-expired-test";
+    let slug = slugify(human_key);
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .unwrap();
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    let agent_c = AgentForCreate {
+        project_id: project.id,
+        name: "ListExpiredAgent".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Testing list_for_agent filters expired".to_string(),
+    };
+    let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+
+    // Grant expired capability
+    let past_time = (Utc::now() - Duration::hours(1)).naive_utc();
+    let expired_cap = AgentCapabilityForCreate {
+        agent_id,
+        capability: "expired_cap".to_string(),
+        granted_by: None,
+        expires_at: Some(past_time),
+    };
+    AgentCapabilityBmc::create(&tc.ctx, &tc.mm, expired_cap)
+        .await
+        .unwrap();
+
+    // Grant valid capability (no expiry)
+    let valid_cap = AgentCapabilityForCreate {
+        agent_id,
+        capability: "valid_cap".to_string(),
+        granted_by: None,
+        expires_at: None,
+    };
+    AgentCapabilityBmc::create(&tc.ctx, &tc.mm, valid_cap)
+        .await
+        .unwrap();
+
+    // Grant future-expiring capability
+    let future_time = (Utc::now() + Duration::hours(1)).naive_utc();
+    let future_cap = AgentCapabilityForCreate {
+        agent_id,
+        capability: "future_cap".to_string(),
+        granted_by: None,
+        expires_at: Some(future_time),
+    };
+    AgentCapabilityBmc::create(&tc.ctx, &tc.mm, future_cap)
+        .await
+        .unwrap();
+
+    // list_for_agent should only return non-expired capabilities
+    let caps = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        caps.len(),
+        2,
+        "Should only return 2 non-expired capabilities, got {}",
+        caps.len()
+    );
+
+    let cap_names: Vec<&str> = caps.iter().map(|c| c.capability.as_str()).collect();
+    assert!(
+        cap_names.contains(&"valid_cap"),
+        "Should contain valid_cap"
+    );
+    assert!(
+        cap_names.contains(&"future_cap"),
+        "Should contain future_cap"
+    );
+    assert!(
+        !cap_names.contains(&"expired_cap"),
+        "Should NOT contain expired_cap"
+    );
+}

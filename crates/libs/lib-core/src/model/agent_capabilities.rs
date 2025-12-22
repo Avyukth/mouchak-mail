@@ -88,21 +88,27 @@ impl AgentCapabilityBmc {
         }
     }
 
+    /// List all non-expired capabilities for an agent
     pub async fn list_for_agent(
         _ctx: &Ctx,
         mm: &ModelManager,
         agent_id: i64,
     ) -> Result<Vec<AgentCapability>> {
         let db = mm.db();
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
         let stmt = db
             .prepare(
                 r#"
             SELECT id, agent_id, capability, granted_at, granted_by, expires_at
-            FROM agent_capabilities WHERE agent_id = ? ORDER BY capability ASC
+            FROM agent_capabilities
+            WHERE agent_id = ?
+            AND (expires_at IS NULL OR expires_at > ?)
+            ORDER BY capability ASC
             "#,
             )
             .await?;
-        let mut rows = stmt.query([agent_id]).await?;
+        let mut rows = stmt.query((agent_id, now_str)).await?;
 
         let mut capabilities = Vec::new();
         while let Some(row) = rows.next().await? {
