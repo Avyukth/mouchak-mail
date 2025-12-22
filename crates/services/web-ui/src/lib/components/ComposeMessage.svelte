@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sendMessage, type Agent } from '$lib/api/client';
+	import { sendMessage, type Agent } from "$lib/api/client";
 
 	interface Props {
 		projectSlug: string;
@@ -14,27 +14,25 @@
 		onSent: () => void;
 	}
 
-	let {
-		projectSlug,
-		senderName,
-		agents,
-		replyTo,
-		onClose,
-		onSent
-	}: Props = $props();
+	let { projectSlug, senderName, agents, replyTo, onClose, onSent }: Props =
+		$props();
 
 	// Derive initial values from replyTo prop to avoid state_referenced_locally warnings
-	let initialRecipients = $derived(replyTo?.recipientName ? [replyTo.recipientName] : []);
-	let initialSubject = $derived(replyTo ? `Re: ${replyTo.subject.replace(/^Re: /, '')}` : '');
-	let initialThreadId = $derived(replyTo?.threadId || '');
+	let initialRecipients = $derived(
+		replyTo?.recipientName ? [replyTo.recipientName] : [],
+	);
+	let initialSubject = $derived(
+		replyTo ? `Re: ${replyTo.subject.replace(/^Re: /, "")}` : "",
+	);
+	let initialThreadId = $derived(replyTo?.threadId || "");
 
 	// Form state - initialized once, then independent of replyTo changes
 	let recipients = $state<string[]>([]);
-	let subject = $state('');
-	let body = $state('');
-	let importance = $state<'low' | 'normal' | 'high'>('normal');
+	let subject = $state("");
+	let body = $state("");
+	let importance = $state<"low" | "normal" | "high">("normal");
 	let ackRequired = $state(false);
-	let threadId = $state('');
+	let threadId = $state("");
 
 	// Track if we've initialized form state from replyTo
 	let initialized = $state(false);
@@ -53,12 +51,12 @@
 
 	// Available recipients (all agents except sender)
 	let availableRecipients = $derived(
-		agents.filter(a => a.name !== senderName)
+		agents.filter((a) => a.name !== senderName),
 	);
 
 	function toggleRecipient(agentName: string) {
 		if (recipients.includes(agentName)) {
-			recipients = recipients.filter(r => r !== agentName);
+			recipients = recipients.filter((r) => r !== agentName);
 		} else {
 			recipients = [...recipients, agentName];
 		}
@@ -66,15 +64,15 @@
 
 	async function handleSubmit() {
 		if (recipients.length === 0) {
-			error = 'Please select at least one recipient';
+			error = "Please select at least one recipient";
 			return;
 		}
 		if (!subject.trim()) {
-			error = 'Please enter a subject';
+			error = "Please enter a subject";
 			return;
 		}
 		if (!body.trim()) {
-			error = 'Please enter a message body';
+			error = "Please enter a message body";
 			return;
 		}
 
@@ -82,26 +80,26 @@
 		error = null;
 
 		try {
-			await sendMessage(
-				projectSlug,
-				senderName,
-				recipients,
-				subject.trim(),
-				body.trim(),
-				threadId || undefined,
-				importance,
-				ackRequired
-			);
+			await sendMessage({
+				project_slug: projectSlug,
+				sender_name: senderName,
+				recipient_names: recipients,
+				subject: subject.trim(),
+				body_md: body.trim(),
+				thread_id: threadId || undefined,
+				importance: importance,
+				ack_required: ackRequired,
+			});
 			onSent();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to send message';
+			error = e instanceof Error ? e.message : "Failed to send message";
 		} finally {
 			sending = false;
 		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
+		if (event.key === "Escape") {
 			onClose();
 		}
 	}
@@ -111,9 +109,11 @@
 
 <div class="flex flex-col h-full max-h-[90vh]">
 	<!-- Header -->
-	<div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+	<div
+		class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between"
+	>
 		<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-			{replyTo ? 'Reply' : 'New Message'}
+			{replyTo ? "Reply" : "New Message"}
 		</h2>
 		<button
 			onclick={onClose}
@@ -124,26 +124,42 @@
 	</div>
 
 	<!-- Form -->
-	<form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="flex-1 overflow-y-auto p-4 space-y-4">
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleSubmit();
+		}}
+		class="flex-1 overflow-y-auto p-4 space-y-4"
+	>
 		<!-- From (readonly) -->
 		<div>
-			<span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+			<span
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			>
 				From
 			</span>
-			<div class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300">
+			<div
+				class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300"
+			>
 				{senderName}
-				<span class="text-gray-500 dark:text-gray-400 text-sm ml-2">({projectSlug})</span>
+				<span class="text-gray-500 dark:text-gray-400 text-sm ml-2"
+					>({projectSlug})</span
+				>
 			</div>
 		</div>
 
 		<!-- Recipients -->
 		<div role="group" aria-labelledby="recipients-label">
-			<span id="recipients-label" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+			<span
+				id="recipients-label"
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			>
 				To *
 			</span>
 			{#if availableRecipients.length === 0}
 				<p class="text-sm text-gray-500 dark:text-gray-400 italic">
-					No other agents in this project. Register more agents to send messages.
+					No other agents in this project. Register more agents to
+					send messages.
 				</p>
 			{:else}
 				<div class="flex flex-wrap gap-2">
@@ -151,7 +167,9 @@
 						<button
 							type="button"
 							onclick={() => toggleRecipient(agent.name)}
-							class="px-3 py-1.5 rounded-full text-sm transition-colors {recipients.includes(agent.name)
+							class="px-3 py-1.5 rounded-full text-sm transition-colors {recipients.includes(
+								agent.name,
+							)
 								? 'bg-primary-600 text-white'
 								: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}"
 						>
@@ -161,7 +179,7 @@
 				</div>
 				{#if recipients.length > 0}
 					<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-						Selected: {recipients.join(', ')}
+						Selected: {recipients.join(", ")}
 					</p>
 				{/if}
 			{/if}
@@ -169,7 +187,10 @@
 
 		<!-- Subject -->
 		<div>
-			<label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+			<label
+				for="subject"
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			>
 				Subject *
 			</label>
 			<input
@@ -184,7 +205,10 @@
 		<!-- Thread ID (optional) -->
 		{#if !replyTo}
 			<div>
-				<label for="threadId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="threadId"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Thread ID
 					<span class="text-gray-400 font-normal">(optional)</span>
 				</label>
@@ -200,9 +224,14 @@
 
 		<!-- Body -->
 		<div>
-			<label for="body" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+			<label
+				for="body"
+				class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			>
 				Message *
-				<span class="text-gray-400 font-normal">(Markdown supported)</span>
+				<span class="text-gray-400 font-normal"
+					>(Markdown supported)</span
+				>
 			</label>
 			<textarea
 				id="body"
@@ -217,7 +246,10 @@
 		<div class="flex flex-wrap gap-4">
 			<!-- Importance -->
 			<div>
-				<label for="importance" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+				<label
+					for="importance"
+					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+				>
 					Importance
 				</label>
 				<select
@@ -248,14 +280,18 @@
 
 		<!-- Error -->
 		{#if error}
-			<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+			<div
+				class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
+			>
 				<p class="text-red-700 dark:text-red-400 text-sm">{error}</p>
 			</div>
 		{/if}
 	</form>
 
 	<!-- Footer -->
-	<div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
+	<div
+		class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3"
+	>
 		<button
 			type="button"
 			onclick={onClose}
@@ -269,7 +305,9 @@
 			class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
 		>
 			{#if sending}
-				<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+				<div
+					class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+				></div>
 				<span>Sending...</span>
 			{:else}
 				<span>Send Message</span>
