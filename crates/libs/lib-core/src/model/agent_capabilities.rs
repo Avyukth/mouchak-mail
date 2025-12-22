@@ -137,7 +137,7 @@ impl AgentCapabilityBmc {
         Ok(())
     }
 
-    /// Check if an agent has a specific capability
+    /// Check if an agent has a specific capability (non-expired)
     pub async fn check(
         _ctx: &Ctx,
         mm: &ModelManager,
@@ -145,12 +145,16 @@ impl AgentCapabilityBmc {
         capability: &str,
     ) -> Result<bool> {
         let db = mm.db();
+        let now = chrono::Utc::now().naive_utc();
+        let now_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
         let stmt = db
             .prepare(
-                "SELECT COUNT(*) FROM agent_capabilities WHERE agent_id = ? AND capability = ?",
+                r#"SELECT COUNT(*) FROM agent_capabilities
+                   WHERE agent_id = ? AND capability = ?
+                   AND (expires_at IS NULL OR expires_at > ?)"#,
             )
             .await?;
-        let mut rows = stmt.query((agent_id, capability)).await?;
+        let mut rows = stmt.query((agent_id, capability, now_str)).await?;
 
         if let Some(row) = rows.next().await? {
             let count: i64 = row.get(0)?;

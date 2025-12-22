@@ -170,3 +170,102 @@ fn test_default_capability_constants() {
     assert!(DEFAULT_CAPABILITIES.contains(&CAP_FILE_RESERVATION));
     assert!(DEFAULT_CAPABILITIES.contains(&CAP_ACKNOWLEDGE_MESSAGE));
 }
+
+#[tokio::test]
+async fn test_expired_capability_rejected() {
+    use chrono::{Duration, Utc};
+
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    // Setup project and agent
+    let human_key = "/capability/expired-test";
+    let slug = slugify(human_key);
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .unwrap();
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    let agent_c = AgentForCreate {
+        project_id: project.id,
+        name: "ExpiredAgent".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Testing expired capabilities".to_string(),
+    };
+    let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+
+    // Grant capability that expires in the past
+    let past_time = (Utc::now() - Duration::hours(1)).naive_utc();
+    let cap_c = AgentCapabilityForCreate {
+        agent_id,
+        capability: "send_message".to_string(),
+        granted_by: None,
+        expires_at: Some(past_time),
+    };
+    let _cap_id = AgentCapabilityBmc::create(&tc.ctx, &tc.mm, cap_c)
+        .await
+        .unwrap();
+
+    // Expired capability should NOT pass check
+    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "send_message")
+        .await
+        .unwrap();
+    assert!(!has_cap, "Expired capability should be rejected");
+
+    // Grant capability that expires in the future
+    let future_time = (Utc::now() + Duration::hours(1)).naive_utc();
+    let cap_c2 = AgentCapabilityForCreate {
+        agent_id,
+        capability: "fetch_inbox".to_string(),
+        granted_by: None,
+        expires_at: Some(future_time),
+    };
+    let _cap_id2 = AgentCapabilityBmc::create(&tc.ctx, &tc.mm, cap_c2)
+        .await
+        .unwrap();
+
+    // Non-expired capability should pass check
+    let has_cap2 = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "fetch_inbox")
+        .await
+        .unwrap();
+    assert!(has_cap2, "Non-expired capability should pass");
+}
+
+#[tokio::test]
+async fn test_duplicate_grant_defaults_fails() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    // Setup project and agent
+    let human_key = "/capability/duplicate-test";
+    let slug = slugify(human_key);
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .unwrap();
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await.unwrap();
+
+    let agent_c = AgentForCreate {
+        project_id: project.id,
+        name: "DuplicateAgent".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Testing duplicate grant".to_string(),
+    };
+    let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+
+    // First grant should succeed
+    let granted = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id)
+        .await
+        .unwrap();
+    assert_eq!(granted, 4);
+
+    // Second grant should fail (UNIQUE constraint)
+    let result = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id).await;
+    assert!(
+        result.is_err(),
+        "Duplicate grant_defaults should fail due to UNIQUE constraint"
+    );
+}
