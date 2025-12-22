@@ -22,6 +22,7 @@ export interface Message {
 	recipients?: string[];
 	recipient_names?: string[];
 	created_ts?: string;
+	is_read?: boolean;
 }
 
 const defaultFilters: Filter = {

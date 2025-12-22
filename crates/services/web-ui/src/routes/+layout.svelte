@@ -28,10 +28,18 @@
 	}
 
 	const navItems: NavItem[] = [
+<<<<<<< HEAD
 		{ href: '/', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/projects', label: 'Projects', icon: FolderKanban },
 		{ href: '/agents', label: 'Agents', icon: Bot },
 		{ href: '/inbox', label: 'Inbox', icon: Inbox }
+=======
+		{ href: '/', label: 'Dashboard', icon: '🏠' },
+		{ href: '/projects', label: 'Projects', icon: '📁' },
+		{ href: '/agents', label: 'Agents', icon: '🤖' },
+		{ href: '/mail', label: 'Mail', icon: '📨' },
+		{ href: '/inbox', label: 'Inbox', icon: '📬' }
+>>>>>>> bffe547 (Implement unified mail inbox page)
 	];
 
 	let sidebarOpen = $state(true);
