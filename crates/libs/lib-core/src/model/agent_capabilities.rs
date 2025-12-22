@@ -4,6 +4,30 @@ use crate::model::ModelManager;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
+// ============================================================================
+// Capability Constants
+// ============================================================================
+
+/// Capability to send messages to other agents
+pub const CAP_SEND_MESSAGE: &str = "send_message";
+
+/// Capability to fetch/check inbox
+pub const CAP_FETCH_INBOX: &str = "fetch_inbox";
+
+/// Capability to reserve file paths
+pub const CAP_FILE_RESERVATION: &str = "file_reservation_paths";
+
+/// Capability to acknowledge messages
+pub const CAP_ACKNOWLEDGE_MESSAGE: &str = "acknowledge_message";
+
+/// Default capabilities granted to new agents
+pub const DEFAULT_CAPABILITIES: &[&str] = &[
+    CAP_SEND_MESSAGE,
+    CAP_FETCH_INBOX,
+    CAP_FILE_RESERVATION,
+    CAP_ACKNOWLEDGE_MESSAGE,
+];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCapability {
     pub id: i64,
@@ -134,5 +158,31 @@ impl AgentCapabilityBmc {
         } else {
             Ok(false)
         }
+    }
+
+    /// Grant default capabilities to a newly registered agent.
+    ///
+    /// This grants: send_message, fetch_inbox, file_reservation_paths, acknowledge_message
+    ///
+    /// # Arguments
+    /// * `ctx` - Context
+    /// * `mm` - Model manager
+    /// * `agent_id` - The agent to grant capabilities to
+    ///
+    /// # Returns
+    /// Number of capabilities granted
+    pub async fn grant_defaults(ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<usize> {
+        let mut granted = 0;
+        for cap in DEFAULT_CAPABILITIES {
+            let cap_c = AgentCapabilityForCreate {
+                agent_id,
+                capability: (*cap).to_string(),
+                granted_by: None,
+                expires_at: None,
+            };
+            Self::create(ctx, mm, cap_c).await?;
+            granted += 1;
+        }
+        Ok(granted)
     }
 }
