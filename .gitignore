@@ -38,3 +38,4 @@ docs/api-quality-audit-report.md
 
 # bv (beads viewer) local config and caches
 .bv/
+web-transform*.md
