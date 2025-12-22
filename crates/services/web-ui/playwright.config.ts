@@ -16,8 +16,20 @@ export default defineConfig({
 		{
 			name: 'chromium',
 			use: { ...devices['Desktop Chrome'] }
+		},
+		{
+			name: 'mobile',
+			use: { ...devices['iPhone 13'] }
 		}
 	],
-	// Don't start dev server - assume it's already running
-	webServer: undefined
+	webServer: {
+		command: 'bun run dev',
+		url: 'http://localhost:5173',
+		reuseExistingServer: !process.env.CI
+	},
+	expect: {
+		toHaveScreenshot: {
+			maxDiffPixelRatio: 0.05
+		}
+	}
 });
