@@ -2191,241 +2191,259 @@ async fn handle_summarize(args: SummarizeArgs) -> anyhow::Result<()> {
 
 // --- Archive Command Handlers ---
 
+/// Create a restorable snapshot archive
+async fn handle_archive_save(
+    archives_dir: &std::path::Path,
+    label: Option<String>,
+    include_git: bool,
+) -> anyhow::Result<()> {
+    use chrono::Utc;
+    use std::fs;
+    use std::io::Write;
+
+    let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
+    let archive_label = label.unwrap_or_else(|| timestamp.clone());
+    let archive_name = format!("archive_{}_{}.zip", archive_label, timestamp);
+
+    // Ensure archives directory exists
+    fs::create_dir_all(archives_dir)?;
+
+    let archive_path = archives_dir.join(&archive_name);
+    let file = fs::File::create(&archive_path)?;
+    let mut zip = zip::ZipWriter::new(file);
+
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    // Add database file
+    let db_path = std::path::Path::new("data/mcp_agent_mail.db");
+    if db_path.exists() {
+        let content = fs::read(db_path)?;
+        zip.start_file("mcp_agent_mail.db", options)?;
+        zip.write_all(&content)?;
+        println!("✓ Added database to archive");
+    } else {
+        println!("⚠ No database file found");
+    }
+
+    // Add git storage if requested (use data/archive which is the actual path)
+    if include_git {
+        let git_storage = std::path::Path::new("data/archive");
+        if git_storage.exists() {
+            add_directory_to_zip(&mut zip, git_storage, "git_storage", options)?;
+            println!("✓ Added git storage to archive");
+        }
+    }
+
+    // Add metadata
+    let metadata = serde_json::json!({
+        "label": archive_label,
+        "timestamp": timestamp,
+        "version": env!("CARGO_PKG_VERSION"),
+        "include_git": include_git,
+    });
+    zip.start_file("metadata.json", options)?;
+    zip.write_all(serde_json::to_string_pretty(&metadata)?.as_bytes())?;
+
+    zip.finish()?;
+
+    println!("\n✓ Archive created: {}", archive_path.display());
+    println!("  Label: {}", archive_label);
+    Ok(())
+}
+
+/// List available restore points
+fn handle_archive_list(archives_dir: &std::path::Path, json: bool) -> anyhow::Result<()> {
+    use std::fs;
+
+    if !archives_dir.exists() {
+        if json {
+            println!("[]");
+        } else {
+            println!("No archives found. Directory: {}", archives_dir.display());
+        }
+        return Ok(());
+    }
+
+    let mut archives: Vec<serde_json::Value> = Vec::new();
+
+    for entry in fs::read_dir(archives_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "zip") {
+            let Some(file_name) = path.file_name() else {
+                continue;
+            };
+            let filename = file_name.to_string_lossy().to_string();
+            let metadata = fs::metadata(&path)?;
+            let size = metadata.len();
+            let modified = metadata
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+
+            // Try to read metadata.json from the archive
+            let archive_metadata = read_archive_metadata(&path);
+
+            archives.push(serde_json::json!({
+                "filename": filename,
+                "path": path.display().to_string(),
+                "size_bytes": size,
+                "modified_epoch": modified,
+                "label": archive_metadata.get("label"),
+                "timestamp": archive_metadata.get("timestamp"),
+                "version": archive_metadata.get("version"),
+            }));
+        }
+    }
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&archives)?);
+    } else if archives.is_empty() {
+        println!("No archives found.");
+    } else {
+        println!("Available restore points:\n");
+        for archive in &archives {
+            let label = archive["label"].as_str().unwrap_or("(unlabeled)");
+            let filename = archive["filename"].as_str().unwrap_or("?");
+            let size = archive["size_bytes"].as_u64().unwrap_or(0);
+            let size_mb = size as f64 / (1024.0 * 1024.0);
+            println!("  • {} ({})", label, filename);
+            println!("    Size: {:.2} MB", size_mb);
+        }
+    }
+    Ok(())
+}
+
+/// Restore from a backup archive
+fn handle_archive_restore(file: &str, yes: bool) -> anyhow::Result<()> {
+    use std::fs;
+    use std::io::Write;
+
+    let archive_path = std::path::Path::new(file);
+    if !archive_path.exists() {
+        anyhow::bail!("Archive not found: {}", file);
+    }
+
+    if !yes {
+        print!("This will REPLACE current data. Continue? [y/N] ");
+        std::io::stdout().flush()?;
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        if !input.trim().eq_ignore_ascii_case("y") {
+            println!("Aborted.");
+            return Ok(());
+        }
+    }
+
+    let file = fs::File::open(archive_path)?;
+    let mut archive = zip::ZipArchive::new(file)?;
+
+    // Restore database
+    if let Ok(mut db_file) = archive.by_name("mcp_agent_mail.db") {
+        let db_path = std::path::Path::new("data/mcp_agent_mail.db");
+        fs::create_dir_all("data")?;
+        let mut content = Vec::new();
+        use std::io::Read;
+        db_file.read_to_end(&mut content)?;
+        fs::write(db_path, content)?;
+        println!("✓ Restored database");
+    }
+
+    // Restore git storage (restore to data/archive)
+    let git_prefix = "git_storage/";
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let name = file.name().to_string();
+        if name.starts_with(git_prefix) && !file.is_dir() {
+            // Map git_storage/ to data/archive/
+            let relative_path = name.strip_prefix(git_prefix).unwrap_or(&name);
+            let dest_path = std::path::Path::new("data/archive").join(relative_path);
+            if let Some(parent) = dest_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let mut content = Vec::new();
+            use std::io::Read;
+            file.read_to_end(&mut content)?;
+            fs::write(&dest_path, content)?;
+        }
+    }
+    println!("✓ Restored git storage");
+
+    println!("\n✓ Restore complete from: {}", archive_path.display());
+    Ok(())
+}
+
+/// Wipe all state with optional archive backup
+async fn handle_archive_clear_and_reset(
+    archives_dir: &std::path::Path,
+    archive: bool,
+    label: Option<String>,
+    yes: bool,
+) -> anyhow::Result<()> {
+    use std::fs;
+    use std::io::Write;
+
+    if !yes {
+        print!("This will DELETE ALL DATA. Continue? [y/N] ");
+        std::io::stdout().flush()?;
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        if !input.trim().eq_ignore_ascii_case("y") {
+            println!("Aborted.");
+            return Ok(());
+        }
+    }
+
+    // Create archive first if requested
+    if archive {
+        println!("Creating backup archive before wipe...");
+        let backup_label = label.or_else(|| Some("pre-wipe".to_string()));
+        handle_archive_save(archives_dir, backup_label, true).await?;
+    }
+
+    // Remove database
+    let db_path = std::path::Path::new("data/mcp_agent_mail.db");
+    if db_path.exists() {
+        fs::remove_file(db_path)?;
+        println!("✓ Removed database");
+    }
+
+    // Remove git storage (data/archive)
+    let git_storage = std::path::Path::new("data/archive");
+    if git_storage.exists() {
+        fs::remove_dir_all(git_storage)?;
+        println!("✓ Removed git storage");
+    }
+
+    // Remove attachments
+    let attachments = std::path::Path::new("data/attachments");
+    if attachments.exists() {
+        fs::remove_dir_all(attachments)?;
+        println!("✓ Removed attachments");
+    }
+
+    println!("\n✓ All data cleared. Run migrations to reinitialize.");
+    Ok(())
+}
+
 async fn handle_archive_command(cmd: ArchiveCommands) -> anyhow::Result<()> {
     let archives_dir = std::path::Path::new("data/archives");
 
     match cmd {
         ArchiveCommands::Save { label, include_git } => {
-            use chrono::Utc;
-            use std::fs;
-            use std::io::Write;
-
-            let timestamp = Utc::now().format("%Y%m%d_%H%M%S").to_string();
-            let archive_label = label.unwrap_or_else(|| timestamp.clone());
-            let archive_name = format!("archive_{}_{}.zip", archive_label, timestamp);
-
-            // Ensure archives directory exists
-            fs::create_dir_all(archives_dir)?;
-
-            let archive_path = archives_dir.join(&archive_name);
-            let file = fs::File::create(&archive_path)?;
-            let mut zip = zip::ZipWriter::new(file);
-
-            let options = zip::write::SimpleFileOptions::default()
-                .compression_method(zip::CompressionMethod::Deflated);
-
-            // Add database file
-            let db_path = std::path::Path::new("data/mcp_agent_mail.db");
-            if db_path.exists() {
-                let content = fs::read(db_path)?;
-                zip.start_file("mcp_agent_mail.db", options)?;
-                zip.write_all(&content)?;
-                println!("✓ Added database to archive");
-            } else {
-                println!("⚠ No database file found");
-            }
-
-            // Add git storage if requested (use data/archive which is the actual path)
-            if include_git {
-                let git_storage = std::path::Path::new("data/archive");
-                if git_storage.exists() {
-                    add_directory_to_zip(&mut zip, git_storage, "git_storage", options)?;
-                    println!("✓ Added git storage to archive");
-                }
-            }
-
-            // Add metadata
-            let metadata = serde_json::json!({
-                "label": archive_label,
-                "timestamp": timestamp,
-                "version": env!("CARGO_PKG_VERSION"),
-                "include_git": include_git,
-            });
-            zip.start_file("metadata.json", options)?;
-            zip.write_all(serde_json::to_string_pretty(&metadata)?.as_bytes())?;
-
-            zip.finish()?;
-
-            println!("\n✓ Archive created: {}", archive_path.display());
-            println!("  Label: {}", archive_label);
+            handle_archive_save(archives_dir, label, include_git).await
         }
-
-        ArchiveCommands::List { json } => {
-            use std::fs;
-
-            if !archives_dir.exists() {
-                if json {
-                    println!("[]");
-                } else {
-                    println!("No archives found. Directory: {}", archives_dir.display());
-                }
-                return Ok(());
-            }
-
-            let mut archives: Vec<serde_json::Value> = Vec::new();
-
-            for entry in fs::read_dir(archives_dir)? {
-                let entry = entry?;
-                let path = entry.path();
-                if path.extension().is_some_and(|ext| ext == "zip") {
-                    let Some(file_name) = path.file_name() else {
-                        continue;
-                    };
-                    let filename = file_name.to_string_lossy().to_string();
-                    let metadata = fs::metadata(&path)?;
-                    let size = metadata.len();
-                    let modified = metadata
-                        .modified()
-                        .ok()
-                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                        .map(|d| d.as_secs())
-                        .unwrap_or(0);
-
-                    // Try to read metadata.json from the archive
-                    let archive_metadata = read_archive_metadata(&path);
-
-                    archives.push(serde_json::json!({
-                        "filename": filename,
-                        "path": path.display().to_string(),
-                        "size_bytes": size,
-                        "modified_epoch": modified,
-                        "label": archive_metadata.get("label"),
-                        "timestamp": archive_metadata.get("timestamp"),
-                        "version": archive_metadata.get("version"),
-                    }));
-                }
-            }
-
-            if json {
-                println!("{}", serde_json::to_string_pretty(&archives)?);
-            } else if archives.is_empty() {
-                println!("No archives found.");
-            } else {
-                println!("Available restore points:\n");
-                for archive in &archives {
-                    let label = archive["label"].as_str().unwrap_or("(unlabeled)");
-                    let filename = archive["filename"].as_str().unwrap_or("?");
-                    let size = archive["size_bytes"].as_u64().unwrap_or(0);
-                    let size_mb = size as f64 / (1024.0 * 1024.0);
-                    println!("  • {} ({})", label, filename);
-                    println!("    Size: {:.2} MB", size_mb);
-                }
-            }
-        }
-
-        ArchiveCommands::Restore { file, yes } => {
-            use std::fs;
-            use std::io::Write;
-
-            let archive_path = std::path::Path::new(&file);
-            if !archive_path.exists() {
-                anyhow::bail!("Archive not found: {}", file);
-            }
-
-            if !yes {
-                print!("This will REPLACE current data. Continue? [y/N] ");
-                std::io::stdout().flush()?;
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input)?;
-                if !input.trim().eq_ignore_ascii_case("y") {
-                    println!("Aborted.");
-                    return Ok(());
-                }
-            }
-
-            let file = fs::File::open(archive_path)?;
-            let mut archive = zip::ZipArchive::new(file)?;
-
-            // Restore database
-            if let Ok(mut db_file) = archive.by_name("mcp_agent_mail.db") {
-                let db_path = std::path::Path::new("data/mcp_agent_mail.db");
-                fs::create_dir_all("data")?;
-                let mut content = Vec::new();
-                use std::io::Read;
-                db_file.read_to_end(&mut content)?;
-                fs::write(db_path, content)?;
-                println!("✓ Restored database");
-            }
-
-            // Restore git storage (restore to data/archive)
-            let git_prefix = "git_storage/";
-            for i in 0..archive.len() {
-                let mut file = archive.by_index(i)?;
-                let name = file.name().to_string();
-                if name.starts_with(git_prefix) && !file.is_dir() {
-                    // Map git_storage/ to data/archive/
-                    let relative_path = name.strip_prefix(git_prefix).unwrap_or(&name);
-                    let dest_path = std::path::Path::new("data/archive").join(relative_path);
-                    if let Some(parent) = dest_path.parent() {
-                        fs::create_dir_all(parent)?;
-                    }
-                    let mut content = Vec::new();
-                    use std::io::Read;
-                    file.read_to_end(&mut content)?;
-                    fs::write(&dest_path, content)?;
-                }
-            }
-            println!("✓ Restored git storage");
-
-            println!("\n✓ Restore complete from: {}", archive_path.display());
-        }
-
+        ArchiveCommands::List { json } => handle_archive_list(archives_dir, json),
+        ArchiveCommands::Restore { file, yes } => handle_archive_restore(&file, yes),
         ArchiveCommands::ClearAndReset {
             archive,
             label,
             yes,
-        } => {
-            use std::fs;
-            use std::io::Write;
-
-            if !yes {
-                print!("This will DELETE ALL DATA. Continue? [y/N] ");
-                std::io::stdout().flush()?;
-                let mut input = String::new();
-                std::io::stdin().read_line(&mut input)?;
-                if !input.trim().eq_ignore_ascii_case("y") {
-                    println!("Aborted.");
-                    return Ok(());
-                }
-            }
-
-            // Create archive first if requested
-            if archive {
-                println!("Creating backup archive before wipe...");
-                let save_cmd = ArchiveCommands::Save {
-                    label: label.or_else(|| Some("pre-wipe".to_string())),
-                    include_git: true,
-                };
-                // Box the recursive call to avoid infinite size
-                Box::pin(handle_archive_command(save_cmd)).await?;
-            }
-
-            // Remove database
-            let db_path = std::path::Path::new("data/mcp_agent_mail.db");
-            if db_path.exists() {
-                fs::remove_file(db_path)?;
-                println!("✓ Removed database");
-            }
-
-            // Remove git storage (data/archive)
-            let git_storage = std::path::Path::new("data/archive");
-            if git_storage.exists() {
-                fs::remove_dir_all(git_storage)?;
-                println!("✓ Removed git storage");
-            }
-
-            // Remove attachments
-            let attachments = std::path::Path::new("data/attachments");
-            if attachments.exists() {
-                fs::remove_dir_all(attachments)?;
-                println!("✓ Removed attachments");
-            }
-
-            println!("\n✓ All data cleared. Run migrations to reinitialize.");
-        }
+        } => handle_archive_clear_and_reset(archives_dir, archive, label, yes).await,
     }
-
-    Ok(())
 }
 
 /// Helper to add a directory recursively to a ZIP archive
