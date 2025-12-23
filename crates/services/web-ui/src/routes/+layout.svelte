@@ -4,6 +4,7 @@
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { AppSidebar, AppHeader } from '$lib/components/layout/index.js';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import { InstallPrompt, UpdatePrompt } from '$lib/components/pwa/index.js';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -19,6 +20,8 @@
 <ModeWatcher />
 <Toaster />
 <CommandPalette />
+<InstallPrompt />
+<UpdatePrompt />
 
 <div class="min-h-screen flex">
 	<!-- Sidebar (handles both mobile sheet trigger and desktop sidebar) -->
