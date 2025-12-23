@@ -144,13 +144,16 @@ am tools
 ### Branch Hierarchy
 
 ```
-main (protected)
+main (production, protected)
   │
-  └── beads-sync (integration branch)
-        │
-        ├── feature/NTM-001 (agent worktree)
-        ├── feature/NTM-002 (agent worktree)
-        └── feature/SVELTE-001 (agent worktree)
+  ├── dev (development/integration branch)
+  │     │
+  │     ├── feature/NTM-001 (agent worktree)
+  │     ├── feature/NTM-002 (agent worktree)
+  │     └── feature/SVELTE-001 (agent worktree)
+  │
+  └── beads-sync (ISOLATED - beads data only)
+        └── Only .beads/ changes, auto-synced by bd
 ```
 
 ### CRITICAL: Branch Rules
@@ -158,19 +161,22 @@ main (protected)
 ```
 ╔════════════════════════════════════════════════════════════════╗
 ║  🚨 AGENTS NEVER WORK ON MAIN BRANCH 🚨                        ║
-║  ✅ Work ONLY on beads-sync or feature branches                ║
+║  ✅ Work ONLY on dev or feature branches                       ║
 ║  ✅ Use worktrees (.sandboxes/agent-<id>/)                     ║
-║  ✅ Coordinator merges beads-sync → main                       ║
+║  ✅ Feature branches merge → dev                               ║
+║  ✅ Human/Coordinator merges dev → main (releases)             ║
+║  ✅ beads-sync is ISOLATED (never merges with code branches)   ║
 ╚════════════════════════════════════════════════════════════════╝
 ```
 
-### Three Isolation Layers
+### Four Isolation Layers
 
 | Layer | Tool | Purpose |
 |-------|------|---------|
 | 1. File Reservations | MCP `file_reservation_paths` | Logical locks, prevent same-file conflicts |
 | 2. Worktrees | `git worktree` | Physical isolation, no stash/pop needed |
-| 3. beads-sync | Integration branch | `bd sync` commits here |
+| 3. dev branch | Integration branch | All feature branches merge here |
+| 4. beads-sync | Data-only branch | `bd sync` commits here (isolated from code) |
 
 ---
 
@@ -179,13 +185,14 @@ main (protected)
 ### Creating Agent Worktree
 
 ```bash
-# 1. Ensure beads-sync is up to date with main
-git checkout beads-sync
-git merge main --no-edit
-git push origin beads-sync
+# 1. Ensure dev is up to date with main
+git checkout dev
+git pull origin dev
+git merge main --no-edit  # Only if main has hotfixes
+git push origin dev
 
-# 2. Create isolated worktree for your task
-git worktree add .sandboxes/agent-BlueMountain -b feature/NTM-001 beads-sync
+# 2. Create isolated worktree for your task (branches from dev)
+git worktree add .sandboxes/agent-BlueMountain -b feature/NTM-001 dev
 
 # 3. Enter worktree
 cd .sandboxes/agent-BlueMountain
@@ -194,7 +201,7 @@ cd .sandboxes/agent-BlueMountain
 ### Worktree Directory Structure
 
 ```
-mcp-agent-mail-rs/                 # Main repo (beads-sync branch)
+mcp-agent-mail-rs/                 # Main repo (dev branch)
 ├── .sandboxes/
 │   ├── agent-BlueMountain/        # Worktree for BlueMountain (feature/NTM-001)
 │   ├── agent-GreenCastle/         # Worktree for GreenCastle (feature/NTM-002)
@@ -208,8 +215,8 @@ mcp-agent-mail-rs/                 # Main repo (beads-sync branch)
 # List all worktrees
 git worktree list
 
-# Create new worktree
-git worktree add .sandboxes/agent-$ID -b feature/<task> beads-sync
+# Create new worktree (branches from dev)
+git worktree add .sandboxes/agent-$ID -b feature/<task> dev
 
 # Remove worktree after completion
 git worktree remove .sandboxes/agent-$ID
@@ -228,10 +235,10 @@ git commit -m "feat(mcp): add tool aliases for NTM-001"
 # 2. Return to main repo
 cd ../..
 
-# 3. Merge feature into beads-sync
-git checkout beads-sync
+# 3. Merge feature into dev
+git checkout dev
 git merge feature/NTM-001 --no-edit
-git push origin beads-sync
+git push origin dev
 
 # 4. Delete feature branch
 git branch -d feature/NTM-001
@@ -827,7 +834,7 @@ BEADS → WORKER → [COMPLETION] mail → REVIEWER → [APPROVED/FIXED] → HUM
 1. `bd ready` → `bd update <id> --status in_progress`
 2. `register_agent` → `file_reservation_paths`
 3. Create worktree, implement, run quality gates
-4. Commit, merge to beads-sync
+4. Commit, merge to dev
 5. Send `[COMPLETION]` mail (to=reviewer, cc=human, ack_required=true)
 6. Release reservations, **EXIT**
 
@@ -932,7 +939,7 @@ Release after build:
 ## Review Complete - APPROVED
 
 Implementation complete, criteria met, gates passed.
-Merged to beads-sync at commit def5678.
+Merged to dev at commit def5678.
 ```
 
 ### [FIXED] (Reviewer → Worker, cc Human)
@@ -989,7 +996,7 @@ Task closed.
 | File reservation conflict | Check inbox, coordinate with holder |
 | Worktree already exists | `git worktree remove <path>` first |
 | Branch already used by worktree | `git worktree prune` |
-| Merge conflicts on beads-sync | Pull latest, resolve, push |
+| Merge conflicts on dev | Pull latest, resolve, push |
 | Build slot unavailable | Check `list_build_slots`, wait or request |
 
 ---
@@ -1000,13 +1007,13 @@ Task closed.
 # Complete ALL before exiting
 [ ] 1. All quality gates pass (check, clippy, fmt, test)
 [ ] 2. Changes committed in worktree
-[ ] 3. Feature branch merged to beads-sync
+[ ] 3. Feature branch merged to dev
 [ ] 4. Worktree removed: git worktree remove .sandboxes/agent-$ID
 [ ] 5. All file reservations released via MCP
 [ ] 6. [COMPLETION] message sent to reviewer
 [ ] 7. All active beads closed or updated with notes
-[ ] 8. bd sync completed
-[ ] 9. git push origin beads-sync
+[ ] 8. bd sync completed (beads data only)
+[ ] 9. git push origin dev
 [ ] 10. git status shows clean working tree
 ```
 
@@ -1024,9 +1031,9 @@ git add -A && git commit -m "feat: complete $TASK" --allow-empty
 
 # Back to main repo
 cd ../..
-git checkout beads-sync
+git checkout dev
 git merge feature/$TASK --no-edit
-git push origin beads-sync
+git push origin dev
 
 # Cleanup
 git branch -d feature/$TASK
@@ -1039,8 +1046,7 @@ git worktree remove .sandboxes/agent-$AGENT
 
 ```bash
 # === STARTUP ===
-git checkout beads-sync && git pull origin beads-sync
-git merge main --no-edit
+git checkout dev && git pull origin dev
 
 # Register (via MCP)
 # ensure_project(slug="/path/to/repo", human_key="mcp-agent-mail-rs")
@@ -1055,8 +1061,8 @@ bd ready --json
 # Reserve files (via MCP - BEFORE creating worktree)
 # file_reservation_paths(paths=["crates/libs/lib-mcp/src/tools/*.rs"], ...)
 
-# Create worktree
-git worktree add .sandboxes/agent-BlueMountain -b feature/NTM-001 beads-sync
+# Create worktree (branches from dev)
+git worktree add .sandboxes/agent-BlueMountain -b feature/NTM-001 dev
 cd .sandboxes/agent-BlueMountain
 bd --no-daemon update mcp-agent-mail-rs-46xk --status in_progress
 
@@ -1081,10 +1087,10 @@ git commit -m "feat(mcp): add tool aliases for NTM compatibility"
 # Return to main repo
 cd ../..
 
-# Merge to beads-sync
-git checkout beads-sync
+# Merge to dev
+git checkout dev
 git merge feature/NTM-001 --no-edit
-git push origin beads-sync
+git push origin dev
 
 # Release reservations (via MCP)
 # release_reservation(project_slug="mcp-agent-mail-rs", reservation_id=42)
@@ -1106,6 +1112,17 @@ bd ready --json
 # If no work: EXIT
 ```
 
+## Release to Production (Human/Coordinator Only)
+
+```bash
+# Merge dev → main (when ready for release)
+git checkout main
+git merge dev --no-edit  # Or create PR: dev → main
+git push origin main
+git tag -a v1.x.x -m "Release v1.x.x"
+git push origin v1.x.x
+```
+
 ---
 
 **Next agent prompt**:
@@ -1117,4 +1134,8 @@ If starting fresh: Register first, then create worktree.
 
 ---
 
-**Version**: 1.0.0 | **Last Updated**: 2025-12-22
+**Version**: 1.1.0 | **Last Updated**: 2025-12-23
+
+**Changelog**:
+- v1.1.0: Added `dev` branch for code integration. `beads-sync` now isolated for beads data only. Feature branches now branch from `dev` instead of `beads-sync`.
+- v1.0.0: Initial version with beads-sync as integration branch.
