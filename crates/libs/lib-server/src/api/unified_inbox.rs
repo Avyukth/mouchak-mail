@@ -36,6 +36,13 @@ pub struct UnifiedInboxMessage {
     pub thread_id: Option<String>,
 }
 
+/// Response wrapper for unified inbox
+#[derive(Debug, Serialize)]
+pub struct UnifiedInboxResponse {
+    pub messages: Vec<UnifiedInboxMessage>,
+    pub total_count: usize,
+}
+
 /// GET /api/unified-inbox
 ///
 /// Returns messages from all projects, optionally filtered by importance.
@@ -51,7 +58,7 @@ pub async fn unified_inbox_json(
 
     let items = MessageBmc::list_unified_inbox(&ctx, mm, importance, limit).await?;
 
-    let response: Vec<UnifiedInboxMessage> = items
+    let messages: Vec<UnifiedInboxMessage> = items
         .into_iter()
         .map(|m| UnifiedInboxMessage {
             id: m.id,
@@ -65,6 +72,11 @@ pub async fn unified_inbox_json(
             thread_id: m.thread_id,
         })
         .collect();
+
+    let response = UnifiedInboxResponse {
+        total_count: messages.len(),
+        messages,
+    };
 
     Ok(Json(response).into_response())
 }
