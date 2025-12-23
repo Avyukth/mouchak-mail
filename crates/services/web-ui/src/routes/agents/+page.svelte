@@ -57,6 +57,19 @@
 		});
 	}
 
+	// Create a map from slug to human_key
+	let projectNameMap = $derived(() => {
+		const map = new Map<string, string>();
+		for (const p of projects) {
+			map.set(p.slug, p.human_key);
+		}
+		return map;
+	});
+
+	function getProjectName(slug: string): string {
+		return projectNameMap().get(slug) ?? slug;
+	}
+
 	let filteredAgents = $derived(() => {
 		let result = allAgents;
 
@@ -113,7 +126,7 @@
 				>
 					<option value="all">All Projects</option>
 					{#each projects as project}
-						<option value={project.slug}>{project.slug}</option>
+						<option value={project.slug}>{project.human_key}</option>
 					{/each}
 				</select>
 			</div>
@@ -162,7 +175,7 @@
 			<span>Showing {filteredAgents().length} of {allAgents.length} agents</span>
 			{#if selectedProject !== 'all'}
 				<span class="px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded-full text-xs">
-					{selectedProject}
+					{getProjectName(selectedProject)}
 				</span>
 			{/if}
 		</div>
@@ -190,7 +203,7 @@
 								href="/projects/{agent.projectSlug}"
 								class="text-primary-600 dark:text-primary-400 hover:underline font-medium"
 							>
-								{agent.projectSlug}
+								{getProjectName(agent.projectSlug)}
 							</a>
 						</div>
 						<div class="flex justify-between">

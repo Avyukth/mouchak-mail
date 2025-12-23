@@ -150,10 +150,10 @@
 				<thead class="bg-gray-50 dark:bg-gray-700">
 					<tr>
 						<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-							Slug
+							Project
 						</th>
 						<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-							Path
+							Slug
 						</th>
 						<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
 							Created
@@ -166,17 +166,17 @@
 				<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 					{#each projects as project}
 						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-6 py-4">
 								<a
 									href="/projects/{project.slug}"
 									class="text-primary-600 dark:text-primary-400 font-medium hover:underline"
 								>
-									{project.slug}
+									{project.human_key}
 								</a>
 							</td>
-							<td class="px-6 py-4">
-								<span class="text-gray-600 dark:text-gray-400 text-sm font-mono truncate block max-w-md">
-									{project.human_key}
+							<td class="px-6 py-4 whitespace-nowrap">
+								<span class="text-gray-500 dark:text-gray-500 text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+									{project.slug}
 								</span>
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">

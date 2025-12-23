@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { getAgents, registerAgent, type Agent } from '$lib/api/client';
+	import { getAgents, registerAgent, getProjectInfo, type Agent, type Project } from '$lib/api/client';
 	import { toast } from 'svelte-sonner';
 	import Bot from 'lucide-svelte/icons/bot';
 	import ArrowRight from 'lucide-svelte/icons/arrow-right';
 	import { AgentCardSkeleton } from '$lib/components/skeletons';
 
 	let agents = $state<Agent[]>([]);
+	let project = $state<Project | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
@@ -21,20 +22,28 @@
 	});
 	let creating = $state(false);
 
+	// Derived project name - uses human_key if available, falls back to slug
+	let projectName = $derived(project?.human_key ?? $page.params.slug);
+
 	// Use $effect for client-side data loading in Svelte 5
 	$effect(() => {
 		if (browser) {
-			loadAgents();
+			loadProjectData();
 		}
 	});
 
-	async function loadAgents() {
+	async function loadProjectData() {
 		loading = true;
 		error = null;
 		try {
-			agents = await getAgents($page.params.slug ?? '');
+			const [projectInfo, agentList] = await Promise.all([
+				getProjectInfo($page.params.slug ?? ''),
+				getAgents($page.params.slug ?? '')
+			]);
+			project = projectInfo;
+			agents = agentList;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load agents';
+			error = e instanceof Error ? e.message : 'Failed to load project data';
 		} finally {
 			loading = false;
 		}
@@ -53,7 +62,7 @@
 				newAgent.model.trim() || 'unknown',
 				newAgent.task_description.trim() || ''
 			);
-			await loadAgents();
+			await loadProjectData();
 			toast.success(`Agent "${newAgent.name}" registered successfully`);
 			newAgent = { name: '', program: '', model: '', task_description: '' };
 			showNewForm = false;
@@ -81,16 +90,21 @@
 	<nav class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
 		<a href="/projects" class="hover:text-primary-600 dark:hover:text-primary-400">Projects</a>
 		<span>/</span>
-		<span class="text-gray-900 dark:text-white font-medium">{$page.params.slug}</span>
+		<span class="text-gray-900 dark:text-white font-medium">{projectName}</span>
 	</nav>
 
 	<!-- Header -->
 	<div class="flex items-center justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-				{$page.params.slug}
+				{projectName}
 			</h1>
-			<p class="text-gray-600 dark:text-gray-400">Agents in this project</p>
+			<p class="text-gray-600 dark:text-gray-400 flex items-center gap-2">
+				<span>Agents in this project</span>
+				{#if project}
+					<span class="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{project.slug}</span>
+				{/if}
+			</p>
 		</div>
 		<button
 			onclick={() => showNewForm = !showNewForm}

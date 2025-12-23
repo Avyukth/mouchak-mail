@@ -192,9 +192,9 @@
 									href="/projects/{project.slug}"
 									class="block px-6 py-4 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 								>
-									<p class="font-medium text-foreground">{project.slug}</p>
-									<p class="text-sm text-muted-foreground truncate mt-1">
-										{project.human_key}
+									<p class="font-medium text-foreground">{project.human_key}</p>
+									<p class="text-xs text-muted-foreground mt-1">
+										<span class="font-mono bg-muted px-1.5 py-0.5 rounded">{project.slug}</span>
 									</p>
 								</a>
 							</li>
