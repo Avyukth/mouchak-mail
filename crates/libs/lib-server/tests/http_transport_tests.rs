@@ -23,17 +23,19 @@ fn create_test_mcp_service() -> StreamableHttpService<AgentMailService> {
     let session_manager = Arc::new(LocalSessionManager::default());
     let config = StreamableHttpServerConfig::default();
 
+    // Use std::thread::scope to ensure the thread is joined (UBS: spawn without join fix)
     let service_factory = || -> Result<AgentMailService, std::io::Error> {
-        let (tx, rx) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            let result = rt.block_on(async { AgentMailService::new().await });
-            tx.send(result).unwrap();
+        let result = std::thread::scope(|scope| {
+            scope
+                .spawn(|| {
+                    let rt = tokio::runtime::Runtime::new().unwrap();
+                    rt.block_on(async { AgentMailService::new().await })
+                })
+                .join()
+                .expect("AgentMailService thread panicked")
         });
 
-        rx.recv()
-            .map_err(|e| std::io::Error::other(e.to_string()))?
-            .map_err(|e| std::io::Error::other(e.to_string()))
+        result.map_err(|e| std::io::Error::other(e.to_string()))
     };
 
     StreamableHttpService::new(service_factory, session_manager, config)
