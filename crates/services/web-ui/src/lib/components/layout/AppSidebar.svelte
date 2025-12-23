@@ -118,11 +118,11 @@
 <aside
 	class="hidden md:flex flex-col border-r border-border bg-card transition-all duration-300 w-64"
 >
-	<!-- Header -->
-	<div class="flex items-center gap-2 border-b border-border p-4">
+	<!-- Header - h-14 matches AppHeader -->
+	<div class="flex items-center gap-2 border-b border-border h-14 px-4">
 		<Mail class="h-5 w-5 text-primary" />
 		<div class="flex flex-col">
-			<span class="text-lg font-bold text-primary">Agent Mail</span>
+			<span class="text-sm font-bold text-primary">Agent Mail</span>
 			<span class="text-xs text-muted-foreground">MCP Communication Hub</span>
 		</div>
 	</div>
