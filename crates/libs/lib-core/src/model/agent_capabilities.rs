@@ -1,6 +1,7 @@
 use crate::Result;
 use crate::ctx::Ctx;
 use crate::model::ModelManager;
+use crate::utils::{parse_timestamp, parse_timestamp_opt};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -113,14 +114,12 @@ impl AgentCapabilityBmc {
         let mut capabilities = Vec::new();
         while let Some(row) = rows.next().await? {
             let granted_at_str: String = row.get(3)?;
-            let granted_at = NaiveDateTime::parse_from_str(&granted_at_str, "%Y-%m-%d %H:%M:%S")
-                .unwrap_or_default();
+            let granted_at = parse_timestamp(&granted_at_str, "agent_capability.granted_at");
 
             let granted_by: Option<i64> = row.get(4)?;
 
             let expires_at: Option<String> = row.get(5)?;
-            let expires_at = expires_at
-                .and_then(|s| NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S").ok());
+            let expires_at = parse_timestamp_opt(expires_at, "agent_capability.expires_at");
 
             capabilities.push(AgentCapability {
                 id: row.get(0)?,

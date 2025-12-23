@@ -9,18 +9,25 @@ use lib_core::{
         agent::{Agent, AgentBmc},
         project::{Project, ProjectBmc},
     },
+    utils::validation::{validate_agent_name, validate_project_key},
 };
 use rmcp::ErrorData as McpError;
 use std::sync::Arc;
 
 /// Resolve a project by slug or human_key.
 ///
-/// Returns the project or an McpError with a user-friendly message.
+/// Validates input format before querying database.
+/// Returns the project or an McpError with a user-friendly message and suggestion.
 pub async fn resolve_project(
     ctx: &Ctx,
     mm: &Arc<ModelManager>,
     slug: &str,
 ) -> Result<Project, McpError> {
+    // Validate input format first
+    if let Err(e) = validate_project_key(slug) {
+        return Err(McpError::invalid_params(e.to_string(), Some(e.context())));
+    }
+
     ProjectBmc::get_by_identifier(ctx, mm, slug)
         .await
         .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))
@@ -28,13 +35,19 @@ pub async fn resolve_project(
 
 /// Resolve an agent by name within a project.
 ///
-/// Returns the agent or an McpError with a user-friendly message.
+/// Validates input format before querying database.
+/// Returns the agent or an McpError with a user-friendly message and suggestion.
 pub async fn resolve_agent(
     ctx: &Ctx,
     mm: &Arc<ModelManager>,
     project_id: i64,
     agent_name: &str,
 ) -> Result<Agent, McpError> {
+    // Validate input format first
+    if let Err(e) = validate_agent_name(agent_name) {
+        return Err(McpError::invalid_params(e.to_string(), Some(e.context())));
+    }
+
     AgentBmc::get_by_name(ctx, mm, project_id, agent_name)
         .await
         .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))

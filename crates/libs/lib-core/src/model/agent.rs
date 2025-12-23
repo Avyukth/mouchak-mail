@@ -42,6 +42,7 @@ use crate::ctx::Ctx;
 use crate::model::ModelManager;
 use crate::store::git_store;
 use crate::utils::mistake_detection::suggest_similar;
+use crate::utils::parse_timestamp;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -245,13 +246,9 @@ impl AgentBmc {
             //                 5=task_description, 6=inception_ts, 7=last_active_ts,
             //                 8=attachments_policy, 9=contact_policy
             let inception_ts_str: String = row.get(6)?;
-            let inception_ts =
-                NaiveDateTime::parse_from_str(&inception_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let inception_ts = parse_timestamp(&inception_ts_str, "agent.inception_ts");
             let last_active_ts_str: String = row.get(7)?;
-            let last_active_ts =
-                NaiveDateTime::parse_from_str(&last_active_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             Ok(Agent {
                 id: row.get(0)?,
@@ -303,13 +300,9 @@ impl AgentBmc {
             //                 5=task_description, 6=inception_ts, 7=last_active_ts,
             //                 8=attachments_policy, 9=contact_policy
             let inception_ts_str: String = row.get(6)?;
-            let inception_ts =
-                NaiveDateTime::parse_from_str(&inception_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let inception_ts = parse_timestamp(&inception_ts_str, "agent.inception_ts");
             let last_active_ts_str: String = row.get(7)?;
-            let last_active_ts =
-                NaiveDateTime::parse_from_str(&last_active_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             Ok(Agent {
                 id: row.get(0)?,
@@ -380,13 +373,9 @@ impl AgentBmc {
 
         if let Some(row) = rows.next().await? {
             let inception_ts_str: String = row.get(6)?;
-            let inception_ts =
-                NaiveDateTime::parse_from_str(&inception_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let inception_ts = parse_timestamp(&inception_ts_str, "agent.inception_ts");
             let last_active_ts_str: String = row.get(7)?;
-            let last_active_ts =
-                NaiveDateTime::parse_from_str(&last_active_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             // Check if agent is stale (inactive beyond threshold)
             let threshold = stale_threshold.unwrap_or(std::time::Duration::from_secs(3600)); // 1 hour default
@@ -446,13 +435,9 @@ impl AgentBmc {
             //                 5=task_description, 6=inception_ts, 7=last_active_ts,
             //                 8=attachments_policy, 9=contact_policy
             let inception_ts_str: String = row.get(6)?;
-            let inception_ts =
-                NaiveDateTime::parse_from_str(&inception_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let inception_ts = parse_timestamp(&inception_ts_str, "agent.inception_ts");
             let last_active_ts_str: String = row.get(7)?;
-            let last_active_ts =
-                NaiveDateTime::parse_from_str(&last_active_ts_str, "%Y-%m-%d %H:%M:%S")
-                    .unwrap_or_default();
+            let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             agents.push(Agent {
                 id: row.get(0)?,

@@ -10,6 +10,7 @@ use lib_core::model::{
     message::{MessageBmc, MessageForCreate},
     project::ProjectBmc,
 };
+use serde_json;
 use lib_mcp::tools::{
     // Params
     EnsureProjectParams,
@@ -192,6 +193,38 @@ async fn test_register_agent() {
 
     let content = format!("{:?}", result);
     assert!(content.contains("new_agent"));
+}
+
+/// Test that RegisterAgentParams accepts `agent_name` as alias for `name`
+/// This is for NTM compatibility where tools may use `agent_name` instead of `name`
+#[test]
+fn test_register_agent_params_agent_name_alias() {
+    // Test with `agent_name` (alias)
+    let json_with_alias = serde_json::json!({
+        "project_slug": "test-project",
+        "agent_name": "test-agent",
+        "program": "claude",
+        "model": "opus",
+        "task_description": "Test task"
+    });
+
+    let params: RegisterAgentParams =
+        serde_json::from_value(json_with_alias).expect("Should deserialize with agent_name alias");
+    assert_eq!(params.name, "test-agent");
+    assert_eq!(params.project_slug, "test-project");
+
+    // Test with `name` (primary field name)
+    let json_with_name = serde_json::json!({
+        "project_slug": "test-project",
+        "name": "test-agent-2",
+        "program": "claude",
+        "model": "opus",
+        "task_description": "Test task"
+    });
+
+    let params2: RegisterAgentParams =
+        serde_json::from_value(json_with_name).expect("Should deserialize with name field");
+    assert_eq!(params2.name, "test-agent-2");
 }
 
 #[tokio::test]

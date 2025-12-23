@@ -21,7 +21,8 @@ pub struct EnsureProjectParams {
 pub struct RegisterAgentParams {
     /// Project slug the agent belongs to
     pub project_slug: String,
-    /// Agent's unique name within the project
+    /// Agent's unique name within the project (alias: agent_name)
+    #[serde(alias = "agent_name")]
     pub name: String,
     /// Agent's program identifier (e.g., "claude-code", "antigravity")
     pub program: String,
