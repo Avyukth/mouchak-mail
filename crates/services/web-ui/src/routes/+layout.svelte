@@ -4,6 +4,7 @@
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { AppSidebar, AppHeader } from '$lib/components/layout/index.js';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import TutorialModal from '$lib/components/TutorialModal.svelte';
 	import { InstallPrompt, UpdatePrompt } from '$lib/components/pwa/index.js';
 	import type { Snippet } from 'svelte';
 
@@ -20,6 +21,7 @@
 <ModeWatcher />
 <Toaster />
 <CommandPalette />
+<TutorialModal />
 <InstallPrompt />
 <UpdatePrompt />
 

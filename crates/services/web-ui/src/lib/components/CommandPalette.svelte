@@ -10,6 +10,7 @@
 	import SunMoon from 'lucide-svelte/icons/sun-moon';
 	import Settings from 'lucide-svelte/icons/settings';
 	import Search from 'lucide-svelte/icons/search';
+	import HelpCircle from 'lucide-svelte/icons/help-circle';
 	import Fuse from 'fuse.js';
 
 	let open = $state(false);
@@ -27,7 +28,8 @@
 	// Action items
 	const actionItems = [
 		{ id: 'theme', label: 'Toggle Theme', action: () => toggleMode(), icon: SunMoon, shortcut: '⌘T' },
-		{ id: 'settings', label: 'Settings', action: () => goto('/settings'), icon: Settings, shortcut: '⌘,' }
+		{ id: 'settings', label: 'Settings', action: () => goto('/settings'), icon: Settings, shortcut: '⌘,' },
+		{ id: 'tutorial', label: 'Show Tutorial', action: () => window.dispatchEvent(new CustomEvent('show-tutorial')), icon: HelpCircle, shortcut: '⌘?' }
 	];
 
 	// All searchable items
