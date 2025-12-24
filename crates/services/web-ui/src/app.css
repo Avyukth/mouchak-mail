@@ -283,3 +283,113 @@
 	scrollbar-width: thin;
 	scrollbar-color: hsl(var(--border)) transparent;
 }
+
+/* ========================================
+   Factory.ai Design System - Spotlight & Toggle
+   ======================================== */
+
+/* Icon stroke refinement for minimal outlined aesthetic */
+:root {
+	--icon-stroke-width: 1.5;
+}
+
+/* Apply 1.5px stroke to all Lucide icons */
+svg[class*="lucide"] {
+	stroke-width: 1.5;
+}
+
+/* Travelling Spotlight for Navigation */
+.nav-spotlight {
+	position: absolute;
+	left: 0;
+	background: hsl(var(--primary) / 0.1);
+	border-radius: 8px;
+	opacity: 0;
+	transition:
+		transform var(--duration-normal) var(--ease-in-out),
+		width var(--duration-normal) var(--ease-in-out),
+		height var(--duration-normal) var(--ease-in-out),
+		opacity var(--duration-fast) ease;
+	pointer-events: none;
+	z-index: 0;
+}
+
+.nav-container:hover .nav-spotlight {
+	opacity: 1;
+}
+
+.dark .nav-spotlight {
+	background: hsl(var(--primary) / 0.15);
+}
+
+/* Theme Toggle Segmented Control */
+.theme-toggle {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	background: hsl(var(--muted));
+	border: 1px solid hsl(var(--border));
+	border-radius: 8px;
+	padding: 3px;
+	gap: 2px;
+}
+
+.theme-indicator {
+	position: absolute;
+	top: 3px;
+	height: calc(100% - 6px);
+	background: hsl(var(--background));
+	border-radius: 6px;
+	transition:
+		left var(--duration-slow) var(--ease-out),
+		width var(--duration-slow) var(--ease-out);
+	box-shadow: var(--shadow-sm);
+	z-index: 0;
+}
+
+.theme-option {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 10px;
+	min-width: 36px;
+	min-height: 32px;
+	background: transparent;
+	border: none;
+	border-radius: 5px;
+	color: hsl(var(--muted-foreground));
+	cursor: pointer;
+	z-index: 1;
+	transition: color var(--duration-fast) ease;
+}
+
+.theme-option[data-active="true"] {
+	color: hsl(var(--foreground));
+}
+
+.theme-option:hover:not([data-active="true"]) {
+	color: hsl(var(--foreground) / 0.7);
+}
+
+.theme-option:focus-visible {
+	outline: 2px solid hsl(var(--ring));
+	outline-offset: 2px;
+}
+
+.theme-label {
+	font-size: 11px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Reduced motion override for Factory.ai components */
+@media (prefers-reduced-motion: reduce) {
+	.nav-spotlight,
+	.theme-indicator {
+		transition: opacity var(--duration-instant) ease;
+	}
+}

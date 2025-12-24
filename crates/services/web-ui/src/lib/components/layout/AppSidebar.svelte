@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
+	import { ThemeToggle } from '$lib/components/ui/theme-toggle/index.js';
 	import type { ComponentType } from 'svelte';
 	import LayoutDashboard from 'lucide-svelte/icons/layout-dashboard';
 	import FolderKanban from 'lucide-svelte/icons/folder-kanban';
@@ -10,9 +11,6 @@
 	import Inbox from 'lucide-svelte/icons/inbox';
 	import Mail from 'lucide-svelte/icons/mail';
 	import PanelLeft from 'lucide-svelte/icons/panel-left';
-	import Sun from 'lucide-svelte/icons/sun';
-	import Moon from 'lucide-svelte/icons/moon';
-	import { toggleMode } from 'mode-watcher';
 
 	interface NavItem {
 		href: string;
@@ -52,6 +50,29 @@
 
 	function closeMobile() {
 		mobileOpen = false;
+	}
+
+	// Spotlight state for Factory.ai hover effect
+	let spotlightStyle = $state('opacity: 0;');
+	let navContainer: HTMLElement;
+
+	function handleNavHover(e: MouseEvent) {
+		const target = e.currentTarget as HTMLElement;
+		if (!navContainer) return;
+
+		const rect = target.getBoundingClientRect();
+		const containerRect = navContainer.getBoundingClientRect();
+
+		spotlightStyle = `
+			opacity: 1;
+			transform: translateY(${rect.top - containerRect.top}px);
+			width: ${rect.width}px;
+			height: ${rect.height}px;
+		`;
+	}
+
+	function handleNavLeave() {
+		spotlightStyle = 'opacity: 0;';
 	}
 </script>
 
@@ -96,13 +117,7 @@
 				{/each}
 			</nav>
 			<Sheet.Footer class="absolute bottom-0 left-0 right-0 border-t border-border p-4">
-				<Button onclick={toggleMode} variant="outline" size="icon" class="min-h-[44px] min-w-[44px]">
-					<Sun class="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-					<Moon
-						class="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-					/>
-					<span class="sr-only">Toggle theme</span>
-				</Button>
+				<ThemeToggle />
 			</Sheet.Footer>
 		</Sheet.Content>
 	</Sheet.Root>
@@ -127,16 +142,22 @@
 		</div>
 	</div>
 
-	<!-- Navigation -->
-	<nav class="flex-1 flex flex-col gap-1 p-2 overflow-y-auto">
+	<!-- Navigation with Factory.ai Spotlight -->
+	<nav
+		bind:this={navContainer}
+		class="nav-container flex-1 flex flex-col gap-1 p-2 overflow-y-auto relative"
+		onmouseleave={handleNavLeave}
+	>
+		<div class="nav-spotlight" style={spotlightStyle}></div>
 		{#each navItemsWithBadge as item}
 			<a
 				href={item.href}
-				class="flex items-center gap-3 rounded-lg px-3 min-h-[44px] transition-colors {isActive(
+				onmouseenter={handleNavHover}
+				class="nav-link flex items-center gap-3 rounded-lg px-3 min-h-[44px] transition-colors relative z-10 {isActive(
 					item.href
 				)
 					? 'bg-primary/10 text-primary border-l-4 border-primary -ml-0.5 pl-2.5'
-					: 'hover:bg-accent text-foreground'}"
+					: 'text-foreground'}"
 			>
 				<item.icon class="h-5 w-5 flex-shrink-0" />
 				<span class="font-medium flex-1">{item.label}</span>
@@ -147,12 +168,8 @@
 		{/each}
 	</nav>
 
-	<!-- Footer - sticky at bottom -->
-	<div class="border-t border-border p-2 flex items-center justify-end flex-shrink-0 bg-card">
-		<Button onclick={toggleMode} variant="ghost" size="icon" class="min-h-[44px] min-w-[44px]">
-			<Sun class="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-			<Moon class="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-			<span class="sr-only">Toggle theme</span>
-		</Button>
+	<!-- Footer with Factory.ai Theme Toggle -->
+	<div class="border-t border-border p-2 flex items-center justify-center flex-shrink-0 bg-card">
+		<ThemeToggle />
 	</div>
 </aside>
