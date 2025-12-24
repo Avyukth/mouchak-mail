@@ -9,8 +9,7 @@ use rmcp::{
     handler::server::{ServerHandler, tool::ToolRouter, wrapper::Parameters},
     model::{
         CallToolRequestParam, CallToolResult, Content, ListResourcesResult, ListToolsResult,
-        PaginatedRequestParam, RawResource, ReadResourceRequestParam, ReadResourceResult, Resource,
-        ResourceContents,
+        PaginatedRequestParam, ReadResourceRequestParam, ReadResourceResult,
     },
     service::{RequestContext, RoleServer},
     tool, tool_router,
@@ -18,19 +17,15 @@ use rmcp::{
 use serde::Serialize;
 use std::sync::Arc;
 
-use lib_core::{
-    ctx::Ctx,
-    model::{
-        ModelManager, agent::AgentBmc, file_reservation::FileReservationBmc, message::MessageBmc,
-        product::ProductBmc, project::ProjectBmc,
-    },
-};
+use lib_core::{ctx::Ctx, model::ModelManager};
 
 pub mod agent;
 pub mod archive;
 pub mod attachments;
 pub mod builds;
 pub mod contacts;
+pub mod errors;
+pub mod export;
 pub mod files;
 pub mod helpers;
 pub mod macros;
@@ -38,7 +33,9 @@ pub mod messaging;
 pub mod observability;
 pub mod outbox;
 mod params;
+pub mod precommit;
 pub mod products;
+pub mod resources;
 pub mod project;
 pub mod reviews;
 
@@ -1273,299 +1270,7 @@ impl AgentMailService {
         &self,
         request: ReadResourceRequestParam,
     ) -> Result<ReadResourceResult, McpError> {
-        let uri_str = request.uri;
-        let uri = url::Url::parse(&uri_str)
-            .map_err(|e| McpError::invalid_params(format!("Invalid URI: {}", e), None))?;
-
-        if uri.scheme() != "agent-mail" && uri.scheme() != "resource" {
-            return Err(McpError::invalid_params(
-                "URI scheme must be 'agent-mail' or 'resource'".to_string(),
-                None,
-            ));
-        }
-
-        // Parse query parameters
-        let query: std::collections::HashMap<_, _> = uri.query_pairs().into_owned().collect();
-        let project_slug_param = query.get("project");
-        let limit = query
-            .get("limit")
-            .and_then(|l| l.parse::<i64>().ok())
-            .unwrap_or(20);
-        let include_bodies = query
-            .get("include_bodies")
-            .map(|v| v == "true" || v == "1")
-            .unwrap_or(false);
-
-        // Handle path and host based on scheme
-        let (project_slug, resource_type, resource_id) = if uri.scheme() == "agent-mail" {
-            // agent-mail://{project_slug}/{resource_type}/{optional_id}
-            let host = uri.host_str().ok_or(McpError::invalid_params(
-                "URI missing host (project slug)".to_string(),
-                None,
-            ))?;
-            let segments: Vec<&str> = uri
-                .path_segments()
-                .ok_or(McpError::invalid_params(
-                    "Invalid URI path".to_string(),
-                    None,
-                ))?
-                .collect();
-            if segments.is_empty() {
-                return Err(McpError::invalid_params(
-                    "URI path missing resource type".to_string(),
-                    None,
-                ));
-            }
-            (host, segments[0], segments.get(1).cloned())
-        } else {
-            // resource://{resource_type}/{optional_id}?project={slug}
-            let resource_type = uri.host_str().ok_or(McpError::invalid_params(
-                "URI missing resource type".to_string(),
-                None,
-            ))?;
-            let segments: Vec<&str> = uri
-                .path_segments()
-                .ok_or(McpError::invalid_params(
-                    "Invalid URI path".to_string(),
-                    None,
-                ))?
-                .collect();
-            let resource_id = segments.first().cloned();
-
-            // Project slug is optional for parsing, but might be required later
-            let slug = project_slug_param.map(|s| s.as_str()).unwrap_or("");
-            (slug, resource_type, resource_id)
-        };
-
-        let ctx = self.ctx();
-        let mm = &self.mm;
-
-        // Identity and Product don't need project resolution
-        if resource_type == "identity" {
-            let path = uri.path();
-            if path.is_empty() {
-                return Err(McpError::invalid_params(
-                    "Missing identity path".to_string(),
-                    None,
-                ));
-            }
-            let data = serde_json::json!({
-                "path": path,
-                "type": "repository",
-                "identity": format!("repo-{}", path.replace("/", "-").trim_start_matches('-')),
-            });
-            return Ok(ReadResourceResult {
-                contents: vec![ResourceContents::TextResourceContents {
-                    uri: uri_str,
-                    mime_type: Some("application/json".to_string()),
-                    text: serde_json::to_string_pretty(&data)
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?,
-                    meta: None,
-                }],
-            });
-        }
-
-        if resource_type == "product" {
-            let product_uid = resource_id.ok_or(McpError::invalid_params(
-                "Missing product UID".to_string(),
-                None,
-            ))?;
-            let product = ProductBmc::get_by_uid(&ctx, mm, product_uid)
-                .await
-                .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
-            return Ok(ReadResourceResult {
-                contents: vec![ResourceContents::TextResourceContents {
-                    uri: uri_str,
-                    mime_type: Some("application/json".to_string()),
-                    text: serde_json::to_string_pretty(&product)
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?,
-                    meta: None,
-                }],
-            });
-        }
-
-        // Resolve project ID for other resources
-        let project = ProjectBmc::get_by_slug(&ctx, mm, project_slug)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
-        let project_id = project.id;
-
-        // DTO for resource messages to support include_bodies
-        #[derive(serde::Serialize)]
-        struct ResourceMessage<'a> {
-            id: i64,
-            sender_name: &'a str,
-            subject: &'a str,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            body_md: Option<&'a str>,
-            thread_id: Option<&'a String>,
-            importance: &'a str,
-            created_ts: chrono::NaiveDateTime,
-        }
-
-        let content = match resource_type {
-            "agents" | "agent" => {
-                if let Some(agent_name) = resource_id {
-                    let agent = AgentBmc::get_by_name(&ctx, mm, project_id, agent_name)
-                        .await
-                        .map_err(|e| {
-                            McpError::invalid_params(format!("Agent not found: {}", e), None)
-                        })?;
-                    serde_json::to_string_pretty(&agent)
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
-                } else {
-                    let agents = AgentBmc::list_all_for_project(&ctx, mm, project_id)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                    serde_json::to_string_pretty(&agents)
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
-                }
-            }
-            "file_reservations" => {
-                let reservations =
-                    FileReservationBmc::list_active_for_project(&ctx, mm, project_id)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                serde_json::to_string_pretty(&reservations)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-            "inbox" => {
-                let agent_name = resource_id.ok_or(McpError::invalid_params(
-                    "Missing agent name".to_string(),
-                    None,
-                ))?;
-                let agent = AgentBmc::get_by_name(&ctx, mm, project_id, agent_name)
-                    .await
-                    .map_err(|e| {
-                        McpError::invalid_params(format!("Agent not found: {}", e), None)
-                    })?;
-
-                let messages =
-                    MessageBmc::list_inbox_for_agent(&ctx, mm, project_id, agent.id, limit)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-                let resource_messages: Vec<_> = messages
-                    .iter()
-                    .map(|m| ResourceMessage {
-                        id: m.id,
-                        sender_name: &m.sender_name,
-                        subject: &m.subject,
-                        body_md: if include_bodies {
-                            Some(&m.body_md)
-                        } else {
-                            None
-                        },
-                        thread_id: m.thread_id.as_ref(),
-                        importance: &m.importance,
-                        created_ts: m.created_ts,
-                    })
-                    .collect();
-
-                serde_json::to_string_pretty(&resource_messages)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-            "outbox" => {
-                let agent_name = resource_id.ok_or(McpError::invalid_params(
-                    "Missing agent name".to_string(),
-                    None,
-                ))?;
-                let agent = AgentBmc::get_by_name(&ctx, mm, project_id, agent_name)
-                    .await
-                    .map_err(|e| {
-                        McpError::invalid_params(format!("Agent not found: {}", e), None)
-                    })?;
-
-                let messages =
-                    MessageBmc::list_outbox_for_agent(&ctx, mm, project_id, agent.id, limit)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-                let resource_messages: Vec<_> = messages
-                    .iter()
-                    .map(|m| ResourceMessage {
-                        id: m.id,
-                        sender_name: &m.sender_name,
-                        subject: &m.subject,
-                        body_md: if include_bodies {
-                            Some(&m.body_md)
-                        } else {
-                            None
-                        },
-                        thread_id: m.thread_id.as_ref(),
-                        importance: &m.importance,
-                        created_ts: m.created_ts,
-                    })
-                    .collect();
-
-                serde_json::to_string_pretty(&resource_messages)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-            "thread" => {
-                let thread_id_str = resource_id.ok_or(McpError::invalid_params(
-                    "Missing thread ID".to_string(),
-                    None,
-                ))?;
-                let messages = MessageBmc::list_by_thread(&ctx, mm, project_id, thread_id_str)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-                let resource_messages: Vec<_> = messages
-                    .iter()
-                    .map(|m| ResourceMessage {
-                        id: m.id,
-                        sender_name: &m.sender_name,
-                        subject: &m.subject,
-                        body_md: if include_bodies {
-                            Some(&m.body_md)
-                        } else {
-                            None
-                        },
-                        thread_id: m.thread_id.as_ref(),
-                        importance: &m.importance,
-                        created_ts: m.created_ts,
-                    })
-                    .collect();
-
-                serde_json::to_string_pretty(&resource_messages)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-            "threads" => {
-                let threads = MessageBmc::list_threads(&ctx, mm, project_id, limit)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                serde_json::to_string_pretty(&threads)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-            "product" => {
-                let product_uid = resource_id.ok_or(McpError::invalid_params(
-                    "Missing product UID".to_string(),
-                    None,
-                ))?;
-                let product = ProductBmc::get_by_uid(&ctx, mm, product_uid)
-                    .await
-                    .map_err(|e| {
-                        McpError::invalid_params(format!("Product not found: {}", e), None)
-                    })?;
-                serde_json::to_string_pretty(&product)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-            _ => {
-                return Err(McpError::invalid_params(
-                    format!("Unknown resource type: {}", resource_type),
-                    None,
-                ));
-            }
-        };
-
-        Ok(ReadResourceResult {
-            contents: vec![ResourceContents::TextResourceContents {
-                uri: uri_str,
-                mime_type: Some("application/json".to_string()),
-                text: content,
-                meta: None,
-            }],
-        })
+        resources::read_resource_impl(&self.ctx(), &self.mm, request).await
     }
     pub async fn record_tool_metric(
         &self,
@@ -1643,188 +1348,9 @@ impl AgentMailService {
     }
     pub async fn list_resources_impl(
         &self,
-        _request: Option<PaginatedRequestParam>,
+        request: Option<PaginatedRequestParam>,
     ) -> Result<ListResourcesResult, McpError> {
-        // List project-rooted resources for all projects
-        let ctx = self.ctx();
-        let projects = ProjectBmc::list_all(&ctx, &self.mm)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut resources = Vec::new();
-
-        for project in projects {
-            let slug = &project.slug;
-
-            // Agents list
-            resources.push(Resource {
-                raw: RawResource {
-                    uri: format!("agent-mail://{}/agents", slug),
-                    name: format!("Agents ({})", slug),
-                    description: Some(format!("List of all agents in project '{}'", slug)),
-                    mime_type: Some("application/json".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                    title: None,
-                },
-                annotations: None,
-            });
-
-            // Agents Inboxes & Outboxes
-            let project_agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            for agent in project_agents {
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: format!("agent-mail://{}/inbox/{}", slug, agent.name),
-                        name: format!("Inbox: {} ({})", agent.name, slug),
-                        description: Some(format!("Inbox for agent '{}'", agent.name)),
-                        mime_type: Some("application/json".to_string()),
-                        size: None,
-                        icons: None,
-                        meta: None,
-                        title: None,
-                    },
-                    annotations: None,
-                });
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: format!("agent-mail://{}/outbox/{}", slug, agent.name),
-                        name: format!("Outbox: {} ({})", agent.name, slug),
-                        description: Some(format!("Outbox for agent '{}'", agent.name)),
-                        mime_type: Some("application/json".to_string()),
-                        size: None,
-                        icons: None,
-                        meta: None,
-                        title: None,
-                    },
-                    annotations: None,
-                });
-
-                // resource:// versions
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: format!("resource://inbox/{}?project={}", agent.name, slug),
-                        name: format!("Inbox (resource://): {} ({})", agent.name, slug),
-                        description: Some(format!("Inbox for agent '{}'", agent.name)),
-                        mime_type: Some("application/json".to_string()),
-                        size: None,
-                        icons: None,
-                        meta: None,
-                        title: None,
-                    },
-                    annotations: None,
-                });
-                resources.push(Resource {
-                    raw: RawResource {
-                        uri: format!("resource://outbox/{}?project={}", agent.name, slug),
-                        name: format!("Outbox (resource://): {} ({})", agent.name, slug),
-                        description: Some(format!("Outbox for agent '{}'", agent.name)),
-                        mime_type: Some("application/json".to_string()),
-                        size: None,
-                        icons: None,
-                        meta: None,
-                        title: None,
-                    },
-                    annotations: None,
-                });
-            }
-
-            // Project Threads
-            resources.push(Resource {
-                raw: RawResource {
-                    uri: format!("agent-mail://{}/threads", slug),
-                    name: format!("Threads ({})", slug),
-                    description: Some(format!(
-                        "List of all conversation threads in project '{}'",
-                        slug
-                    )),
-                    mime_type: Some("application/json".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                    title: None,
-                },
-                annotations: None,
-            });
-
-            // File reservations
-            resources.push(Resource {
-                raw: RawResource {
-                    uri: format!("agent-mail://{}/file_reservations", slug),
-                    name: format!("File Reservations ({})", slug),
-                    description: Some(format!("Active file reservations in project '{}'", slug)),
-                    mime_type: Some("application/json".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                    title: None,
-                },
-                annotations: None,
-            });
-
-            // --- resource:// Scheme Versions ---
-            resources.push(Resource {
-                raw: RawResource {
-                    uri: format!("resource://agents?project={}", slug),
-                    name: format!("Agents (resource:// {})", slug),
-                    description: Some(format!("List of all agents in project '{}'", slug)),
-                    mime_type: Some("application/json".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                    title: None,
-                },
-                annotations: None,
-            });
-
-            resources.push(Resource {
-                raw: RawResource {
-                    uri: format!("resource://threads?project={}", slug),
-                    name: format!("Threads (resource:// {})", slug),
-                    description: Some(format!(
-                        "List of all conversation threads in project '{}'",
-                        slug
-                    )),
-                    mime_type: Some("application/json".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                    title: None,
-                },
-                annotations: None,
-            });
-        }
-
-        // --- Products ---
-        let products = ProductBmc::list_all(&ctx, &self.mm)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        for product in products {
-            resources.push(Resource {
-                raw: RawResource {
-                    uri: format!("resource://product/{}", product.product_uid),
-                    name: format!("Product: {}", product.name),
-                    description: Some(format!("Information about product '{}'", product.name)),
-                    mime_type: Some("application/json".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                    title: None,
-                },
-                annotations: None,
-            });
-        }
-
-        Ok(ListResourcesResult {
-            resources,
-            next_cursor: None,
-            meta: None,
-        })
+        resources::list_resources_impl(&self.ctx(), &self.mm, request).await
     }
 
     /// Public impl method for testing search_messages_product
@@ -2562,7 +2088,6 @@ impl AgentMailService {
         products::product_inbox_impl(&self.ctx(), &self.mm, params.0).await
     }
 
-    /// Search messages across all projects linked to a product
     #[tool(
         description = "Full-text search across ALL projects linked to a product. Returns aggregated results."
     )]
@@ -2570,66 +2095,9 @@ impl AgentMailService {
         &self,
         params: Parameters<SearchMessagesProductParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-        use lib_core::model::product::ProductBmc;
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
-
-        let project_ids = ProductBmc::get_linked_projects(&ctx, &self.mm, product.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let limit = p.limit.unwrap_or(10);
-        let mut output = format!(
-            "Search results for '{}' across product '{}' ({} projects):\n\n",
-            p.query,
-            product.name,
-            project_ids.len()
-        );
-
-        let mut total_matches = 0;
-        for project_id in project_ids {
-            let project = ProjectBmc::get(&ctx, &self.mm, project_id)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            let messages = MessageBmc::search(&ctx, &self.mm, project_id, &p.query, limit)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            if !messages.is_empty() {
-                output.push_str(&format!(
-                    "\n## Project: {} ({}) - {} matches\n",
-                    project.human_key,
-                    project.slug,
-                    messages.len()
-                ));
-                for m in &messages {
-                    output.push_str(&format!(
-                        "  - [{}] {} (from: {}, thread: {:?})\n",
-                        m.id, m.subject, m.sender_name, m.thread_id
-                    ));
-                }
-                total_matches += messages.len();
-            }
-        }
-
-        if total_matches == 0 {
-            output.push_str("No matches found.\n");
-        } else {
-            output.push_str(&format!("\nTotal: {} matches\n", total_matches));
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        products::search_messages_product_impl(&self.ctx(), &self.mm, params.0).await
     }
 
-    /// Summarize thread(s) across all projects linked to a product
     #[tool(
         description = "Summarize thread(s) across ALL projects linked to a product. Aggregates thread messages from multiple projects."
     )]
@@ -2637,254 +2105,15 @@ impl AgentMailService {
         &self,
         params: Parameters<SummarizeThreadProductParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-        use lib_core::model::product::ProductBmc;
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
-
-        let project_ids = ProductBmc::get_linked_projects(&ctx, &self.mm, product.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let thread_ids: Vec<String> = p.thread_id.into();
-        let mut summaries = Vec::new();
-        let mut errors = Vec::new();
-
-        for thread_id in &thread_ids {
-            let mut aggregated_messages = Vec::new();
-            let mut project_sources = Vec::new();
-
-            // Collect messages from all projects
-            for &project_id in &project_ids {
-                let project = ProjectBmc::get(&ctx, &self.mm, project_id)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-                match MessageBmc::list_by_thread(&ctx, &self.mm, project_id, thread_id).await {
-                    Ok(messages) if !messages.is_empty() => {
-                        project_sources.push(project.slug.clone());
-                        aggregated_messages.extend(messages);
-                    }
-                    Ok(_) => {} // Empty, skip
-                    Err(e) => {
-                        errors.push(ThreadSummaryError {
-                            thread_id: thread_id.clone(),
-                            error: format!("Error in project {}: {}", project.slug, e),
-                        });
-                    }
-                }
-            }
-
-            if !aggregated_messages.is_empty() {
-                // Sort by created_ts
-                aggregated_messages.sort_by(|a, b| a.created_ts.cmp(&b.created_ts));
-
-                let mut participants: Vec<String> = aggregated_messages
-                    .iter()
-                    .map(|m| m.sender_name.clone())
-                    .collect();
-                participants.sort();
-                participants.dedup();
-
-                let subject = aggregated_messages
-                    .first()
-                    .map(|m| m.subject.clone())
-                    .unwrap_or_default();
-                let last_snippet = aggregated_messages
-                    .last()
-                    .map(|m| m.body_md.chars().take(100).collect::<String>())
-                    .unwrap_or_default();
-
-                summaries.push(ThreadSummaryItem {
-                    thread_id: thread_id.clone(),
-                    subject: format!("{} (from: {})", subject, project_sources.join(", ")),
-                    message_count: aggregated_messages.len(),
-                    participants,
-                    last_snippet,
-                });
-            } else if errors.iter().all(|e| e.thread_id != *thread_id) {
-                errors.push(ThreadSummaryError {
-                    thread_id: thread_id.clone(),
-                    error: "Thread not found in any linked project".to_string(),
-                });
-            }
-        }
-
-        let result = SummarizeResult { summaries, errors };
-        let json = serde_json::to_string_pretty(&result)
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        Ok(CallToolResult::success(vec![Content::text(json)]))
+        products::summarize_thread_product_impl(&self.ctx(), &self.mm, params.0).await
     }
 
-    /// Export mailbox to static bundle
     #[tool(description = "Export a project's mailbox to HTML, JSON, or Markdown format.")]
     async fn export_mailbox(
         &self,
         params: Parameters<ExportMailboxParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::AgentBmc;
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-        let format = p.format.unwrap_or_else(|| "markdown".to_string());
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let messages = MessageBmc::list_recent(&ctx, &self.mm, project.id, 1000)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let threads = MessageBmc::list_threads(&ctx, &self.mm, project.id, 100)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        match format.as_str() {
-            "json" => {
-                let export = serde_json::json!({
-                    "project": {
-                        "id": project.id,
-                        "slug": project.slug,
-                        "human_key": project.human_key,
-                        "created_at": project.created_at.to_string(),
-                    },
-                    "agents": agents.iter().map(|a| serde_json::json!({
-                        "id": a.id,
-                        "name": a.name,
-                        "program": a.program,
-                        "model": a.model,
-                        "task_description": a.task_description,
-                    })).collect::<Vec<_>>(),
-                    "messages": messages.iter().map(|m| serde_json::json!({
-                        "id": m.id,
-                        "sender_name": m.sender_name,
-                        "subject": m.subject,
-                        "body_md": m.body_md,
-                        "thread_id": m.thread_id,
-                        "importance": m.importance,
-                        "created_ts": m.created_ts.to_string(),
-                    })).collect::<Vec<_>>(),
-                    "threads": threads.iter().map(|t| serde_json::json!({
-                        "thread_id": t.thread_id,
-                        "subject": t.subject,
-                        "message_count": t.message_count,
-                        "last_message_ts": t.last_message_ts.to_string(),
-                    })).collect::<Vec<_>>(),
-                    "exported_at": chrono::Utc::now().to_rfc3339(),
-                });
-                let json_str = serde_json::to_string_pretty(&export)
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                Ok(CallToolResult::success(vec![Content::text(json_str)]))
-            }
-            "html" => {
-                let mut html = format!(
-                    r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mailbox Export: {}</title>
-    <style>
-        body {{ font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; }}
-        h1 {{ color: #1a1a1a; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem; }}
-        h2 {{ color: #333; margin-top: 2rem; }}
-        .message {{ background: #f5f5f5; border-radius: 8px; padding: 1rem; margin: 1rem 0; }}
-        .message-header {{ font-weight: bold; color: #1976d2; }}
-        .message-meta {{ color: #666; font-size: 0.9rem; }}
-        .message-body {{ margin-top: 0.5rem; white-space: pre-wrap; }}
-        .agent {{ display: inline-block; background: #e3f2fd; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; }}
-        .thread {{ background: #fff3e0; border-left: 4px solid #ff9800; padding: 0.5rem 1rem; margin: 0.5rem 0; }}
-    </style>
-</head>
-<body>
-    <h1>{} Mailbox Export</h1>
-    <p>Project: {} | Exported: {}</p>
-"#,
-                    project.human_key,
-                    project.human_key,
-                    project.slug,
-                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")
-                );
-
-                html.push_str("<h2>Agents</h2><div>");
-                for a in &agents {
-                    html.push_str(&format!(
-                        r#"<span class="agent">{} ({})</span>"#,
-                        a.name, a.program
-                    ));
-                }
-                html.push_str("</div>");
-
-                html.push_str("<h2>Threads</h2>");
-                for t in &threads {
-                    html.push_str(&format!(
-                        r#"<div class="thread"><strong>{}</strong> - {} messages (last: {})</div>"#,
-                        t.subject, t.message_count, t.last_message_ts
-                    ));
-                }
-
-                html.push_str("<h2>Messages</h2>");
-                for m in &messages {
-                    html.push_str(&format!(
-                        r#"<div class="message">
-    <div class="message-header">{}</div>
-    <div class="message-meta">From: {} | {} | {}</div>
-    <div class="message-body">{}</div>
-</div>"#,
-                        m.subject, m.sender_name, m.importance, m.created_ts, m.body_md
-                    ));
-                }
-
-                html.push_str("</body></html>");
-                Ok(CallToolResult::success(vec![Content::text(html)]))
-            }
-            _ => {
-                // Default: Markdown
-                let mut md = format!(
-                    "# {} Mailbox Export\n\nProject: `{}`\nExported: {}\n\n",
-                    project.human_key,
-                    project.slug,
-                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")
-                );
-
-                md.push_str("## Agents\n\n");
-                for a in &agents {
-                    md.push_str(&format!(
-                        "- **{}** ({}) - {}\n",
-                        a.name, a.program, a.task_description
-                    ));
-                }
-
-                md.push_str("\n## Threads\n\n");
-                for t in &threads {
-                    md.push_str(&format!(
-                        "- **{}** ({} messages, last: {})\n",
-                        t.subject, t.message_count, t.last_message_ts
-                    ));
-                }
-
-                md.push_str("\n## Messages\n\n");
-                for m in &messages {
-                    md.push_str(&format!(
-                        "### {}\n\n**From:** {} | **Importance:** {} | **Date:** {}\n\n{}\n\n---\n\n",
-                        m.subject, m.sender_name, m.importance, m.created_ts, m.body_md
-                    ));
-                }
-
-                Ok(CallToolResult::success(vec![Content::text(md)]))
-            }
-        }
+        export::export_mailbox_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// List messages in an agent's outbox
@@ -2896,7 +2125,6 @@ impl AgentMailService {
         outbox::list_outbox_impl(&self.ctx(), &self.mm, params.0).await
     }
 
-    /// Reserve multiple file paths with conflict detection
     #[tool(
         description = "Reserve multiple file paths for exclusive editing with conflict detection."
     )]
@@ -2904,115 +2132,7 @@ impl AgentMailService {
         &self,
         params: Parameters<FileReservationPathsParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::AgentBmc;
-        use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
-
-        use lib_core::utils::validation::{
-            validate_agent_name, validate_project_key, validate_reservation_path, validate_ttl,
-        };
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        // Validate inputs
-        validate_project_key(&p.project_slug).map_err(|e| {
-            McpError::invalid_params(
-                format!("{}", e),
-                Some(serde_json::json!({ "details": e.context() })),
-            )
-        })?;
-
-        validate_agent_name(&p.agent_name).map_err(|e| {
-            McpError::invalid_params(
-                format!("{}", e),
-                Some(serde_json::json!({ "details": e.context() })),
-            )
-        })?;
-
-        // Validate all paths
-        for path in &p.paths {
-            validate_reservation_path(path).map_err(|e| {
-                McpError::invalid_params(
-                    format!("{}", e),
-                    Some(serde_json::json!({ "details": e.context() })),
-                )
-            })?;
-        }
-
-        if let Some(ttl) = p.ttl_seconds {
-            validate_ttl(ttl as u64).map_err(|e| {
-                McpError::invalid_params(
-                    format!("{}", e),
-                    Some(serde_json::json!({ "details": e.context() })),
-                )
-            })?;
-        }
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
-
-        let active_reservations =
-            FileReservationBmc::list_active_for_project(&ctx, &self.mm, project.id)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let ttl = p.ttl_seconds.unwrap_or(3600);
-        let now = chrono::Utc::now().naive_utc();
-        let expires_ts = now + chrono::Duration::seconds(ttl);
-
-        let mut granted = Vec::new();
-        let mut conflicts = Vec::new();
-
-        for path in p.paths {
-            // Check conflicts using glob pattern matching
-            for res in &active_reservations {
-                if res.agent_id != agent.id
-                    && (res.exclusive || p.exclusive)
-                    && lib_core::utils::pathspec::paths_conflict(&res.path_pattern, &path)
-                {
-                    conflicts.push(format!(
-                        "Conflict: {} overlaps with {} (held by agent ID {}, expires: {})",
-                        path, res.path_pattern, res.agent_id, res.expires_ts
-                    ));
-                }
-            }
-
-            // Always grant (advisory model)
-            let fr_c = FileReservationForCreate {
-                project_id: project.id,
-                agent_id: agent.id,
-                path_pattern: path.clone(),
-                exclusive: p.exclusive,
-                reason: p.reason.clone().unwrap_or_default(),
-                expires_ts,
-            };
-
-            let id = FileReservationBmc::create(&ctx, &self.mm, fr_c)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            granted.push(format!(
-                "Granted: {} (id: {}, expires: {})",
-                path, id, expires_ts
-            ));
-        }
-
-        let mut output = format!("Granted {} reservations\n\n", granted.len());
-        for g in granted {
-            output.push_str(&format!("  {}\n", g));
-        }
-
-        if !conflicts.is_empty() {
-            output.push_str(&format!("\n⚠️ {} conflicts detected:\n", conflicts.len()));
-            for c in conflicts {
-                output.push_str(&format!("  {}\n", c));
-            }
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        files::file_reservation_paths_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     #[tool(description = "Install pre-commit guard for file reservation conflict detection.")]
@@ -3020,95 +2140,15 @@ impl AgentMailService {
         &self,
         params: Parameters<InstallPrecommitGuardParams>,
     ) -> Result<CallToolResult, McpError> {
-        let ctx = self.ctx();
-        let p = params.0;
-
-        // Verify project exists
-        let _project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let target_path = std::path::PathBuf::from(&p.target_repo_path);
-        let hooks_dir = target_path.join(".git").join("hooks");
-        let hook_path = hooks_dir.join("pre-commit");
-
-        let hook_script = format!(
-            r#"#!/bin/sh
-# MCP Agent Mail Pre-commit Guard
-# Installed for project: {}
-
-if [ -n "$AGENT_MAIL_BYPASS" ]; then
-    echo "MCP Agent Mail: Bypass enabled, skipping reservation check"
-    exit 0
-fi
-
-echo "MCP Agent Mail: Pre-commit guard active"
-exit 0
-"#,
-            p.project_slug
-        );
-
-        // Ensure hooks directory exists
-        if !hooks_dir.exists() {
-            std::fs::create_dir_all(&hooks_dir).map_err(|e| {
-                McpError::internal_error(format!("Failed to create hooks directory: {}", e), None)
-            })?;
-        }
-
-        // Write the hook
-        std::fs::write(&hook_path, hook_script)
-            .map_err(|e| McpError::internal_error(format!("Failed to write hook: {}", e), None))?;
-
-        // Make it executable (Unix only)
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mut perms = std::fs::metadata(&hook_path)
-                .map_err(|e| {
-                    McpError::internal_error(format!("Failed to get permissions: {}", e), None)
-                })?
-                .permissions();
-            perms.set_mode(0o755);
-            std::fs::set_permissions(&hook_path, perms).map_err(|e| {
-                McpError::internal_error(format!("Failed to set permissions: {}", e), None)
-            })?;
-        }
-
-        let msg = format!("Pre-commit guard installed at: {}", hook_path.display());
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        precommit::install_precommit_guard_impl(&self.ctx(), &self.mm, params.0).await
     }
 
-    /// Uninstall pre-commit guard
     #[tool(description = "Uninstall pre-commit guard.")]
     async fn uninstall_precommit_guard(
         &self,
         params: Parameters<UninstallPrecommitGuardParams>,
     ) -> Result<CallToolResult, McpError> {
-        let p = params.0;
-
-        let target_path = std::path::PathBuf::from(&p.target_repo_path);
-        let hook_path = target_path.join(".git").join("hooks").join("pre-commit");
-
-        if hook_path.exists() {
-            let content = std::fs::read_to_string(&hook_path).map_err(|e| {
-                McpError::internal_error(format!("Failed to read hook: {}", e), None)
-            })?;
-
-            if content.contains("MCP Agent Mail Pre-commit Guard") {
-                std::fs::remove_file(&hook_path).map_err(|e| {
-                    McpError::internal_error(format!("Failed to remove hook: {}", e), None)
-                })?;
-                Ok(CallToolResult::success(vec![Content::text(
-                    "Pre-commit guard uninstalled successfully".to_string(),
-                )]))
-            } else {
-                Ok(CallToolResult::success(vec![Content::text(
-                    "Hook exists but is not an Agent Mail guard".to_string(),
-                )]))
-            }
-        } else {
-            Ok(CallToolResult::success(vec![Content::text(
-                "No pre-commit hook found".to_string(),
-            )]))
-        }
+        precommit::uninstall_precommit_guard_impl(params.0).await
     }
 
     /// Add attachment to a message

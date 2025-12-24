@@ -14,10 +14,12 @@ use lib_core::{
 use rmcp::ErrorData as McpError;
 use std::sync::Arc;
 
+use crate::tools::errors::{ErrorCode, mcp_err};
+
 /// Resolve a project by slug or human_key.
 ///
 /// Validates input format before querying database.
-/// Returns the project or an McpError with a user-friendly message and suggestion.
+/// Returns the project or an McpError with structured error code and suggestion.
 pub async fn resolve_project(
     ctx: &Ctx,
     mm: &Arc<ModelManager>,
@@ -25,32 +27,66 @@ pub async fn resolve_project(
 ) -> Result<Project, McpError> {
     // Validate input format first
     if let Err(e) = validate_project_key(slug) {
-        return Err(McpError::invalid_params(e.to_string(), Some(e.context())));
+        return Err(mcp_err!(
+            ErrorCode::InvalidProjectKey,
+            &e.to_string(),
+            { "project_slug": slug, "validation_error": e.to_string() }
+        ));
     }
 
-    ProjectBmc::get_by_identifier(ctx, mm, slug)
-        .await
-        .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))
+    ProjectBmc::get_by_identifier(ctx, mm, slug).await.map_err(|_| {
+        mcp_err!(
+            ErrorCode::ProjectNotFound,
+            &format!("Project '{}' not found", slug),
+            {
+                "project_slug": slug,
+                "suggestion": "Check project exists with list_projects or create with ensure_project"
+            }
+        )
+    })
 }
 
 /// Resolve an agent by name within a project.
 ///
 /// Validates input format before querying database.
-/// Returns the agent or an McpError with a user-friendly message and suggestion.
+/// Returns the agent or an McpError with structured error code and suggestion.
 pub async fn resolve_agent(
     ctx: &Ctx,
     mm: &Arc<ModelManager>,
     project_id: i64,
     agent_name: &str,
 ) -> Result<Agent, McpError> {
-    // Validate input format first
     if let Err(e) = validate_agent_name(agent_name) {
-        return Err(McpError::invalid_params(e.to_string(), Some(e.context())));
+        let sanitized_name: String = agent_name
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_')
+            .take(64)
+            .collect();
+        let suggestion = if sanitized_name.is_empty() {
+            "Use alphanumeric characters and underscores only (1-64 chars)".to_string()
+        } else {
+            sanitized_name
+        };
+        return Err(mcp_err!(
+            ErrorCode::InvalidAgentName,
+            &e.to_string(),
+            { "agent_name": agent_name, "validation_error": e.to_string(), "suggestion": suggestion }
+        ));
     }
 
     AgentBmc::get_by_name(ctx, mm, project_id, agent_name)
         .await
-        .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))
+        .map_err(|_| {
+            mcp_err!(
+                ErrorCode::AgentNotFound,
+                &format!("Agent '{}' not found", agent_name),
+                {
+                    "agent_name": agent_name,
+                    "project_id": project_id,
+                    "suggestion": "Check agent name with list_agents or register with register_agent"
+                }
+            )
+        })
 }
 
 /// Resolve project and agent in one call.
