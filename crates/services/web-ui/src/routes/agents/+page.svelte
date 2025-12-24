@@ -261,7 +261,7 @@
 				{#each filteredAgents() as agent, index}
 					<div
 						class="animate-in fade-in slide-in-from-bottom-2"
-						style="animation-delay: {index * 50}ms; animation-fill-mode: both;"
+						style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 					>
 						<Card.Root class="h-full hover:shadow-md transition-shadow">
 							<Card.Content class="p-5 md:p-6">

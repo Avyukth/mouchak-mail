@@ -260,7 +260,7 @@
 									{#each threadMessages as msg, index}
 										<li
 											class="relative pl-10 animate-in fade-in slide-in-from-left-2"
-											style="animation-delay: {index * 50}ms; animation-fill-mode: both;"
+											style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 										>
 											<!-- Timeline dot -->
 											<div

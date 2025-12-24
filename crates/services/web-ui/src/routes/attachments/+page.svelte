@@ -142,11 +142,11 @@
         </div>
         <div>
             <h1
-                class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100"
+                class="font-display text-2xl font-bold text-foreground"
             >
                 Attachments
             </h1>
-            <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">
+            <p class="text-muted-foreground text-sm">
                 Browse and download file attachments from messages
             </p>
         </div>
@@ -157,13 +157,13 @@
         <div class="flex items-center gap-2">
             <label
                 for="project-filter"
-                class="text-sm text-charcoal-500 dark:text-charcoal-400"
+                class="text-sm text-muted-foreground"
             >
                 Project:
             </label>
             <select
                 id="project-filter"
-                class="px-3 py-1.5 text-sm border border-charcoal-200 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-700 dark:text-charcoal-200"
+                class="px-3 py-1.5 text-sm border border-border rounded-lg bg-card text-foreground"
                 value={selectedProject}
                 onchange={handleProjectChange}
             >
@@ -179,13 +179,13 @@
         <div class="flex items-center gap-2">
             <label
                 for="sort-by"
-                class="text-sm text-charcoal-500 dark:text-charcoal-400"
+                class="text-sm text-muted-foreground"
             >
                 Sort:
             </label>
             <select
                 id="sort-by"
-                class="px-3 py-1.5 text-sm border border-charcoal-200 dark:border-charcoal-700 rounded-lg bg-white dark:bg-charcoal-900 text-charcoal-700 dark:text-charcoal-200"
+                class="px-3 py-1.5 text-sm border border-border rounded-lg bg-card text-foreground"
                 bind:value={sortBy}
             >
                 <option value="date_desc">Newest First</option>
@@ -218,7 +218,7 @@
     <!-- Content -->
     {#if !loading && !error}
         <div class="space-y-4">
-            <p class="text-sm text-charcoal-500 dark:text-charcoal-400">
+            <p class="text-sm text-muted-foreground">
                 {sortedAttachments.length} attachment{sortedAttachments.length !==
                 1
                     ? "s"
@@ -227,7 +227,7 @@
 
             {#if sortedAttachments.length === 0}
                 <div
-                    class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 p-8 text-center text-charcoal-400"
+                    class="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground"
                 >
                     <Paperclip class="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>No attachments found</p>
@@ -247,11 +247,11 @@
                         {@const isPdf = isPdfFile(attachment.mime_type)}
 
                         <div
-                            class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 overflow-hidden hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors group"
+                            class="rounded-xl border border-border bg-card overflow-hidden hover:border-primary/50 transition-colors group"
                         >
                             <!-- Preview Area -->
                             <div
-                                class="h-32 flex items-center justify-center bg-charcoal-50 dark:bg-charcoal-800"
+                                class="h-32 flex items-center justify-center bg-muted"
                             >
                                 {#if isImage}
                                     <FileImage
@@ -266,20 +266,20 @@
                                         class="w-12 h-12 text-amber-500"
                                     />
                                 {:else}
-                                    <File class="w-12 h-12 text-charcoal-400" />
+                                    <File class="w-12 h-12 text-muted-foreground" />
                                 {/if}
                             </div>
 
                             <!-- File Info -->
                             <div class="p-4">
                                 <h3
-                                    class="font-medium text-charcoal-800 dark:text-cream-100 truncate text-sm"
+                                    class="font-medium text-foreground truncate text-sm"
                                     title={attachment.filename}
                                 >
                                     {attachment.filename}
                                 </h3>
                                 <div
-                                    class="flex items-center justify-between mt-2 text-xs text-charcoal-500 dark:text-charcoal-400"
+                                    class="flex items-center justify-between mt-2 text-xs text-muted-foreground"
                                 >
                                     <span
                                         >{formatFileSize(

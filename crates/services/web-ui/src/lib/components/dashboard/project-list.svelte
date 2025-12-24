@@ -56,8 +56,8 @@
 			{#each projects as project, index}
 				<a
 					href="/projects/{project.slug}"
-					class="flex items-center gap-3 p-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					style="animation-delay: {index * 50}ms"
+					class="flex items-center gap-3 p-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-in fade-in"
+					style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 					data-testid="project-item"
 				>
 					<div

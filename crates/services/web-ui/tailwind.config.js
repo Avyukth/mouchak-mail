@@ -105,7 +105,20 @@ export default {
 					700: '#b91c1c',
 					800: '#991b1b',
 					900: '#7f1d1d'
-				}
+				},
+				success: {
+					DEFAULT: 'hsl(var(--success) / <alpha-value>)',
+					foreground: 'hsl(var(--success-foreground) / <alpha-value>)'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning) / <alpha-value>)',
+					foreground: 'hsl(var(--warning-foreground) / <alpha-value>)'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info) / <alpha-value>)',
+					foreground: 'hsl(var(--info-foreground) / <alpha-value>)'
+				},
+				shimmer: 'hsl(var(--shimmer-color) / <alpha-value>)'
 			},
 			// Spacing aliases for 8px grid
 			spacing: {
@@ -125,6 +138,9 @@ export default {
 			},
 			fontFamily: {
 				sans: [...fontFamily.sans]
+			},
+			fontSize: {
+				'2xs': ['0.625rem', { lineHeight: '0.875rem' }]
 			},
 			boxShadow: {
 				'sm': 'var(--shadow-sm)',
@@ -194,7 +210,6 @@ export default {
 				'fade-in-fast': 'fade-in var(--duration-fast, 150ms) var(--ease-out, ease-out)',
 				'scale-in-fast': 'scale-in var(--duration-fast, 150ms) var(--ease-out, ease-out)'
 			},
-			// Animation delay utilities for staggering
 			transitionDelay: {
 				'0': '0ms',
 				'50': '50ms',

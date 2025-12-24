@@ -250,7 +250,7 @@
 						class="pl-10 pr-16"
 					/>
 					<span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-						<kbd class="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘K</kbd>
+						<kbd class="px-1.5 py-0.5 bg-muted rounded text-2xs">⌘K</kbd>
 					</span>
 				</div>
 			</div>
@@ -313,8 +313,8 @@
 				<span>Auto-refresh (45s)</span>
 			</label>
 			<span class="hidden sm:inline">
-				<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">f</kbd> fullscreen
-				<kbd class="px-1 py-0.5 bg-muted rounded text-[10px] ml-2">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">k</kbd> navigate
+				<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">f</kbd> fullscreen
+				<kbd class="px-1 py-0.5 bg-muted rounded text-2xs ml-2">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">k</kbd> navigate
 			</span>
 		</div>
 	</div>
@@ -500,16 +500,16 @@
 													</span>
 												</p>
 												<div class="flex flex-wrap items-center gap-1.5 mt-1">
-													<Badge variant="secondary" class="text-[10px] px-1.5 py-0">
+													<Badge variant="secondary" class="text-2xs px-1.5 py-0">
 														{message.project_slug}
 													</Badge>
 													{#if message.importance && message.importance !== 'normal'}
-														<Badge variant={getImportanceVariant(message.importance)} class="text-[10px] px-1.5 py-0">
+														<Badge variant={getImportanceVariant(message.importance)} class="text-2xs px-1.5 py-0">
 															{message.importance}
 														</Badge>
 													{/if}
 													{#if message.thread_id}
-														<Badge variant="outline" class="text-[10px] px-1.5 py-0 border-purple-500/50 text-purple-600 dark:text-purple-400">
+														<Badge variant="outline" class="text-2xs px-1.5 py-0 border-purple-500/50 text-purple-600 dark:text-purple-400">
 															Thread
 														</Badge>
 													{/if}
@@ -587,7 +587,7 @@
 					<div data-testid="mail-empty-detail" class="text-center text-sm text-muted-foreground py-12">
 						<p class="text-4xl">✉️</p>
 						<p class="mt-2 font-medium">Select a message to see details.</p>
-						<p class="mt-1">Use <kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-[10px]">k</kbd> to move through the list.</p>
+						<p class="mt-1">Use <kbd class="px-1 py-0.5 bg-muted rounded text-2xs">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">k</kbd> to move through the list.</p>
 					</div>
 				{/if}
 			</div>

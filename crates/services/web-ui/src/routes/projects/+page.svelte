@@ -440,7 +440,7 @@
 				{#each filteredProjects() as project, index}
 					<div
 						class="group relative animate-in fade-in slide-in-from-bottom-2"
-						style="animation-delay: {index * 50}ms; animation-fill-mode: both;"
+						style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 					>
 						<!-- Selection Checkbox -->
 						<div

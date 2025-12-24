@@ -59,8 +59,8 @@
 
 <div class="space-y-6">
     <!-- Breadcrumb -->
-    <nav class="text-sm text-charcoal-500 dark:text-charcoal-400">
-        <span class="font-medium text-charcoal-700 dark:text-charcoal-200"
+    <nav class="text-sm text-muted-foreground">
+        <span class="font-medium text-foreground"
             >Archive</span
         >
     </nav>
@@ -72,11 +72,11 @@
         </div>
         <div>
             <h1
-                class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100"
+                class="font-display text-2xl font-bold text-foreground"
             >
                 Archive Browser
             </h1>
-            <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">
+            <p class="text-muted-foreground text-sm">
                 Explore git history and browse files at any commit
             </p>
         </div>
@@ -102,13 +102,13 @@
     <!-- Content -->
     {#if !loading && !error}
         <div class="space-y-4">
-            <p class="text-sm text-charcoal-500 dark:text-charcoal-400">
+            <p class="text-sm text-muted-foreground">
                 {commits.length} commit{commits.length !== 1 ? "s" : ""}
             </p>
 
             {#if commits.length === 0}
                 <div
-                    class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 p-8 text-center text-charcoal-400"
+                    class="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground"
                 >
                     <GitCommit class="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>No commits yet</p>
@@ -118,16 +118,16 @@
                 </div>
             {:else}
                 <div
-                    class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 overflow-hidden"
+                    class="rounded-xl border border-border bg-card overflow-hidden"
                 >
                     <ul
-                        class="divide-y divide-charcoal-200 dark:divide-charcoal-700"
+                        class="divide-y divide-border"
                     >
                         {#each commits as commit}
                             <li class="group">
                                 <a
                                     href="/archive/commit/{commit.sha}"
-                                    class="flex items-start gap-4 px-6 py-4 hover:bg-charcoal-50 dark:hover:bg-charcoal-800/50 transition-colors"
+                                    class="flex items-start gap-4 px-6 py-4 hover:bg-muted/50 transition-colors"
                                 >
                                     <div
                                         class="flex-shrink-0 p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg"
@@ -141,21 +141,21 @@
                                             class="flex items-baseline justify-between gap-4 mb-1"
                                         >
                                             <h4
-                                                class="font-medium text-charcoal-800 dark:text-cream-100 truncate group-hover:text-violet-600 transition-colors"
+                                                class="font-medium text-foreground truncate group-hover:text-violet-600 transition-colors"
                                             >
                                                 {commit.message}
                                             </h4>
                                             <span
-                                                class="flex-shrink-0 text-xs font-mono text-charcoal-400"
+                                                class="flex-shrink-0 text-xs font-mono text-muted-foreground"
                                             >
                                                 {formatDate(commit.timestamp)}
                                             </span>
                                         </div>
                                         <div
-                                            class="flex items-center gap-4 text-sm text-charcoal-500 dark:text-charcoal-400"
+                                            class="flex items-center gap-4 text-sm text-muted-foreground"
                                         >
                                             <span
-                                                class="font-mono text-xs bg-charcoal-100 dark:bg-charcoal-700 px-2 py-0.5 rounded"
+                                                class="font-mono text-xs bg-muted px-2 py-0.5 rounded"
                                             >
                                                 {getShortSha(commit.sha)}
                                             </span>
@@ -163,7 +163,7 @@
                                         </div>
                                     </div>
                                     <ChevronRight
-                                        class="w-4 h-4 text-charcoal-300 group-hover:text-violet-500 transition-colors"
+                                        class="w-4 h-4 text-muted-foreground group-hover:text-violet-500 transition-colors"
                                     />
                                 </a>
                             </li>

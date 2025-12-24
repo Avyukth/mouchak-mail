@@ -318,7 +318,7 @@
 					{#each messages as message, index}
 						<li
 							class="animate-in fade-in slide-in-from-bottom-2"
-							style="animation-delay: {index * 50}ms; animation-fill-mode: both;"
+							style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 						>
 							<a
 								href="/inbox/{message.id}?project={selectedProject}&agent={selectedAgent}"

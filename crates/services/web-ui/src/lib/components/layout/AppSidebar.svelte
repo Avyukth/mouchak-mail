@@ -173,3 +173,40 @@
 		<ThemeToggle />
 	</div>
 </aside>
+
+<style>
+	/* Factory.ai Travelling Spotlight Effect */
+	.nav-container {
+		position: relative;
+	}
+
+	.nav-spotlight {
+		position: absolute;
+		left: 8px;
+		top: 0;
+		background: hsl(var(--primary) / 0.1);
+		border-radius: 8px;
+		pointer-events: none;
+		z-index: 0;
+		/* Initial dimensions for smooth first animation */
+		width: 0;
+		height: 44px;
+		transition:
+			transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+			width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+			height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+			opacity 0.15s ease;
+	}
+
+	.nav-link {
+		position: relative;
+		z-index: 1;
+	}
+
+	/* Respect reduced motion preference */
+	@media (prefers-reduced-motion: reduce) {
+		.nav-spotlight {
+			transition: opacity 0.1s ease;
+		}
+	}
+</style>

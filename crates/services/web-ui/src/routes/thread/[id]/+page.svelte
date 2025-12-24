@@ -181,11 +181,11 @@
     <!-- Header with back button and keyboard hints -->
     <div class="flex items-center justify-between">
         <nav
-            class="flex items-center gap-2 text-sm text-charcoal-500 dark:text-charcoal-400"
+            class="flex items-center gap-2 text-sm text-muted-foreground"
         >
             <button
                 onclick={goBack}
-                class="flex items-center gap-1.5 hover:text-amber-600 dark:hover:text-amber-400 transition-colors min-h-[44px] px-2 rounded-lg hover:bg-charcoal-100 dark:hover:bg-charcoal-800"
+                class="flex items-center gap-1.5 hover:text-primary transition-colors min-h-touch px-2 rounded-lg hover:bg-muted"
             >
                 <ArrowLeft class="w-4 h-4" />
                 <span>Back to Inbox</span>
@@ -193,20 +193,20 @@
         </nav>
 
         <div
-            class="hidden sm:flex items-center gap-2 text-sm text-charcoal-400 dark:text-charcoal-500"
+            class="hidden sm:flex items-center gap-2 text-sm text-muted-foreground"
         >
             <kbd
-                class="px-1.5 py-0.5 rounded bg-charcoal-100 dark:bg-charcoal-800 text-xs"
+                class="px-1.5 py-0.5 rounded bg-muted text-2xs"
                 >↑↓</kbd
             >
             <span>navigate</span>
             <kbd
-                class="px-1.5 py-0.5 rounded bg-charcoal-100 dark:bg-charcoal-800 text-xs"
+                class="px-1.5 py-0.5 rounded bg-muted text-2xs"
                 >Enter</kbd
             >
             <span>expand</span>
             <kbd
-                class="px-1.5 py-0.5 rounded bg-charcoal-100 dark:bg-charcoal-800 text-xs"
+                class="px-1.5 py-0.5 rounded bg-muted text-2xs"
                 >Esc</kbd
             >
             <span>back</span>
@@ -229,21 +229,21 @@
     {#if loading}
         <div class="flex items-center justify-center py-12">
             <Loader2 class="w-6 h-6 text-amber-500 animate-spin" />
-            <span class="ml-2 text-charcoal-500">Loading thread...</span>
+            <span class="ml-2 text-muted-foreground">Loading thread...</span>
         </div>
     {/if}
 
     <!-- Thread Content -->
     {#if !loading && !error && thread}
         <!-- Thread Header -->
-        <div class="border-b border-charcoal-200 dark:border-charcoal-700 pb-4">
+        <div class="border-b border-border pb-4">
             <h1
-                class="text-xl font-semibold text-charcoal-900 dark:text-charcoal-100"
+                class="text-xl font-semibold text-foreground"
             >
                 {thread.subject || "(No subject)"}
             </h1>
             <div
-                class="flex items-center gap-2 mt-2 text-sm text-charcoal-500 dark:text-charcoal-400"
+                class="flex items-center gap-2 mt-2 text-sm text-muted-foreground"
             >
                 <span
                     >{thread.message_count} message{thread.message_count !== 1
@@ -263,7 +263,7 @@
         <!-- Message Tree -->
         {#if threadNodes.length === 0}
             <div
-                class="text-center py-12 text-charcoal-500 dark:text-charcoal-400"
+                class="text-center py-12 text-muted-foreground"
             >
                 <MessageSquareOff class="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No messages in this thread</p>
@@ -285,7 +285,7 @@
                         tabindex={isFocused ? 0 : -1}
                     >
                         <div
-                            class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 shadow-sm"
+                            class="rounded-xl border border-border bg-card shadow-sm"
                         >
                             <div class="p-4">
                                 <!-- Header row with collapse toggle -->
@@ -293,7 +293,7 @@
                                     <!-- Collapse/expand button -->
                                     <button
                                         type="button"
-                                        class="mt-1 p-1 rounded hover:bg-charcoal-100 dark:hover:bg-charcoal-800 transition-colors"
+                                        class="mt-1 p-1 rounded hover:bg-muted transition-colors"
                                         onclick={() =>
                                             toggleExpanded(node.message.id)}
                                         aria-label={expanded
@@ -302,11 +302,11 @@
                                     >
                                         {#if expanded}
                                             <ChevronDown
-                                                class="w-4 h-4 text-charcoal-400"
+                                                class="w-4 h-4 text-muted-foreground"
                                             />
                                         {:else}
                                             <ChevronRight
-                                                class="w-4 h-4 text-charcoal-400"
+                                                class="w-4 h-4 text-muted-foreground"
                                             />
                                         {/if}
                                     </button>
@@ -318,14 +318,14 @@
                                             class="flex items-center gap-2 flex-wrap"
                                         >
                                             <h3
-                                                class="font-medium text-charcoal-900 dark:text-charcoal-100 truncate"
+                                                class="font-medium text-foreground truncate"
                                             >
                                                 {node.message.subject ||
                                                     "(No subject)"}
                                             </h3>
                                             {#if node.depth > 0}
                                                 <span
-                                                    class="sm:hidden badge badge-charcoal text-xs"
+                                                    class="sm:hidden inline-flex items-center px-2 py-0.5 rounded-full text-2xs font-medium bg-muted text-muted-foreground"
                                                 >
                                                     ↳ {node.depth}
                                                 </span>
@@ -334,7 +334,7 @@
 
                                         <!-- Sender and timestamp -->
                                         <div
-                                            class="flex items-center gap-2 text-sm text-charcoal-500 dark:text-charcoal-400 mt-1"
+                                            class="flex items-center gap-2 text-sm text-muted-foreground mt-1"
                                         >
                                             <span
                                                 class="flex items-center gap-1"
@@ -354,7 +354,7 @@
 
                                         <!-- Body preview or full body -->
                                         <div
-                                            class="mt-2 text-charcoal-600 dark:text-charcoal-300"
+                                            class="mt-2 text-foreground/80"
                                         >
                                             {#if expanded}
                                                 <div
@@ -378,13 +378,13 @@
                                         <!-- Reply button (when expanded) -->
                                         {#if expanded}
                                             <div
-                                                class="mt-4 pt-3 border-t border-charcoal-200 dark:border-charcoal-700"
+                                                class="mt-4 pt-3 border-t border-border"
                                             >
                                                 <a
                                                     href={getReplyUrl(
                                                         node.message.id,
                                                     )}
-                                                    class="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-charcoal-300 dark:border-charcoal-600 rounded-lg hover:bg-charcoal-100 dark:hover:bg-charcoal-800 transition-colors"
+                                                    class="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
                                                 >
                                                     <Reply class="w-4 h-4" />
                                                     Reply
@@ -405,25 +405,6 @@
 <style>
     .thread-view:focus {
         outline: none;
-    }
-
-    .badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 500;
-    }
-
-    .badge-charcoal {
-        background-color: var(--charcoal-100, #f3f4f6);
-        color: var(--charcoal-600, #4b5563);
-    }
-
-    :global(.dark) .badge-charcoal {
-        background-color: var(--charcoal-800, #1f2937);
-        color: var(--charcoal-400, #9ca3af);
     }
 
     kbd {

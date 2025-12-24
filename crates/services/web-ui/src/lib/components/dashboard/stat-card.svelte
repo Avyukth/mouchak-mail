@@ -80,8 +80,8 @@
 						variant="secondary"
 						class={cn(
 							'text-xs',
-							trendDirection === 'up' && 'text-green-600 dark:text-green-400',
-							trendDirection === 'down' && 'text-red-600 dark:text-red-400'
+							trendDirection === 'up' && 'text-success',
+							trendDirection === 'down' && 'text-destructive'
 						)}
 					>
 						{trend}

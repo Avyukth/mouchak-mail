@@ -15,8 +15,8 @@
     export let variant: "primary" | "secondary" | "ghost" = "primary";
     /** Button size */
     export let size: "sm" | "md" | "lg" = "md";
-    /** Shimmer color */
-    export let shimmerColor: string = "rgba(255, 255, 255, 0.4)";
+    /** Shimmer color - uses theme variable by default */
+    export let shimmerColor: string = "hsl(var(--shimmer-color) / 0.4)";
     /** Background color */
     export let background: string = "";
     /** Animation duration in seconds */
@@ -73,7 +73,7 @@
         background: linear-gradient(
             90deg,
             transparent 0%,
-            var(--shimmer-color, rgba(255, 255, 255, 0.4)) 50%,
+            var(--shimmer-color, hsl(var(--shimmer-color) / 0.4)) 50%,
             transparent 100%
         );
         background-size: 200% 100%;
@@ -99,12 +99,12 @@
         background: linear-gradient(
             90deg,
             transparent 0%,
-            var(--shimmer-color, rgba(255, 255, 255, 0.4)) 50%,
+            var(--shimmer-color, hsl(var(--shimmer-color) / 0.4)) 50%,
             transparent 100%
         );
         background-size: 200% 100%;
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask: linear-gradient(white 0 0) content-box, linear-gradient(white 0 0);
+        mask: linear-gradient(white 0 0) content-box, linear-gradient(white 0 0);
         -webkit-mask-composite: xor;
         mask-composite: exclude;
         animation: shimmer-move var(--shimmer-duration, 2s) ease-in-out infinite;

@@ -80,7 +80,7 @@
 <div class="space-y-6">
     <!-- Breadcrumb -->
     <nav
-        class="flex items-center gap-2 text-sm text-charcoal-500 dark:text-charcoal-400"
+        class="flex items-center gap-2 text-sm text-muted-foreground"
     >
         <a
             href="/projects"
@@ -97,7 +97,7 @@
             {projectSlug}
         </a>
         <ChevronRight class="w-3 h-3" />
-        <span class="font-medium text-charcoal-700 dark:text-charcoal-200"
+        <span class="font-medium text-foreground"
             >File Reservations</span
         >
     </nav>
@@ -109,11 +109,11 @@
         </div>
         <div>
             <h1
-                class="font-display text-2xl font-bold text-charcoal-800 dark:text-cream-100"
+                class="font-display text-2xl font-bold text-foreground"
             >
                 File Reservations
             </h1>
-            <p class="text-charcoal-500 dark:text-charcoal-400 text-sm">
+            <p class="text-muted-foreground text-sm">
                 When agents want to edit files, they can "reserve" them to
                 signal their intent.
             </p>
@@ -159,7 +159,7 @@
     <!-- Content -->
     {#if !loading && !error}
         <div class="space-y-4">
-            <p class="text-sm text-charcoal-500 dark:text-charcoal-400">
+            <p class="text-sm text-muted-foreground">
                 {reservations.length} active reservation{reservations.length !==
                 1
                     ? "s"
@@ -168,7 +168,7 @@
 
             {#if reservations.length === 0}
                 <div
-                    class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 p-8 text-center text-charcoal-400"
+                    class="rounded-xl border border-border bg-card p-8 text-center text-muted-foreground"
                 >
                     <FileCheck class="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>No active file reservations</p>
@@ -178,43 +178,63 @@
                 </div>
             {:else}
                 <div
-                    class="rounded-xl border border-charcoal-200 dark:border-charcoal-700 bg-white dark:bg-charcoal-900 overflow-hidden"
+                    class="rounded-xl border border-border bg-card overflow-hidden"
                 >
                     <div class="overflow-x-auto">
                         <table class="w-full">
                             <thead
-                                class="bg-charcoal-50 dark:bg-charcoal-800 border-b border-charcoal-200 dark:border-charcoal-700"
+                                class="bg-muted border-b border-border"
                             >
                                 <tr>
                                     <th
-                                        class="px-4 py-3 text-left text-xs font-semibold text-charcoal-500 dark:text-charcoal-400 uppercase tracking-wider"
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                                     >
                                         ID
                                     </th>
                                     <th
-                                        class="px-4 py-3 text-left text-xs font-semibold text-charcoal-500 dark:text-charcoal-400 uppercase tracking-wider"
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                                     >
                                         Agent
                                     </th>
                                     <th
-                                        class="px-4 py-3 text-left text-xs font-semibold text-charcoal-500 dark:text-charcoal-400 uppercase tracking-wider"
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                                     >
                                         Path Pattern
                                     </th>
                                     <th
-                                        class="px-4 py-3 text-left text-xs font-semibold text-charcoal-500 dark:text-charcoal-400 uppercase tracking-wider"
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                                     >
                                         Type
                                     </th>
                                     <th
-                                        class="px-4 py-3 text-left text-xs font-semibold text-charcoal-500 dark:text-charcoal-400 uppercase tracking-wider"
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                                    >
+                                        Created
+                                    </th>
+                                    <th
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                                    >
+                                        Agent
+                                    </th>
+                                    <th
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                                    >
+                                        Path Pattern
+                                    </th>
+                                    <th
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+                                    >
+                                        Type
+                                    </th>
+                                    <th
+                                        class="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider"
                                     >
                                         Created
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody
-                                class="divide-y divide-charcoal-200 dark:divide-charcoal-700"
+                                <tbody
+                                class="divide-y divide-border"
                             >
                                 {#each reservations as reservation}
                                     {@const expired = isExpired(
@@ -222,7 +242,7 @@
                                     )}
                                     <tr class={expired ? "opacity-50" : ""}>
                                         <td
-                                            class="px-4 py-3 text-sm font-mono text-charcoal-500"
+                                            class="px-4 py-3 text-sm font-mono text-muted-foreground"
                                         >
                                             #{reservation.id}
                                         </td>
@@ -238,7 +258,7 @@
                                                         .toUpperCase() ?? "?"}
                                                 </div>
                                                 <span
-                                                    class="text-sm font-medium text-charcoal-700 dark:text-cream-200"
+                                                    class="text-sm font-medium text-foreground"
                                                 >
                                                     {reservation.agent_name ??
                                                         "Unknown"}
@@ -247,7 +267,7 @@
                                         </td>
                                         <td class="px-4 py-3">
                                             <code
-                                                class="text-sm bg-charcoal-100 dark:bg-charcoal-800 px-2 py-1 rounded font-mono"
+                                                class="text-sm bg-muted px-2 py-1 rounded font-mono"
                                             >
                                                 {reservation.path_pattern}
                                             </code>
@@ -270,7 +290,7 @@
                                             {/if}
                                         </td>
                                         <td
-                                            class="px-4 py-3 text-sm text-charcoal-500 whitespace-nowrap"
+                                            class="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap"
                                         >
                                             {formatDate(reservation.created_at)}
                                         </td>

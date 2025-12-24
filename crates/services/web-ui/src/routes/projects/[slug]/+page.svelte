@@ -134,16 +134,16 @@
 <div class="space-y-4 md:space-y-6">
 	<!-- Breadcrumb -->
 	<BlurFade delay={0}>
-		<nav class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+		<nav class="flex items-center gap-2 text-sm text-muted-foreground">
 			<a
 				href="/projects"
-				class="min-h-[44px] px-2 -ml-2 flex items-center gap-1 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+				class="min-h-touch px-2 -ml-2 flex items-center gap-1 hover:text-primary rounded-lg hover:bg-muted transition-colors"
 			>
 				<ArrowLeft class="h-4 w-4" />
 				<span>Projects</span>
 			</a>
 			<span>/</span>
-			<span class="text-gray-900 dark:text-white font-medium truncate">{projectName}</span>
+			<span class="text-foreground font-medium truncate">{projectName}</span>
 		</nav>
 	</BlurFade>
 
@@ -151,7 +151,7 @@
 	<BlurFade delay={50}>
 		<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 			<div>
-				<h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+				<h1 class="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
 					{projectName}
 					{#if !loading}
 						<Badge variant="secondary">
@@ -159,7 +159,7 @@
 						</Badge>
 					{/if}
 				</h1>
-				<p class="text-sm md:text-base text-gray-600 dark:text-gray-400">
+				<p class="text-sm md:text-base text-muted-foreground">
 					Registered agents for this project
 				</p>
 			</div>
@@ -189,10 +189,10 @@
 	{:else if agents.length === 0}
 		<!-- Empty State -->
 		<BlurFade delay={100}>
-			<div class="bg-white dark:bg-gray-800 rounded-xl p-8 md:p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-				<div class="mb-4 flex justify-center"><Bot class="h-12 w-12 text-gray-400" /></div>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No agents yet</h3>
-				<p class="text-gray-600 dark:text-gray-400 mb-4">
+			<div class="bg-card rounded-xl p-8 md:p-12 text-center shadow-sm border border-border">
+				<div class="mb-4 flex justify-center"><Bot class="h-12 w-12 text-muted-foreground" /></div>
+				<h3 class="text-lg font-semibold text-foreground mb-2">No agents yet</h3>
+				<p class="text-muted-foreground mb-4">
 					Register your first agent to start sending and receiving messages.
 				</p>
 				<ShimmerButton on:click={() => showNewForm = true}>
@@ -207,17 +207,17 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{#each agents as agent, index}
 					<div
-						class="group bg-white dark:bg-gray-800 rounded-xl p-5 md:p-6 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
-						style="animation-delay: {index * 50}ms; animation-fill-mode: both;"
+						class="group bg-card rounded-xl p-5 md:p-6 shadow-sm border border-border hover:shadow-lg hover:border-primary/30 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+						style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 					>
 						<div class="flex items-start justify-between mb-4">
 							<div class="flex items-center gap-3">
-								<div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-xl flex items-center justify-center group-hover:bg-primary-200 dark:group-hover:bg-primary-800 transition-colors">
-									<Bot class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+								<div class="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+									<Bot class="h-6 w-6 text-primary" />
 								</div>
 								<div class="min-w-0">
-									<h3 class="font-semibold text-gray-900 dark:text-white truncate">{agent.name}</h3>
-									<p class="text-sm text-gray-500 dark:text-gray-400 truncate">{agent.program}</p>
+									<h3 class="font-semibold text-foreground truncate">{agent.name}</h3>
+									<p class="text-sm text-muted-foreground truncate">{agent.program}</p>
 								</div>
 							</div>
 							<DropdownMenu.Root
@@ -252,23 +252,23 @@
 						</div>
 
 						<div class="space-y-3 text-sm">
-							<div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+							<div class="flex items-center gap-2 text-muted-foreground">
 								<Cpu class="h-4 w-4 shrink-0" />
 								<span class="font-mono truncate">{agent.model}</span>
 							</div>
 							{#if agent.task_description}
-								<p class="text-gray-600 dark:text-gray-400 line-clamp-2">{agent.task_description}</p>
+								<p class="text-muted-foreground line-clamp-2">{agent.task_description}</p>
 							{/if}
-							<div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+							<div class="flex items-center gap-2 pt-2 border-t border-border text-muted-foreground">
 								<Clock class="h-4 w-4 shrink-0" />
 								<span class="text-xs">Active {formatDate(agent.last_active_ts)}</span>
 							</div>
 						</div>
 
-						<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+						<div class="mt-4 pt-4 border-t border-border">
 							<a
 								href="/inbox?project={$page.params.slug}&agent={agent.name}"
-								class="min-h-[44px] w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors font-medium"
+								class="min-h-touch w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors font-medium"
 							>
 								<Inbox class="h-4 w-4" />
 								<span>View Inbox</span>
@@ -294,7 +294,7 @@
 		<form onsubmit={(e) => { e.preventDefault(); createAgent(); }} class="space-y-4">
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				<div class="sm:col-span-2">
-					<label for="agentName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+					<label for="agentName" class="block text-sm font-medium text-foreground mb-1">
 						Agent Name *
 					</label>
 					<input
@@ -302,11 +302,11 @@
 						type="text"
 						bind:value={newAgent.name}
 						placeholder="BlueStone"
-						class="w-full min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+						class="w-full min-h-touch px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
 					/>
 				</div>
 				<div>
-					<label for="agentProgram" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+					<label for="agentProgram" class="block text-sm font-medium text-foreground mb-1">
 						Program
 					</label>
 					<input
@@ -314,11 +314,11 @@
 						type="text"
 						bind:value={newAgent.program}
 						placeholder="antigravity"
-						class="w-full min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+						class="w-full min-h-touch px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
 					/>
 				</div>
 				<div>
-					<label for="agentModel" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+					<label for="agentModel" class="block text-sm font-medium text-foreground mb-1">
 						Model
 					</label>
 					<input
@@ -326,11 +326,11 @@
 						type="text"
 						bind:value={newAgent.model}
 						placeholder="gemini-2.0-pro"
-						class="w-full min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+						class="w-full min-h-touch px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
 					/>
 				</div>
 				<div class="sm:col-span-2">
-					<label for="agentTask" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+					<label for="agentTask" class="block text-sm font-medium text-foreground mb-1">
 						Task Description
 					</label>
 					<input
@@ -338,7 +338,7 @@
 						type="text"
 						bind:value={newAgent.task_description}
 						placeholder="Research and implement features"
-						class="w-full min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+						class="w-full min-h-touch px-4 py-2 border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:border-transparent"
 					/>
 				</div>
 			</div>
