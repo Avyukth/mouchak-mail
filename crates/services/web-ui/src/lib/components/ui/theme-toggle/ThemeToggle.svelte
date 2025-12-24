@@ -19,8 +19,8 @@
 		{ value: 'system', icon: Monitor, label: 'System' }
 	];
 
-	// Map mode-watcher's mode to our options
-	let currentMode = $derived<ThemeMode>($mode === undefined ? 'system' : $mode);
+	// Map mode-watcher's mode to our options (use mode.current for Svelte 5 runes)
+	let currentMode = $derived<ThemeMode>(mode.current === undefined ? 'system' : mode.current);
 
 	// Calculate indicator position and width
 	let indicatorStyle = $derived.by(() => {
