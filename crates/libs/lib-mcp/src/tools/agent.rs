@@ -7,6 +7,7 @@ use lib_core::{
     model::{
         ModelManager,
         agent::{AgentBmc, AgentForCreate, AgentProfileUpdate},
+        agent_capabilities::AgentCapabilityBmc,
         file_reservation::FileReservationBmc,
     },
     utils::validation::{validate_agent_name, validate_project_key},
@@ -16,7 +17,7 @@ use std::sync::Arc;
 
 use super::helpers;
 use super::{
-    CreateAgentIdentityParams, GetAgentProfileParams, RegisterAgentParams,
+    CreateAgentIdentityParams, GetAgentProfileParams, ListAgentsParams, RegisterAgentParams,
     UpdateAgentProfileParams, WhoisParams,
 };
 
@@ -66,7 +67,15 @@ pub async fn register_agent_impl(
                 .await
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-            let msg = format!("Registered agent '{}' with id {}", params.name, id);
+            // Auto-grant default capabilities for MCP tool usage
+            AgentCapabilityBmc::grant_defaults(ctx, mm, id)
+                .await
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+            let msg = format!(
+                "Registered agent '{}' with id {} (granted default capabilities)",
+                params.name, id
+            );
             Ok(CallToolResult::success(vec![Content::text(msg)]))
         }
     }
@@ -173,19 +182,23 @@ pub async fn get_agent_profile_impl(
 pub async fn list_agents_impl(
     ctx: &Ctx,
     mm: &Arc<ModelManager>,
-    project_slug: &str,
+    params: ListAgentsParams,
 ) -> Result<CallToolResult, McpError> {
-    let project = helpers::resolve_project(ctx, mm, project_slug).await?;
+    let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
     let agents = AgentBmc::list_all_for_project(ctx, mm, project.id)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    let mut output = format!("Agents in '{}' ({}):\n\n", project_slug, agents.len());
+    let mut output = format!(
+        "Agents in '{}' ({}):\n\n",
+        params.project_slug,
+        agents.len()
+    );
     for a in &agents {
         output.push_str(&format!(
-            "- {} (id: {}, program: {}, model: {})\n",
-            a.name, a.id, a.program, a.model
+            "- {} (program: {}, model: {})\n  Task: {}\n",
+            a.name, a.program, a.model, a.task_description
         ));
     }
 

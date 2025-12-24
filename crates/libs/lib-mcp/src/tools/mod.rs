@@ -34,9 +34,12 @@ pub mod builds;
 pub mod contacts;
 pub mod files;
 pub mod helpers;
+pub mod macros;
+pub mod messaging;
 pub mod observability;
 pub mod outbox;
 mod params;
+pub mod products;
 pub mod project;
 pub mod reviews;
 
@@ -2079,61 +2082,7 @@ impl AgentMailService {
         &self,
         params: Parameters<SendMessageParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::{MessageBmc, MessageForCreate};
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (project, sender) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.sender_name)
-                .await?;
-
-        if !AgentCapabilityBmc::check(&ctx, &self.mm, sender.id, "send_message")
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        {
-            return Err(McpError::invalid_params(
-                format!(
-                    "Agent '{}' does not have 'send_message' capability",
-                    p.sender_name
-                ),
-                None,
-            ));
-        }
-
-        let recipient_ids = helpers::resolve_agent_names(&ctx, &self.mm, project.id, &p.to).await?;
-
-        let cc_ids =
-            helpers::resolve_optional_agent_names(&ctx, &self.mm, project.id, p.cc.as_deref())
-                .await?;
-
-        let bcc_ids =
-            helpers::resolve_optional_agent_names(&ctx, &self.mm, project.id, p.bcc.as_deref())
-                .await?;
-
-        // Create message
-        let msg_c = MessageForCreate {
-            project_id: project.id,
-            sender_id: sender.id,
-            recipient_ids,
-            cc_ids,
-            bcc_ids,
-            subject: p.subject.clone(),
-            body_md: p.body_md,
-            thread_id: p.thread_id,
-            importance: p.importance,
-            ack_required: p.ack_required.unwrap_or(false),
-        };
-
-        let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Message sent (id: {}) from '{}' to '{}' with subject '{}'",
-            msg_id, p.sender_name, p.to, p.subject
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        messaging::send_message_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// List messages in an agent's inbox
@@ -2142,51 +2091,7 @@ impl AgentMailService {
         &self,
         params: Parameters<ListInboxParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (project, agent) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.agent_name)
-                .await?;
-
-        if !AgentCapabilityBmc::check(&ctx, &self.mm, agent.id, "fetch_inbox")
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        {
-            return Err(McpError::invalid_params(
-                format!(
-                    "Agent '{}' does not have 'fetch_inbox' capability",
-                    p.agent_name
-                ),
-                None,
-            ));
-        }
-
-        let messages = MessageBmc::list_inbox_for_agent(
-            &ctx,
-            &self.mm,
-            project.id,
-            agent.id,
-            p.limit.unwrap_or(50),
-        )
-        .await
-        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut output = format!(
-            "Inbox for '{}' ({} messages):\n\n",
-            p.agent_name,
-            messages.len()
-        );
-        for m in &messages {
-            output.push_str(&format!(
-                "- [{}] {} (from: {}, thread: {:?}, {})\n",
-                m.id, m.subject, m.sender_name, m.thread_id, m.importance
-            ));
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        messaging::list_inbox_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Get a specific message by ID
@@ -2195,27 +2100,7 @@ impl AgentMailService {
         &self,
         params: Parameters<GetMessageParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let message = MessageBmc::get(&ctx, &self.mm, p.message_id)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Message not found: {}", e), None))?;
-
-        let output = format!(
-            "Message ID: {}\nFrom: {}\nSubject: {}\nThread: {:?}\nImportance: {}\nCreated: {}\n\n---\n{}",
-            message.id,
-            message.sender_name,
-            message.subject,
-            message.thread_id,
-            message.importance,
-            message.created_ts,
-            message.body_md
-        );
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        messaging::get_message_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Look up information about an agent
@@ -2250,31 +2135,7 @@ impl AgentMailService {
         &self,
         params: Parameters<SearchMessagesParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let messages =
-            MessageBmc::search(&ctx, &self.mm, project.id, &p.query, p.limit.unwrap_or(20))
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut output = format!(
-            "Search results for '{}' ({} matches):\n\n",
-            p.query,
-            messages.len()
-        );
-        for m in &messages {
-            output.push_str(&format!(
-                "- [{}] {} (from: {}, thread: {:?})\n",
-                m.id, m.subject, m.sender_name, m.thread_id
-            ));
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        messaging::search_messages_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Get all messages in a thread
@@ -2283,30 +2144,7 @@ impl AgentMailService {
         &self,
         params: Parameters<GetThreadParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let messages = MessageBmc::list_by_thread(&ctx, &self.mm, project.id, &p.thread_id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut output = format!(
-            "Thread '{}' ({} messages):\n\n",
-            p.thread_id,
-            messages.len()
-        );
-        for m in &messages {
-            output.push_str(&format!(
-                "---\n[{}] From: {} | {}\nSubject: {}\n\n{}\n\n",
-                m.id, m.sender_name, m.created_ts, m.subject, m.body_md
-            ));
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        messaging::get_thread_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Get review state of a task thread
@@ -2436,57 +2274,7 @@ impl AgentMailService {
         &self,
         params: Parameters<ReplyMessageParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::{MessageBmc, MessageForCreate};
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (project, sender) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.sender_name)
-                .await?;
-
-        if !AgentCapabilityBmc::check(&ctx, &self.mm, sender.id, "send_message")
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        {
-            return Err(McpError::invalid_params(
-                format!(
-                    "Agent '{}' does not have 'send_message' capability",
-                    p.sender_name
-                ),
-                None,
-            ));
-        }
-
-        let original_msg = MessageBmc::get(&ctx, &self.mm, p.message_id)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Message not found: {}", e), None))?;
-
-        let subject = if original_msg.subject.starts_with("Re: ") {
-            original_msg.subject.clone()
-        } else {
-            format!("Re: {}", original_msg.subject)
-        };
-
-        let msg_c = MessageForCreate {
-            project_id: project.id,
-            sender_id: sender.id,
-            recipient_ids: vec![original_msg.sender_id],
-            cc_ids: None,
-            bcc_ids: None,
-            subject: subject.clone(),
-            body_md: p.body_md,
-            thread_id: original_msg.thread_id.clone(),
-            importance: p.importance,
-            ack_required: false, // Replies don't require ack by default
-        };
-
-        let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!("Reply sent (id: {}) with subject '{}'", msg_id, subject);
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        messaging::reply_message_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Mark a message as read
@@ -2495,24 +2283,7 @@ impl AgentMailService {
         &self,
         params: Parameters<MarkMessageReadParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (_project, agent) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.agent_name)
-                .await?;
-
-        MessageBmc::mark_read(&ctx, &self.mm, p.message_id, agent.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Message {} marked as read by '{}'",
-            p.message_id, p.agent_name
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        messaging::mark_message_read_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Acknowledge a message
@@ -2521,37 +2292,7 @@ impl AgentMailService {
         &self,
         params: Parameters<AcknowledgeMessageParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (_project, agent) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.agent_name)
-                .await?;
-
-        if !AgentCapabilityBmc::check(&ctx, &self.mm, agent.id, "acknowledge_message")
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?
-        {
-            return Err(McpError::invalid_params(
-                format!(
-                    "Agent '{}' does not have 'acknowledge_message' capability",
-                    p.agent_name
-                ),
-                None,
-            ));
-        }
-
-        MessageBmc::acknowledge(&ctx, &self.mm, p.message_id, agent.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Message {} acknowledged by '{}'",
-            p.message_id, p.agent_name
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        messaging::acknowledge_message_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Generate agent identity names
@@ -2738,25 +2479,7 @@ impl AgentMailService {
         &self,
         params: Parameters<ListThreadsParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let threads = MessageBmc::list_threads(&ctx, &self.mm, project.id, p.limit.unwrap_or(50))
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut output = format!("Threads in '{}' ({}):\n\n", p.project_slug, threads.len());
-        for t in &threads {
-            output.push_str(&format!(
-                "- {} | {} ({} msgs, last: {})\n",
-                t.thread_id, t.subject, t.message_count, t.last_message_ts
-            ));
-        }
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        messaging::list_threads_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Request contact
@@ -2862,27 +2585,7 @@ impl AgentMailService {
         &self,
         params: Parameters<ListMacrosParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::macro_def::MacroDefBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let macros = MacroDefBmc::list(&ctx, &self.mm, project.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut output = format!("Macros in '{}' ({}):\n\n", p.project_slug, macros.len());
-        for m in &macros {
-            output.push_str(&format!(
-                "- {} ({} steps): {}\n",
-                m.name,
-                m.steps.len(),
-                m.description
-            ));
-        }
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        macros::list_macros_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Register macro
@@ -2891,26 +2594,7 @@ impl AgentMailService {
         &self,
         params: Parameters<RegisterMacroParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::macro_def::{MacroDefBmc, MacroDefForCreate};
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let macro_c = MacroDefForCreate {
-            project_id: project.id,
-            name: p.name.clone(),
-            description: p.description,
-            steps: p.steps,
-        };
-
-        let macro_id = MacroDefBmc::create(&ctx, &self.mm, macro_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!("Registered macro '{}' with id {}", p.name, macro_id);
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        macros::register_macro_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Unregister macro
@@ -2919,23 +2603,7 @@ impl AgentMailService {
         &self,
         params: Parameters<UnregisterMacroParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::macro_def::MacroDefBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let deleted = MacroDefBmc::delete(&ctx, &self.mm, project.id, &p.name)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = if deleted {
-            format!("Unregistered macro '{}'", p.name)
-        } else {
-            format!("Macro '{}' not found", p.name)
-        };
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        macros::unregister_macro_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Invoke macro
@@ -2944,49 +2612,16 @@ impl AgentMailService {
         &self,
         params: Parameters<InvokeMacroParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::macro_def::MacroDefBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let macro_def = MacroDefBmc::get_by_name(&ctx, &self.mm, project.id, &p.name)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Macro not found: {}", e), None))?;
-
-        let steps_json =
-            serde_json::to_string_pretty(&macro_def.steps).unwrap_or_else(|_| "[]".to_string());
-        let output = format!(
-            "Macro '{}' ({} steps)\nDescription: {}\n\nSteps:\n{}",
-            macro_def.name,
-            macro_def.steps.len(),
-            macro_def.description,
-            steps_json
-        );
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        macros::invoke_macro_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// List built-in workflow macros
     #[tool(description = "List the 5 built-in workflow macros available in all projects.")]
     async fn list_builtin_workflows(
         &self,
-        _params: Parameters<ListBuiltinWorkflowsParams>,
+        params: Parameters<ListBuiltinWorkflowsParams>,
     ) -> Result<CallToolResult, McpError> {
-        let workflows = vec![
-            ("start_session", "Register agent and check inbox"),
-            ("prepare_thread", "Create thread and reserve files"),
-            ("file_reservation_cycle", "Reserve, work, release files"),
-            ("contact_handshake", "Establish cross-project contact"),
-            ("broadcast_message", "Send to multiple agents"),
-        ];
-
-        let mut output = String::from("Built-in Workflows:\n\n");
-        for (name, desc) in workflows {
-            output.push_str(&format!("- {}: {}\n", name, desc));
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        macros::list_builtin_workflows_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Quick standup workflow
@@ -2995,49 +2630,7 @@ impl AgentMailService {
         &self,
         params: Parameters<QuickStandupWorkflowParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::AgentBmc;
-        use lib_core::model::message::{MessageBmc, MessageForCreate};
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (project, sender) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.sender_name)
-                .await?;
-
-        let agents = AgentBmc::list_all_for_project(&ctx, &self.mm, project.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let recipient_ids: Vec<i64> = agents.iter().map(|a| a.id).collect();
-
-        let question = p
-            .standup_question
-            .unwrap_or_else(|| "What are you working on today?".to_string());
-
-        let msg_c = MessageForCreate {
-            project_id: project.id,
-            sender_id: sender.id,
-            recipient_ids,
-            cc_ids: None,
-            bcc_ids: None,
-            subject: "Daily Standup".to_string(),
-            body_md: question,
-            thread_id: Some("STANDUP".to_string()),
-            importance: Some("normal".to_string()),
-            ack_required: false,
-        };
-
-        let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Standup request sent to {} agents (message id: {})",
-            agents.len(),
-            msg_id
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        macros::quick_standup_workflow_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Quick handoff workflow
@@ -3046,45 +2639,7 @@ impl AgentMailService {
         &self,
         params: Parameters<QuickHandoffWorkflowParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::{MessageBmc, MessageForCreate};
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (project, from_agent) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.from_agent)
-                .await?;
-
-        let to_agent = helpers::resolve_agent(&ctx, &self.mm, project.id, &p.to_agent).await?;
-
-        let files_text = if let Some(files) = &p.files {
-            format!("\n\nFiles:\n{}", files.join("\n"))
-        } else {
-            String::new()
-        };
-
-        let msg_c = MessageForCreate {
-            project_id: project.id,
-            sender_id: from_agent.id,
-            recipient_ids: vec![to_agent.id],
-            cc_ids: None,
-            bcc_ids: None,
-            subject: format!("Task Handoff: {}", p.task_description),
-            body_md: format!("Taking over: {}{}", p.task_description, files_text),
-            thread_id: Some(format!("HANDOFF-{}", p.task_description.replace(" ", "-"))),
-            importance: Some("high".to_string()),
-            ack_required: true, // Handoffs should be acknowledged
-        };
-
-        let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Handoff message sent from '{}' to '{}' (id: {})",
-            p.from_agent, p.to_agent, msg_id
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        macros::quick_handoff_workflow_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Quick review workflow
@@ -3093,62 +2648,7 @@ impl AgentMailService {
         &self,
         params: Parameters<QuickReviewWorkflowParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
-        use lib_core::model::message::{MessageBmc, MessageForCreate};
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let (project, requester) =
-            helpers::resolve_project_and_agent(&ctx, &self.mm, &p.project_slug, &p.requester)
-                .await?;
-
-        let reviewer = helpers::resolve_agent(&ctx, &self.mm, project.id, &p.reviewer).await?;
-
-        // Reserve files for review (non-exclusive)
-        let expires_ts = chrono::Utc::now().naive_utc() + chrono::Duration::hours(2);
-        for file in &p.files_to_review {
-            let res_c = FileReservationForCreate {
-                project_id: project.id,
-                agent_id: reviewer.id,
-                path_pattern: file.clone(),
-                exclusive: false,
-                reason: "Code review".to_string(),
-                expires_ts,
-            };
-            FileReservationBmc::create(&ctx, &self.mm, res_c)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-        }
-
-        let msg_c = MessageForCreate {
-            project_id: project.id,
-            sender_id: requester.id,
-            recipient_ids: vec![reviewer.id],
-            cc_ids: None,
-            bcc_ids: None,
-            subject: "Code Review Request".to_string(),
-            body_md: format!(
-                "Please review:\n{}\n\nFiles:\n{}",
-                p.description,
-                p.files_to_review.join("\n")
-            ),
-            thread_id: Some("CODE-REVIEW".to_string()),
-            importance: Some("normal".to_string()),
-            ack_required: true, // Review requests should be acknowledged
-        };
-
-        let msg_id = MessageBmc::create(&ctx, &self.mm, msg_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Review request sent to '{}'. Reserved {} files for review (id: {})",
-            p.reviewer,
-            p.files_to_review.len(),
-            msg_id
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        macros::quick_review_workflow_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     // ========================================================================
@@ -3163,142 +2663,7 @@ impl AgentMailService {
         &self,
         params: Parameters<MacroStartSessionParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::{AgentBmc, AgentForCreate};
-        use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
-        use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        // Ensure project exists
-        let project = match ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.human_key).await {
-            Ok(proj) => proj,
-            Err(_) => {
-                // Create project with human_key as both slug and human_key
-                let slug = p
-                    .human_key
-                    .to_lowercase()
-                    .replace(|c: char| !c.is_alphanumeric() && c != '-', "-");
-                ProjectBmc::create(&ctx, &self.mm, &slug, &p.human_key)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                ProjectBmc::get_by_identifier(&ctx, &self.mm, &slug)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-        };
-
-        // Get or create agent
-        let agent_name = p
-            .agent_name
-            .unwrap_or_else(|| format!("{}-{}", p.program, &p.model.replace(".", "-")));
-        let agent = match AgentBmc::get_by_name(&ctx, &self.mm, project.id, &agent_name).await {
-            Ok(a) => a,
-            Err(_) => {
-                let agent_c = AgentForCreate {
-                    project_id: project.id,
-                    name: agent_name.clone(),
-                    program: p.program.clone(),
-                    model: p.model.clone(),
-                    task_description: p.task_description.clone(),
-                };
-                let id = AgentBmc::create(&ctx, &self.mm, agent_c)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                AgentBmc::get(&ctx, &self.mm, id)
-                    .await
-                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
-            }
-        };
-
-        // Reserve files if requested
-        let mut granted_reservations = Vec::new();
-        let mut reservation_conflicts = Vec::new();
-        if let Some(paths) = p.file_reservation_paths {
-            let now = chrono::Utc::now().naive_utc();
-            let expires_ts = now + chrono::Duration::seconds(p.file_reservation_ttl_seconds);
-
-            let active_reservations =
-                FileReservationBmc::list_active_for_project(&ctx, &self.mm, project.id)
-                    .await
-                    .unwrap_or_default();
-
-            for path in paths {
-                // Check for conflicts
-                for res in &active_reservations {
-                    if res.agent_id != agent.id
-                        && res.exclusive
-                        && lib_core::utils::pathspec::paths_conflict(&res.path_pattern, &path)
-                    {
-                        reservation_conflicts.push(format!(
-                            "{} conflicts with {} (agent ID {})",
-                            path, res.path_pattern, res.agent_id
-                        ));
-                    }
-                }
-
-                // Grant reservation (advisory model)
-                let fr_c = FileReservationForCreate {
-                    project_id: project.id,
-                    agent_id: agent.id,
-                    path_pattern: path.clone(),
-                    exclusive: true,
-                    reason: p.file_reservation_reason.clone(),
-                    expires_ts,
-                };
-                if let Ok(id) = FileReservationBmc::create(&ctx, &self.mm, fr_c).await {
-                    granted_reservations.push(serde_json::json!({
-                        "path": path,
-                        "id": id,
-                        "expires_ts": expires_ts.to_string()
-                    }));
-                }
-            }
-        }
-
-        // Fetch inbox
-        let inbox_messages =
-            MessageBmc::list_inbox_for_agent(&ctx, &self.mm, project.id, agent.id, p.inbox_limit)
-                .await
-                .unwrap_or_default();
-
-        let inbox_items: Vec<serde_json::Value> = inbox_messages
-            .iter()
-            .map(|m| {
-                serde_json::json!({
-                    "id": m.id,
-                    "subject": m.subject,
-                    "sender_name": m.sender_name,
-                    "created_ts": m.created_ts.to_string(),
-                    "importance": m.importance,
-                    "thread_id": m.thread_id,
-                })
-            })
-            .collect();
-
-        let result = serde_json::json!({
-            "project": {
-                "id": project.id,
-                "slug": project.slug,
-                "human_key": project.human_key,
-            },
-            "agent": {
-                "id": agent.id,
-                "name": agent.name,
-                "program": agent.program,
-                "model": agent.model,
-            },
-            "file_reservations": {
-                "granted": granted_reservations,
-                "conflicts": reservation_conflicts,
-            },
-            "inbox": inbox_items,
-        });
-
-        Ok(CallToolResult::success(vec![Content::text(
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string()),
-        )]))
+        macros::macro_start_session_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Prepare an agent for an existing thread
@@ -3309,127 +2674,7 @@ impl AgentMailService {
         &self,
         params: Parameters<MacroPrepareThreadParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::{AgentBmc, AgentForCreate};
-        use lib_core::model::message::MessageBmc;
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_key)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
-
-        // Get or create agent
-        let agent_name = p
-            .agent_name
-            .unwrap_or_else(|| format!("{}-{}", p.program, &p.model.replace(".", "-")));
-        let agent = if p.register_if_missing {
-            match AgentBmc::get_by_name(&ctx, &self.mm, project.id, &agent_name).await {
-                Ok(a) => a,
-                Err(_) => {
-                    let agent_c = AgentForCreate {
-                        project_id: project.id,
-                        name: agent_name.clone(),
-                        program: p.program.clone(),
-                        model: p.model.clone(),
-                        task_description: p.task_description.clone(),
-                    };
-                    let id = AgentBmc::create(&ctx, &self.mm, agent_c)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                    AgentBmc::get(&ctx, &self.mm, id)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
-                }
-            }
-        } else {
-            AgentBmc::get_by_name(&ctx, &self.mm, project.id, &agent_name)
-                .await
-                .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?
-        };
-
-        // Get thread messages
-        let thread_messages = MessageBmc::list_by_thread(&ctx, &self.mm, project.id, &p.thread_id)
-            .await
-            .unwrap_or_default();
-
-        // Compute thread summary
-        let total_messages = thread_messages.len();
-        let participants: std::collections::HashSet<String> = thread_messages
-            .iter()
-            .map(|m| m.sender_name.clone())
-            .collect();
-        let first_subject = thread_messages.first().map(|m| m.subject.clone());
-        let last_activity = thread_messages.last().map(|m| m.created_ts.to_string());
-
-        let examples: Vec<serde_json::Value> = if p.include_examples {
-            thread_messages
-                .iter()
-                .take(3)
-                .map(|m| {
-                    serde_json::json!({
-                        "sender": m.sender_name,
-                        "subject": m.subject,
-                        "body_preview": m.body_md.chars().take(100).collect::<String>(),
-                        "created_ts": m.created_ts,
-                    })
-                })
-                .collect()
-        } else {
-            vec![]
-        };
-
-        // Fetch inbox
-        let inbox_messages =
-            MessageBmc::list_inbox_for_agent(&ctx, &self.mm, project.id, agent.id, p.inbox_limit)
-                .await
-                .unwrap_or_default();
-
-        let inbox_items: Vec<serde_json::Value> = inbox_messages
-            .iter()
-            .map(|m| {
-                let mut item = serde_json::json!({
-                    "id": m.id,
-                    "subject": m.subject,
-                    "sender_name": m.sender_name,
-                    "created_ts": m.created_ts.to_string(),
-                    "importance": m.importance,
-                    "thread_id": m.thread_id,
-                });
-                if p.include_inbox_bodies {
-                    item["body_md"] = serde_json::json!(m.body_md);
-                }
-                item
-            })
-            .collect();
-
-        let result = serde_json::json!({
-            "project": {
-                "id": project.id,
-                "slug": project.slug,
-                "human_key": project.human_key,
-            },
-            "agent": {
-                "id": agent.id,
-                "name": agent.name,
-                "program": agent.program,
-                "model": agent.model,
-            },
-            "thread": {
-                "thread_id": p.thread_id,
-                "total_messages": total_messages,
-                "participants": participants.into_iter().collect::<Vec<_>>(),
-                "subject": first_subject,
-                "last_activity": last_activity,
-                "examples": examples,
-            },
-            "inbox": inbox_items,
-        });
-
-        Ok(CallToolResult::success(vec![Content::text(
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string()),
-        )]))
+        macros::macro_prepare_thread_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Reserve files with optional auto-release
@@ -3440,100 +2685,7 @@ impl AgentMailService {
         &self,
         params: Parameters<MacroFileReservationCycleParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::AgentBmc;
-        use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_key)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
-
-        let agent = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &p.agent_name)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
-
-        let now = chrono::Utc::now().naive_utc();
-        let expires_ts = now + chrono::Duration::seconds(p.ttl_seconds);
-
-        let active_reservations =
-            FileReservationBmc::list_active_for_project(&ctx, &self.mm, project.id)
-                .await
-                .unwrap_or_default();
-
-        let mut granted = Vec::new();
-        let mut conflicts = Vec::new();
-        let mut reservation_ids = Vec::new();
-
-        for path in &p.paths {
-            // Check for conflicts
-            for res in &active_reservations {
-                if res.agent_id != agent.id
-                    && (res.exclusive || p.exclusive)
-                    && lib_core::utils::pathspec::paths_conflict(&res.path_pattern, path)
-                {
-                    conflicts.push(serde_json::json!({
-                        "path": path,
-                        "conflicts_with": res.path_pattern,
-                        "held_by_agent_id": res.agent_id,
-                        "expires": res.expires_ts.to_string(),
-                    }));
-                }
-            }
-
-            // Grant reservation
-            let fr_c = FileReservationForCreate {
-                project_id: project.id,
-                agent_id: agent.id,
-                path_pattern: path.clone(),
-                exclusive: p.exclusive,
-                reason: p.reason.clone(),
-                expires_ts,
-            };
-            match FileReservationBmc::create(&ctx, &self.mm, fr_c).await {
-                Ok(id) => {
-                    reservation_ids.push(id);
-                    granted.push(serde_json::json!({
-                        "path": path,
-                        "id": id,
-                        "expires_ts": expires_ts.to_string(),
-                    }));
-                }
-                Err(e) => {
-                    conflicts.push(serde_json::json!({
-                        "path": path,
-                        "error": e.to_string(),
-                    }));
-                }
-            }
-        }
-
-        // Auto-release if requested
-        let mut released = Vec::new();
-        if p.auto_release {
-            for id in reservation_ids {
-                if FileReservationBmc::release(&ctx, &self.mm, id)
-                    .await
-                    .is_ok()
-                {
-                    released.push(id);
-                }
-            }
-        }
-
-        let result = serde_json::json!({
-            "file_reservations": {
-                "granted": granted,
-                "conflicts": conflicts,
-            },
-            "released": if p.auto_release { Some(released) } else { None },
-        });
-
-        Ok(CallToolResult::success(vec![Content::text(
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string()),
-        )]))
+        macros::macro_file_reservation_cycle_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Contact permission workflow with optional auto-accept and welcome message
@@ -3544,133 +2696,7 @@ impl AgentMailService {
         &self,
         params: Parameters<MacroContactHandshakeParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::agent::{AgentBmc, AgentForCreate};
-        use lib_core::model::agent_link::{AgentLinkBmc, AgentLinkForCreate};
-        use lib_core::model::message::{MessageBmc, MessageForCreate};
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        // Resolve aliases
-        let requester_name = p.requester.or(p.agent_name).ok_or_else(|| {
-            McpError::invalid_params("requester or agent_name is required".to_string(), None)
-        })?;
-        let target_name = p.target.or(p.to_agent).ok_or_else(|| {
-            McpError::invalid_params("target or to_agent is required".to_string(), None)
-        })?;
-
-        let project = ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.project_key)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Project not found: {}", e), None))?;
-
-        // Get or create requester agent
-        let requester = if p.register_if_missing {
-            match AgentBmc::get_by_name(&ctx, &self.mm, project.id, &requester_name).await {
-                Ok(a) => a,
-                Err(_) => {
-                    let program = p.program.clone().unwrap_or_else(|| "unknown".to_string());
-                    let model = p.model.clone().unwrap_or_else(|| "unknown".to_string());
-                    let agent_c = AgentForCreate {
-                        project_id: project.id,
-                        name: requester_name.clone(),
-                        program,
-                        model,
-                        task_description: String::new(),
-                    };
-                    let id = AgentBmc::create(&ctx, &self.mm, agent_c)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-                    AgentBmc::get(&ctx, &self.mm, id)
-                        .await
-                        .map_err(|e| McpError::internal_error(e.to_string(), None))?
-                }
-            }
-        } else {
-            AgentBmc::get_by_name(&ctx, &self.mm, project.id, &requester_name)
-                .await
-                .map_err(|e| {
-                    McpError::invalid_params(format!("Requester not found: {}", e), None)
-                })?
-        };
-
-        // Get target agent (must exist)
-        let target = AgentBmc::get_by_name(&ctx, &self.mm, project.id, &target_name)
-            .await
-            .map_err(|e| {
-                McpError::invalid_params(format!("Target agent not found: {}", e), None)
-            })?;
-
-        // Create contact request using AgentLinkBmc
-        let link_c = AgentLinkForCreate {
-            a_project_id: project.id,
-            a_agent_id: requester.id,
-            b_project_id: project.id,
-            b_agent_id: target.id,
-            reason: p.reason.clone(),
-        };
-        let link_id = AgentLinkBmc::request_contact(&ctx, &self.mm, link_c)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let request_result = serde_json::json!({
-            "link_id": link_id,
-            "from_agent": requester.name,
-            "to_agent": target.name,
-            "status": "pending",
-        });
-
-        // Auto-accept if requested
-        let response_result = if p.auto_accept {
-            AgentLinkBmc::respond_contact(&ctx, &self.mm, link_id, true)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-            Some(serde_json::json!({
-                "link_id": link_id,
-                "status": "accepted",
-            }))
-        } else {
-            None
-        };
-
-        // Send welcome message if provided
-        let welcome_result =
-            if let (Some(subject), Some(body)) = (p.welcome_subject, p.welcome_body) {
-                let msg_c = MessageForCreate {
-                    project_id: project.id,
-                    sender_id: requester.id,
-                    recipient_ids: vec![target.id],
-                    cc_ids: None,
-                    bcc_ids: None,
-                    subject,
-                    body_md: body,
-                    thread_id: p.thread_id,
-                    importance: Some("normal".to_string()),
-                    ack_required: false,
-                };
-                match MessageBmc::create(&ctx, &self.mm, msg_c).await {
-                    Ok(msg_id) => Some(serde_json::json!({
-                        "message_id": msg_id,
-                        "sent": true,
-                    })),
-                    Err(e) => Some(serde_json::json!({
-                        "sent": false,
-                        "error": e.to_string(),
-                    })),
-                }
-            } else {
-                None
-            };
-
-        let result = serde_json::json!({
-            "request": request_result,
-            "response": response_result,
-            "welcome_message": welcome_result,
-        });
-
-        Ok(CallToolResult::success(vec![Content::text(
-            serde_json::to_string_pretty(&result).unwrap_or_else(|_| "{}".to_string()),
-        )]))
+        macros::macro_contact_handshake_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     #[tool(
@@ -3744,20 +2770,7 @@ impl AgentMailService {
         &self,
         params: Parameters<EnsureProductParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::product::ProductBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let product = ProductBmc::ensure(&ctx, &self.mm, &p.product_uid, &p.name)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let output = format!(
-            "Product: {} ({})\nID: {}\nCreated: {}",
-            product.name, product.product_uid, product.id, product.created_at
-        );
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        products::ensure_product_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Link project to product
@@ -3766,26 +2779,7 @@ impl AgentMailService {
         &self,
         params: Parameters<LinkProjectToProductParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::product::ProductBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let link_id = ProductBmc::link_project(&ctx, &self.mm, product.id, project.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = format!(
-            "Linked project '{}' to product '{}' (link_id: {})",
-            p.project_slug, p.product_uid, link_id
-        );
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        products::link_project_to_product_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Unlink project from product
@@ -3794,57 +2788,13 @@ impl AgentMailService {
         &self,
         params: Parameters<UnlinkProjectFromProductParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::product::ProductBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
-
-        let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
-
-        let unlinked = ProductBmc::unlink_project(&ctx, &self.mm, product.id, project.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let msg = if unlinked {
-            format!(
-                "Unlinked project '{}' from product '{}'",
-                p.project_slug, p.product_uid
-            )
-        } else {
-            format!(
-                "Project '{}' was not linked to product '{}'",
-                p.project_slug, p.product_uid
-            )
-        };
-        Ok(CallToolResult::success(vec![Content::text(msg)]))
+        products::unlink_project_from_product_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// List all products
     #[tool(description = "List all products and their linked projects.")]
     async fn list_products(&self) -> Result<CallToolResult, McpError> {
-        use lib_core::model::product::ProductBmc;
-
-        let ctx = self.ctx();
-
-        let products = ProductBmc::list_all(&ctx, &self.mm)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let mut output = format!("Products ({}):\n\n", products.len());
-        for p in &products {
-            output.push_str(&format!(
-                "- {} (uid: {}, {} projects)\n  Projects: {:?}\n",
-                p.name,
-                p.product_uid,
-                p.project_ids.len(),
-                p.project_ids
-            ));
-        }
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        products::list_products_impl(&self.ctx(), &self.mm).await
     }
 
     /// List project siblings
@@ -3898,50 +2848,7 @@ impl AgentMailService {
         &self,
         params: Parameters<ProductInboxParams>,
     ) -> Result<CallToolResult, McpError> {
-        use lib_core::model::message::MessageBmc;
-        use lib_core::model::product::ProductBmc;
-        use lib_core::model::project::ProjectBmc;
-
-        let ctx = self.ctx();
-        let p = params.0;
-
-        let product = ProductBmc::get_by_uid(&ctx, &self.mm, &p.product_uid)
-            .await
-            .map_err(|e| McpError::invalid_params(format!("Product not found: {}", e), None))?;
-
-        let project_ids = ProductBmc::get_linked_projects(&ctx, &self.mm, product.id)
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-        let limit = p.limit.unwrap_or(10);
-        let mut output = format!(
-            "Product Inbox for '{}' ({} projects):\n\n",
-            product.name,
-            project_ids.len()
-        );
-
-        for project_id in project_ids {
-            let project = ProjectBmc::get(&ctx, &self.mm, project_id)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            let messages = MessageBmc::list_recent(&ctx, &self.mm, project_id, limit)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
-
-            output.push_str(&format!(
-                "\n## Project: {} ({})\n",
-                project.human_key, project.slug
-            ));
-            for m in &messages {
-                output.push_str(&format!(
-                    "  - [{}] {} (from: {}, {})\n",
-                    m.id, m.subject, m.sender_name, m.created_ts
-                ));
-            }
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(output)]))
+        products::product_inbox_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// Search messages across all projects linked to a product
