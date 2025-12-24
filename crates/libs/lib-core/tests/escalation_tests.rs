@@ -6,6 +6,7 @@ use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::escalation::{EscalationBmc, EscalationMode};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use uuid::Uuid;
 
 #[tokio::test]
@@ -22,7 +23,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         &ctx,
         &mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "default".to_string(),
             model: "gpt-4".to_string(),
@@ -30,12 +31,13 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         &ctx,
         &mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "default".to_string(),
             model: "gpt-4".to_string(),
@@ -43,6 +45,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     // 2. Create Overdue Message (Older than 24h)
     let msg_c = MessageForCreate {
@@ -154,7 +157,7 @@ async fn test_escalate_overdue_log_mode_dry_run() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -162,12 +165,13 @@ async fn test_escalate_overdue_log_mode_dry_run() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -175,6 +179,7 @@ async fn test_escalate_overdue_log_mode_dry_run() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -220,7 +225,7 @@ async fn test_escalate_overdue_log_mode_real() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -228,12 +233,13 @@ async fn test_escalate_overdue_log_mode_real() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -241,6 +247,7 @@ async fn test_escalate_overdue_log_mode_real() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -293,7 +300,7 @@ async fn test_escalate_overdue_no_overdue_messages() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -301,12 +308,13 @@ async fn test_escalate_overdue_no_overdue_messages() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -314,6 +322,7 @@ async fn test_escalate_overdue_no_overdue_messages() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -349,7 +358,7 @@ async fn test_escalate_overdue_overseer_mode_dry_run() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -357,12 +366,13 @@ async fn test_escalate_overdue_overseer_mode_dry_run() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -370,6 +380,7 @@ async fn test_escalate_overdue_overseer_mode_dry_run() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -415,7 +426,7 @@ async fn test_escalate_overdue_overseer_mode_real() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -423,12 +434,13 @@ async fn test_escalate_overdue_overseer_mode_real() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -436,6 +448,7 @@ async fn test_escalate_overdue_overseer_mode_real() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -488,7 +501,7 @@ async fn test_escalate_overdue_file_reservation_dry_run() -> lib_core::Result<()
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -496,12 +509,13 @@ async fn test_escalate_overdue_file_reservation_dry_run() -> lib_core::Result<()
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -509,6 +523,7 @@ async fn test_escalate_overdue_file_reservation_dry_run() -> lib_core::Result<()
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -561,7 +576,7 @@ async fn test_escalate_overdue_file_reservation_real() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -569,12 +584,13 @@ async fn test_escalate_overdue_file_reservation_real() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -582,6 +598,7 @@ async fn test_escalate_overdue_file_reservation_real() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     let msg_c = MessageForCreate {
         project_id,
@@ -635,7 +652,7 @@ async fn test_send_reminder() -> lib_core::Result<()> {
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -643,12 +660,13 @@ async fn test_send_reminder() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
         ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -656,6 +674,7 @@ async fn test_send_reminder() -> lib_core::Result<()> {
         },
     )
     .await?;
+    let recipient: i64 = recipient.into();
 
     // Create overdue message manually
     use lib_core::model::message::OverdueMessage;

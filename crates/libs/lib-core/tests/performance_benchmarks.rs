@@ -28,6 +28,7 @@ use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::export::{ExportBmc, ExportFormat, ScrubMode};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use libsql::Builder;
 use std::sync::Arc;
 use std::time::Instant;
@@ -75,7 +76,7 @@ async fn setup_test_project(mm: &ModelManager) -> (i64, i64, i64) {
         &ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "sender".to_string(),
             program: "bench".to_string(),
             model: "bench".to_string(),
@@ -89,7 +90,7 @@ async fn setup_test_project(mm: &ModelManager) -> (i64, i64, i64) {
         &ctx,
         mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId(project_id),
             name: "recipient".to_string(),
             program: "bench".to_string(),
             model: "bench".to_string(),
@@ -99,7 +100,7 @@ async fn setup_test_project(mm: &ModelManager) -> (i64, i64, i64) {
     .await
     .expect("create recipient");
 
-    (project_id, sender_id, recipient_id)
+    (project_id, sender_id.into(), recipient_id.into())
 }
 
 /// Helper to create a MessageForCreate with all required fields

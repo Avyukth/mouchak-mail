@@ -68,13 +68,14 @@ pub async fn register_agent_impl(
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
             // Auto-grant default capabilities for MCP tool usage
-            AgentCapabilityBmc::grant_defaults(ctx, mm, id)
+            AgentCapabilityBmc::grant_defaults(ctx, mm, id.get())
                 .await
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
             let msg = format!(
                 "Registered agent '{}' with id {} (granted default capabilities)",
-                params.name, id
+                params.name,
+                id.get()
             );
             Ok(CallToolResult::success(vec![Content::text(msg)]))
         }

@@ -79,7 +79,7 @@ pub async fn get_project_info_impl(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    let message_count = ProjectBmc::count_messages(ctx, mm, project.id)
+    let message_count = ProjectBmc::count_messages(ctx, mm, project.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 

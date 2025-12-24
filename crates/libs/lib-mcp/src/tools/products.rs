@@ -3,6 +3,7 @@
 //! Handles multi-repo coordination via products.
 
 use lib_core::{
+    ProjectId,
     ctx::Ctx,
     model::{ModelManager, message::MessageBmc, product::ProductBmc, project::ProjectBmc},
 };
@@ -45,7 +46,7 @@ pub async fn link_project_to_product_impl(
 
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let link_id = ProductBmc::link_project(ctx, mm, product.id, project.id)
+    let link_id = ProductBmc::link_project(ctx, mm, product.id, project.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -68,7 +69,7 @@ pub async fn unlink_project_from_product_impl(
 
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let unlinked = ProductBmc::unlink_project(ctx, mm, product.id, project.id)
+    let unlinked = ProductBmc::unlink_project(ctx, mm, product.id, project.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -134,7 +135,7 @@ pub async fn product_inbox_impl(
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-        let messages = MessageBmc::list_recent(ctx, mm, project_id, limit)
+        let messages = MessageBmc::list_recent(ctx, mm, ProjectId::new(project_id), limit)
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 

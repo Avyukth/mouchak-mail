@@ -47,7 +47,7 @@ async fn setup_agent(tc: &TestContext, project_slug: &str, name: &str) -> (i64, 
     let id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c)
         .await
         .expect("Failed to create agent");
-    (id, name.to_string())
+    (id.into(), name.to_string())
 }
 
 #[tokio::test]

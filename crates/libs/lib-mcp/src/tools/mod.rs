@@ -1308,8 +1308,8 @@ impl AgentMailService {
         }
 
         let metric = ToolMetricForCreate {
-            project_id,
-            agent_id,
+            project_id: project_id.map(|id| id.get()),
+            agent_id: agent_id.map(|id| id.get()),
             tool_name: tool_name.to_string(),
             args_json: args.as_ref().map(|v| v.to_string()),
             status,
@@ -1798,8 +1798,8 @@ impl AgentMailService {
                 .await?;
 
         let msg_c = OverseerMessageForCreate {
-            project_id: project.id,
-            sender_id: agent.id,
+            project_id: project.id.get(),
+            sender_id: agent.id.get(),
             subject: p.subject.clone(),
             body_md: p.body_md,
             importance: p.importance.unwrap_or_else(|| "normal".to_string()),
@@ -1955,7 +1955,7 @@ impl AgentMailService {
         let mut errors = Vec::new();
 
         for thread_id in thread_ids {
-            match MessageBmc::list_by_thread(&ctx, &self.mm, project.id, &thread_id).await {
+            match MessageBmc::list_by_thread(&ctx, &self.mm, project.id.get(), &thread_id).await {
                 Ok(messages) if !messages.is_empty() => {
                     let mut participants: Vec<String> =
                         messages.iter().map(|m| m.sender_name.clone()).collect();
@@ -2047,7 +2047,7 @@ impl AgentMailService {
 
         let project = helpers::resolve_project(&ctx, &self.mm, &p.project_slug).await?;
 
-        let siblings = ProjectBmc::list_siblings(&ctx, &self.mm, project.id)
+        let siblings = ProjectBmc::list_siblings(&ctx, &self.mm, project.id.get())
             .await
             .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 

@@ -40,10 +40,10 @@ pub async fn request_contact_impl(
         .map_err(|e| McpError::invalid_params(format!("To agent not found: {}", e), None))?;
 
     let link_c = AgentLinkForCreate {
-        a_project_id: from_project.id,
-        a_agent_id: from_agent.id,
-        b_project_id: to_project.id,
-        b_agent_id: to_agent.id,
+        a_project_id: from_project.id.get(),
+        a_agent_id: from_agent.id.get(),
+        b_project_id: to_project.id.get(),
+        b_agent_id: to_agent.id.get(),
         reason: params.reason,
     };
 
@@ -89,7 +89,7 @@ pub async fn list_contacts_impl(
         .await
         .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
 
-    let links = AgentLinkBmc::list_contacts(ctx, mm, project.id, agent.id)
+    let links = AgentLinkBmc::list_contacts(ctx, mm, project.id.get(), agent.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -99,7 +99,7 @@ pub async fn list_contacts_impl(
         links.len()
     );
     for link in &links {
-        let (other_project_id, other_agent_id) = if link.a_agent_id == agent.id {
+        let (other_project_id, other_agent_id) = if link.a_agent_id == agent.id.get() {
             (link.b_project_id, link.b_agent_id)
         } else {
             (link.a_project_id, link.a_agent_id)

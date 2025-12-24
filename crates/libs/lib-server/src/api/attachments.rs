@@ -118,8 +118,8 @@ pub async fn add_attachment(
         &ctx,
         mm,
         AttachmentForCreate {
-            project_id: project.id,
-            agent_id,
+            project_id: project.id.get(),
+            agent_id: agent_id.map(|id| id.get()),
             filename: filename.clone(),
             stored_path: stored_path.to_string_lossy().to_string(),
             media_type: mime.to_string(),
@@ -170,8 +170,13 @@ pub async fn list_attachments(
         None
     };
 
-    let items =
-        AttachmentBmc::list_by_project_and_agent(&ctx, &state.mm, project.id, agent_id).await?;
+    let items = AttachmentBmc::list_by_project_and_agent(
+        &ctx,
+        &state.mm,
+        project.id.get(),
+        agent_id.map(|id| id.get()),
+    )
+    .await?;
     Ok(Json(items).into_response())
 }
 
@@ -212,7 +217,7 @@ pub async fn get_attachment(
     // Security: Verify project access if project_slug provided
     if let Some(ref project_slug) = params.project_slug {
         let project = ProjectBmc::get_by_identifier(&ctx, mm, project_slug).await?;
-        if attachment.project_id != project.id {
+        if attachment.project_id != project.id.get() {
             warn!(
                 "get_attachment: project mismatch - attachment {} belongs to project {}, not {}",
                 id, attachment.project_id, project.id

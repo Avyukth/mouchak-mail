@@ -2527,8 +2527,13 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
                 lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, &mm, &project)
                     .await?;
 
-            lib_core::model::product::ProductBmc::link_project(&ctx, &mm, product.id, project.id)
-                .await?;
+            lib_core::model::product::ProductBmc::link_project(
+                &ctx,
+                &mm,
+                product.id,
+                project.id.get(),
+            )
+            .await?;
             println!(
                 "Linked project '{}' to product '{}'",
                 project.human_key, product.name
@@ -2625,14 +2630,16 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
                 use lib_core::model::agent::AgentBmc;
                 // We need to implement get_by_name_in_project in AgentBmc or similar logic
                 // For now, let's iterate all agents in project and match name (slow but works for CLI)
-                if let Ok(agents) = AgentBmc::list_all_for_project(&ctx, &mm, pid).await {
+                if let Ok(agents) =
+                    AgentBmc::list_all_for_project(&ctx, &mm, lib_core::ProjectId::from(pid)).await
+                {
                     if let Some(agent_obj) = agents.into_iter().find(|a| a.name == agent) {
                         if let Ok(messages) =
                             lib_core::model::message::MessageBmc::list_inbox_for_agent(
                                 &ctx,
                                 &mm,
                                 pid,
-                                agent_obj.id,
+                                agent_obj.id.get(),
                                 50,
                             )
                             .await

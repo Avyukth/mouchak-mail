@@ -40,6 +40,7 @@
 use crate::Result;
 use crate::model::ModelManager;
 use crate::store::git_store;
+use crate::types::ProjectId;
 use crate::utils::mistake_detection::suggest_similar;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -52,14 +53,14 @@ use std::path::Path;
 ///
 /// # Fields
 ///
-/// - `id` - Database primary key
+/// - `id` - Database primary key (strongly typed as [`ProjectId`])
 /// - `slug` - URL-safe identifier (e.g., "my-project")
 /// - `human_key` - Human-readable name (e.g., "My Project")
 /// - `created_at` - Timestamp of project creation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
-    /// Database primary key.
-    pub id: i64,
+    /// Database primary key (strongly typed).
+    pub id: ProjectId,
     /// URL-safe project identifier.
     pub slug: String,
     /// Human-readable project name.
@@ -157,7 +158,7 @@ impl ProjectBmc {
                 .unwrap_or_default();
 
             projects.push(Project {
-                id: row.get(0)?,
+                id: ProjectId::new(row.get(0)?),
                 slug: row.get(1)?,
                 human_key: row.get(2)?,
                 created_at,
@@ -194,7 +195,7 @@ impl ProjectBmc {
                 .unwrap_or_default(); // Simplification for MVP
 
             Ok(Project {
-                id: row.get(0)?,
+                id: ProjectId::new(row.get(0)?),
                 slug: row.get(1)?,
                 human_key: row.get(2)?,
                 created_at,
@@ -248,7 +249,7 @@ impl ProjectBmc {
                 .unwrap_or_default();
 
             Ok(Project {
-                id: row.get(0)?,
+                id: ProjectId::new(row.get(0)?),
                 slug: row.get(1)?,
                 human_key: row.get(2)?,
                 created_at,
@@ -424,7 +425,7 @@ impl ProjectBmc {
                 .unwrap_or_default();
 
             Ok(Project {
-                id: row.get(0)?,
+                id: ProjectId::new(row.get(0)?),
                 slug: row.get(1)?,
                 human_key: row.get(2)?,
                 created_at,
@@ -494,15 +495,24 @@ impl ProjectBmc {
 
         // 2. Export Mailbox (JSON)
         // reuse ExportBmc logic but specifically for archive
-        let messages =
-            crate::model::message::MessageBmc::list_recent(ctx, mm, project_id, 1000).await?; // reasonable limit for archive?
+        let messages = crate::model::message::MessageBmc::list_recent(
+            ctx,
+            mm,
+            ProjectId::new(project_id),
+            1000,
+        )
+        .await?; // reasonable limit for archive?
         let mailbox_json = serde_json::to_string_pretty(&messages)?;
         let mailbox_path = project_root.join("mailbox.json");
         std::fs::write(&mailbox_path, mailbox_json)?;
 
         // 3. Export Agents (JSON)
-        let agents =
-            crate::model::agent::AgentBmc::list_all_for_project(ctx, mm, project_id).await?;
+        let agents = crate::model::agent::AgentBmc::list_all_for_project(
+            ctx,
+            mm,
+            ProjectId::new(project_id),
+        )
+        .await?;
         let agents_json = serde_json::to_string_pretty(&agents)?;
         let agents_path = project_root.join("agents.json");
         std::fs::write(&agents_path, agents_json)?;
@@ -583,8 +593,10 @@ impl ProjectBmc {
         let project_slug = project.slug.clone();
 
         // Get all agent IDs for this project (needed for message_recipients cleanup)
-        let agents = super::agent::AgentBmc::list_all_for_project(ctx, mm, project_id).await?;
-        let agent_ids: Vec<i64> = agents.iter().map(|a| a.id).collect();
+        let agents =
+            super::agent::AgentBmc::list_all_for_project(ctx, mm, ProjectId::new(project_id))
+                .await?;
+        let agent_ids: Vec<i64> = agents.iter().map(|a| a.id.get()).collect();
 
         // 1. Delete message_recipients for messages in this project
         // (message_recipients references both messages and agents)

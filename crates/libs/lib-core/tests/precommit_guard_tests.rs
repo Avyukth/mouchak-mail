@@ -84,6 +84,7 @@ use chrono::{Duration, Utc};
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use lib_core::utils::slugify;
 use serial_test::serial;
 use temp_env::async_with_vars;
@@ -106,7 +107,7 @@ async fn test_guard_warn_mode() {
     let actual_slug = project.slug;
 
     let agent1 = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "agent1".into(),
         program: "c".into(),
         model: "m".into(),
@@ -116,7 +117,7 @@ async fn test_guard_warn_mode() {
 
     // Create conflicting reservation
     let fr_c = FileReservationForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         agent_id: agent1_id,
         path_pattern: "src/**".into(),
         exclusive: true,
@@ -129,7 +130,7 @@ async fn test_guard_warn_mode() {
 
     // Create agent2 who will conflict
     let agent2 = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "agent2".into(),
         program: "c".into(),
         model: "m".into(),
@@ -183,7 +184,7 @@ async fn test_guard_bypass_mode() {
     let actual_slug = project.slug;
 
     let agent1 = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "agent1".into(),
         program: "c".into(),
         model: "m".into(),
@@ -193,7 +194,7 @@ async fn test_guard_bypass_mode() {
 
     // Create conflicting reservation
     let fr_c = FileReservationForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         agent_id: agent1_id,
         path_pattern: "src/**".into(),
         exclusive: true,
@@ -206,7 +207,7 @@ async fn test_guard_bypass_mode() {
 
     // Create agent2
     let agent2 = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "agent2".into(),
         program: "c".into(),
         model: "m".into(),

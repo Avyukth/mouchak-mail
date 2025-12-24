@@ -32,7 +32,7 @@ async fn setup_messaging(tc: &TestContext) -> (i64, i64, i64) {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Sender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -42,7 +42,7 @@ async fn setup_messaging(tc: &TestContext) -> (i64, i64, i64) {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Recipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -52,7 +52,7 @@ async fn setup_messaging(tc: &TestContext) -> (i64, i64, i64) {
         .await
         .unwrap();
 
-    (project.id, sender_id, recipient_id)
+    (project.id.into(), sender_id.into(), recipient_id.into())
 }
 
 /// Test sending a simple message
@@ -444,7 +444,7 @@ async fn test_outbox_project_filtering() {
     let project1 = ProjectBmc::get(&tc.ctx, &tc.mm, project1_id).await.unwrap();
 
     let sender1_c = AgentForCreate {
-        project_id: project1.id,
+        project_id: project1.id.into(),
         name: "Sender1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -453,7 +453,7 @@ async fn test_outbox_project_filtering() {
     let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
 
     let recipient1_c = AgentForCreate {
-        project_id: project1.id,
+        project_id: project1.id.into(),
         name: "Recipient1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -472,7 +472,7 @@ async fn test_outbox_project_filtering() {
     let project2 = ProjectBmc::get(&tc.ctx, &tc.mm, project2_id).await.unwrap();
 
     let sender2_c = AgentForCreate {
-        project_id: project2.id,
+        project_id: project2.id.into(),
         name: "Sender2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -481,7 +481,7 @@ async fn test_outbox_project_filtering() {
     let sender2_id = AgentBmc::create(&tc.ctx, &tc.mm, sender2_c).await.unwrap();
 
     let recipient2_c = AgentForCreate {
-        project_id: project2.id,
+        project_id: project2.id.into(),
         name: "Recipient2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -493,9 +493,9 @@ async fn test_outbox_project_filtering() {
 
     // Send message in project 1
     let msg1_c = MessageForCreate {
-        project_id: project1.id,
-        sender_id: sender1_id,
-        recipient_ids: vec![recipient1_id],
+        project_id: project1.id.into(),
+        sender_id: sender1_id.into(),
+        recipient_ids: vec![recipient1_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Project 1 Message".to_string(),
@@ -508,9 +508,9 @@ async fn test_outbox_project_filtering() {
 
     // Send message in project 2
     let msg2_c = MessageForCreate {
-        project_id: project2.id,
-        sender_id: sender2_id,
-        recipient_ids: vec![recipient2_id],
+        project_id: project2.id.into(),
+        sender_id: sender2_id.into(),
+        recipient_ids: vec![recipient2_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Project 2 Message".to_string(),
@@ -522,14 +522,26 @@ async fn test_outbox_project_filtering() {
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
     // List outbox for sender1 in project1
-    let outbox1 = MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project1.id, sender1_id, 10)
-        .await
-        .expect("Should list outbox for project 1");
+    let outbox1 = MessageBmc::list_outbox_for_agent(
+        &tc.ctx,
+        &tc.mm,
+        project1.id.into(),
+        sender1_id.into(),
+        10,
+    )
+    .await
+    .expect("Should list outbox for project 1");
 
     // List outbox for sender2 in project2
-    let outbox2 = MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project2.id, sender2_id, 10)
-        .await
-        .expect("Should list outbox for project 2");
+    let outbox2 = MessageBmc::list_outbox_for_agent(
+        &tc.ctx,
+        &tc.mm,
+        project2.id.into(),
+        sender2_id.into(),
+        10,
+    )
+    .await
+    .expect("Should list outbox for project 2");
 
     // Verify correct filtering
     assert_eq!(
@@ -604,7 +616,7 @@ async fn test_outbox_with_multiple_recipients() {
 
     // Create one sender and multiple recipients
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "MultiSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -613,7 +625,7 @@ async fn test_outbox_with_multiple_recipients() {
     let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
 
     let recipient1_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Recipient1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -624,7 +636,7 @@ async fn test_outbox_with_multiple_recipients() {
         .unwrap();
 
     let recipient2_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Recipient2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -635,7 +647,7 @@ async fn test_outbox_with_multiple_recipients() {
         .unwrap();
 
     let recipient3_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Recipient3".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -647,11 +659,11 @@ async fn test_outbox_with_multiple_recipients() {
 
     // Send message with multiple recipients (to, cc, bcc)
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id,
-        recipient_ids: vec![recipient1_id],
-        cc_ids: Some(vec![recipient2_id]),
-        bcc_ids: Some(vec![recipient3_id]),
+        project_id: project.id.into(),
+        sender_id: sender_id.into(),
+        recipient_ids: vec![recipient1_id.into()],
+        cc_ids: Some(vec![recipient2_id.into()]),
+        bcc_ids: Some(vec![recipient3_id.into()]),
         subject: "Multi-recipient Message".to_string(),
         body_md: "This message has multiple recipients".to_string(),
         thread_id: None,
@@ -661,32 +673,51 @@ async fn test_outbox_with_multiple_recipients() {
     MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
 
     // Check outbox for sender
-    let outbox = MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project.id, sender_id, 10)
-        .await
-        .expect("Should list outbox");
+    let outbox =
+        MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), sender_id.into(), 10)
+            .await
+            .expect("Should list outbox");
 
     // Should have exactly 1 message
     assert_eq!(outbox.len(), 1, "Should have 1 message in outbox");
     assert_eq!(outbox[0].subject, "Multi-recipient Message");
 
     // Verify each recipient got the message in their inbox
-    let inbox1 = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, recipient1_id, 10)
-        .await
-        .expect("Should list inbox for recipient1");
+    let inbox1 = MessageBmc::list_inbox_for_agent(
+        &tc.ctx,
+        &tc.mm,
+        project.id.into(),
+        recipient1_id.into(),
+        10,
+    )
+    .await
+    .expect("Should list inbox for recipient1");
     assert_eq!(inbox1.len(), 1, "Recipient1 should have message in inbox");
 
-    let inbox2 = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, recipient2_id, 10)
-        .await
-        .expect("Should list inbox for recipient2");
+    let inbox2 = MessageBmc::list_inbox_for_agent(
+        &tc.ctx,
+        &tc.mm,
+        project.id.into(),
+        recipient2_id.into(),
+        10,
+    )
+    .await
+    .expect("Should list inbox for recipient2");
     assert_eq!(
         inbox2.len(),
         1,
         "Recipient2 (CC) should have message in inbox"
     );
 
-    let inbox3 = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, recipient3_id, 10)
-        .await
-        .expect("Should list inbox for recipient3");
+    let inbox3 = MessageBmc::list_inbox_for_agent(
+        &tc.ctx,
+        &tc.mm,
+        project.id.into(),
+        recipient3_id.into(),
+        10,
+    )
+    .await
+    .expect("Should list inbox for recipient3");
     assert_eq!(
         inbox3.len(),
         1,
@@ -730,7 +761,7 @@ async fn test_multiple_to_recipients() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "BatchSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -742,7 +773,7 @@ async fn test_multiple_to_recipients() {
     let mut recipient_ids = Vec::new();
     for i in 1..=3 {
         let recipient_c = AgentForCreate {
-            project_id: project.id,
+            project_id: project.id.into(),
             name: format!("ToRecipient{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -755,10 +786,11 @@ async fn test_multiple_to_recipients() {
     }
 
     // Send message with multiple TO recipients (no CC/BCC)
+    let recipient_ids_i64: Vec<i64> = recipient_ids.iter().map(|id| (*id).into()).collect();
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id,
-        recipient_ids: recipient_ids.clone(),
+        project_id: project.id.into(),
+        sender_id: sender_id.into(),
+        recipient_ids: recipient_ids_i64,
         cc_ids: None,
         bcc_ids: None,
         subject: "Batch TO Recipients Test".to_string(),
@@ -777,9 +809,10 @@ async fn test_multiple_to_recipients() {
 
     // Verify ALL 3 recipients received the message in their inbox
     for (i, rid) in recipient_ids.iter().enumerate() {
-        let inbox = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, *rid, 10)
-            .await
-            .expect("Should list inbox");
+        let inbox =
+            MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), (*rid).into(), 10)
+                .await
+                .expect("Should list inbox");
         assert_eq!(
             inbox.len(),
             1,
@@ -790,9 +823,10 @@ async fn test_multiple_to_recipients() {
     }
 
     // Verify sender's outbox has exactly 1 message
-    let outbox = MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project.id, sender_id, 10)
-        .await
-        .expect("Should list outbox");
+    let outbox =
+        MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), sender_id.into(), 10)
+            .await
+            .expect("Should list outbox");
     assert_eq!(outbox.len(), 1, "Sender should have 1 message in outbox");
 }
 
@@ -1002,7 +1036,7 @@ async fn test_list_pending_reviews_partial_ack() {
 
     // Create sender and 2 recipients
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "PartialSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1011,7 +1045,7 @@ async fn test_list_pending_reviews_partial_ack() {
     let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
 
     let r1_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Reviewer1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1020,7 +1054,7 @@ async fn test_list_pending_reviews_partial_ack() {
     let r1_id = AgentBmc::create(&tc.ctx, &tc.mm, r1_c).await.unwrap();
 
     let r2_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Reviewer2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1030,9 +1064,9 @@ async fn test_list_pending_reviews_partial_ack() {
 
     // Create message requiring ack from both reviewers
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id,
-        recipient_ids: vec![r1_id, r2_id],
+        project_id: project.id.into(),
+        sender_id: sender_id.into(),
+        recipient_ids: vec![r1_id.into(), r2_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Dual Review Required".to_string(),
@@ -1046,31 +1080,34 @@ async fn test_list_pending_reviews_partial_ack() {
         .expect("Should create message");
 
     // Before any ack: pending count = 1
-    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
-        .await
-        .unwrap();
+    let pending =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 10)
+            .await
+            .unwrap();
     assert_eq!(pending.len(), 1);
 
     // First reviewer acknowledges
-    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, r1_id)
+    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, r1_id.into())
         .await
         .expect("R1 should ack");
 
     // Still pending (r2 hasn't acked)
-    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
-        .await
-        .unwrap();
+    let pending =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 10)
+            .await
+            .unwrap();
     assert_eq!(pending.len(), 1, "Should still be pending - partial ack");
 
     // Second reviewer acknowledges
-    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, r2_id)
+    MessageBmc::acknowledge(&tc.ctx, &tc.mm, msg_id, r2_id.into())
         .await
         .expect("R2 should ack");
 
     // Now fully acked - should be removed from pending
-    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
-        .await
-        .unwrap();
+    let pending =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 10)
+            .await
+            .unwrap();
     assert_eq!(pending.len(), 0, "Should be empty after all acked");
 }
 
@@ -1136,7 +1173,7 @@ async fn test_list_pending_reviews_full_context_present() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "ContextSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1146,7 +1183,7 @@ async fn test_list_pending_reviews_full_context_present() {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "ContextRecipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1158,9 +1195,9 @@ async fn test_list_pending_reviews_full_context_present() {
 
     // Create message with ack_required
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id,
-        recipient_ids: vec![recipient_id],
+        project_id: project.id.into(),
+        sender_id: sender_id.into(),
+        recipient_ids: vec![recipient_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "[COMPLETION] Full Context Test".to_string(),
@@ -1172,9 +1209,10 @@ async fn test_list_pending_reviews_full_context_present() {
     let msg_id = MessageBmc::create(&tc.ctx, &tc.mm, msg_c).await.unwrap();
 
     // Retrieve pending reviews
-    let pending = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
-        .await
-        .expect("Should list pending reviews");
+    let pending =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 10)
+            .await
+            .expect("Should list pending reviews");
 
     assert_eq!(pending.len(), 1, "Should have 1 pending review");
 
@@ -1187,11 +1225,11 @@ async fn test_list_pending_reviews_full_context_present() {
     assert_eq!(row.importance, "high");
 
     // Verify sender info
-    assert_eq!(row.sender_id, sender_id);
+    assert_eq!(row.sender_id, Into::<i64>::into(sender_id));
     assert_eq!(row.sender_name, "ContextSender");
 
     // Verify project info
-    assert_eq!(row.project_id, project.id);
+    assert_eq!(row.project_id, Into::<i64>::into(project.id));
     assert_eq!(row.project_slug, slug);
     assert_eq!(row.project_name, human_key);
 
@@ -1224,7 +1262,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let project1 = ProjectBmc::get(&tc.ctx, &tc.mm, project1_id).await.unwrap();
 
     let sender1_c = AgentForCreate {
-        project_id: project1.id,
+        project_id: project1.id.into(),
         name: "P1Sender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1233,7 +1271,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
 
     let r1_c = AgentForCreate {
-        project_id: project1.id,
+        project_id: project1.id.into(),
         name: "P1Recipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1249,7 +1287,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let project2 = ProjectBmc::get(&tc.ctx, &tc.mm, project2_id).await.unwrap();
 
     let sender2_c = AgentForCreate {
-        project_id: project2.id,
+        project_id: project2.id.into(),
         name: "P2Sender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1258,7 +1296,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let sender2_id = AgentBmc::create(&tc.ctx, &tc.mm, sender2_c).await.unwrap();
 
     let r2_c = AgentForCreate {
-        project_id: project2.id,
+        project_id: project2.id.into(),
         name: "P2Recipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1268,9 +1306,9 @@ async fn test_list_pending_reviews_filter_by_project() {
 
     // Create ack_required message in project 1
     let msg1_c = MessageForCreate {
-        project_id: project1.id,
-        sender_id: sender1_id,
-        recipient_ids: vec![r1_id],
+        project_id: project1.id.into(),
+        sender_id: sender1_id.into(),
+        recipient_ids: vec![r1_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Project 1 Review".to_string(),
@@ -1283,9 +1321,9 @@ async fn test_list_pending_reviews_filter_by_project() {
 
     // Create ack_required message in project 2
     let msg2_c = MessageForCreate {
-        project_id: project2.id,
-        sender_id: sender2_id,
-        recipient_ids: vec![r2_id],
+        project_id: project2.id.into(),
+        sender_id: sender2_id.into(),
+        recipient_ids: vec![r2_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Project 2 Review".to_string(),
@@ -1297,22 +1335,24 @@ async fn test_list_pending_reviews_filter_by_project() {
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
     // Filter by project 1 only
-    let pending1 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project1.id), None, 10)
-        .await
-        .expect("Should filter by project 1");
+    let pending1 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project1.id.into()), None, 10)
+            .await
+            .expect("Should filter by project 1");
 
     assert_eq!(pending1.len(), 1, "Should have 1 pending in project 1");
     assert_eq!(pending1[0].subject, "Project 1 Review");
-    assert_eq!(pending1[0].project_id, project1.id);
+    assert_eq!(pending1[0].project_id, Into::<i64>::into(project1.id));
 
     // Filter by project 2 only
-    let pending2 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project2.id), None, 10)
-        .await
-        .expect("Should filter by project 2");
+    let pending2 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project2.id.into()), None, 10)
+            .await
+            .expect("Should filter by project 2");
 
     assert_eq!(pending2.len(), 1, "Should have 1 pending in project 2");
     assert_eq!(pending2[0].subject, "Project 2 Review");
-    assert_eq!(pending2[0].project_id, project2.id);
+    assert_eq!(pending2[0].project_id, Into::<i64>::into(project2.id));
 
     // No filter (None) - should return both
     let pending_all = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, None, None, 10)
@@ -1341,7 +1381,7 @@ async fn test_list_pending_reviews_filter_by_sender() {
 
     // Create 2 different senders
     let sender1_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Sender1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1350,7 +1390,7 @@ async fn test_list_pending_reviews_filter_by_sender() {
     let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
 
     let sender2_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "Sender2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1360,7 +1400,7 @@ async fn test_list_pending_reviews_filter_by_sender() {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "CommonRecipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1372,9 +1412,9 @@ async fn test_list_pending_reviews_filter_by_sender() {
 
     // Message from sender 1
     let msg1_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: sender1_id,
-        recipient_ids: vec![recipient_id],
+        project_id: project.id.into(),
+        sender_id: sender1_id.into(),
+        recipient_ids: vec![recipient_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "From Sender1".to_string(),
@@ -1387,9 +1427,9 @@ async fn test_list_pending_reviews_filter_by_sender() {
 
     // Message from sender 2
     let msg2_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: sender2_id,
-        recipient_ids: vec![recipient_id],
+        project_id: project.id.into(),
+        sender_id: sender2_id.into(),
+        recipient_ids: vec![recipient_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "From Sender2".to_string(),
@@ -1401,29 +1441,40 @@ async fn test_list_pending_reviews_filter_by_sender() {
     MessageBmc::create(&tc.ctx, &tc.mm, msg2_c).await.unwrap();
 
     // Filter by sender 1 only
-    let pending1 =
-        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), Some(sender1_id), 10)
-            .await
-            .expect("Should filter by sender 1");
+    let pending1 = MessageBmc::list_pending_reviews(
+        &tc.ctx,
+        &tc.mm,
+        Some(project.id.into()),
+        Some(sender1_id.into()),
+        10,
+    )
+    .await
+    .expect("Should filter by sender 1");
 
     assert_eq!(pending1.len(), 1, "Should have 1 message from sender 1");
     assert_eq!(pending1[0].subject, "From Sender1");
-    assert_eq!(pending1[0].sender_id, sender1_id);
+    assert_eq!(pending1[0].sender_id, Into::<i64>::into(sender1_id));
 
     // Filter by sender 2 only
-    let pending2 =
-        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), Some(sender2_id), 10)
-            .await
-            .expect("Should filter by sender 2");
+    let pending2 = MessageBmc::list_pending_reviews(
+        &tc.ctx,
+        &tc.mm,
+        Some(project.id.into()),
+        Some(sender2_id.into()),
+        10,
+    )
+    .await
+    .expect("Should filter by sender 2");
 
     assert_eq!(pending2.len(), 1, "Should have 1 message from sender 2");
     assert_eq!(pending2[0].subject, "From Sender2");
-    assert_eq!(pending2[0].sender_id, sender2_id);
+    assert_eq!(pending2[0].sender_id, Into::<i64>::into(sender2_id));
 
     // No sender filter - should return both
-    let pending_all = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 10)
-        .await
-        .expect("Should list all without sender filter");
+    let pending_all =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 10)
+            .await
+            .expect("Should list all without sender filter");
 
     assert_eq!(
         pending_all.len(),
@@ -1448,7 +1499,7 @@ async fn test_list_pending_reviews_limit_clamped() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "LimitSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1458,7 +1509,7 @@ async fn test_list_pending_reviews_limit_clamped() {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "LimitRecipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1471,9 +1522,9 @@ async fn test_list_pending_reviews_limit_clamped() {
     // Create 5 messages with ack_required
     for i in 1..=5 {
         let msg_c = MessageForCreate {
-            project_id: project.id,
-            sender_id,
-            recipient_ids: vec![recipient_id],
+            project_id: project.id.into(),
+            sender_id: sender_id.into(),
+            recipient_ids: vec![recipient_id.into()],
             cc_ids: None,
             bcc_ids: None,
             subject: format!("Review {}", i),
@@ -1486,21 +1537,24 @@ async fn test_list_pending_reviews_limit_clamped() {
     }
 
     // Test limit=3 returns exactly 3
-    let pending3 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 3)
-        .await
-        .expect("Should respect limit=3");
+    let pending3 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 3)
+            .await
+            .expect("Should respect limit=3");
     assert_eq!(pending3.len(), 3, "Should return exactly 3 with limit=3");
 
     // Test limit=0 is clamped to 1 (minimum)
-    let pending0 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 0)
-        .await
-        .expect("Should clamp limit=0 to 1");
+    let pending0 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 0)
+            .await
+            .expect("Should clamp limit=0 to 1");
     assert_eq!(pending0.len(), 1, "limit=0 should be clamped to 1");
 
     // Test negative limit is clamped to 1
-    let pending_neg = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, -5)
-        .await
-        .expect("Should clamp negative limit to 1");
+    let pending_neg =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, -5)
+            .await
+            .expect("Should clamp negative limit to 1");
     assert_eq!(
         pending_neg.len(),
         1,
@@ -1509,9 +1563,10 @@ async fn test_list_pending_reviews_limit_clamped() {
 
     // Test limit=100 is clamped to 50 (maximum)
     // We only have 5 messages so we can't directly verify 50, but we verify it doesn't error
-    let pending100 = MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id), None, 100)
-        .await
-        .expect("Should clamp limit=100 to 50 (max)");
+    let pending100 =
+        MessageBmc::list_pending_reviews(&tc.ctx, &tc.mm, Some(project.id.into()), None, 100)
+            .await
+            .expect("Should clamp limit=100 to 50 (max)");
     assert!(
         pending100.len() <= 50,
         "Large limit should be clamped to max 50"
@@ -1541,7 +1596,7 @@ async fn test_batch_mixed_recipient_types() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id,
+        project_id: project.id.into(),
         name: "MixedSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1553,7 +1608,7 @@ async fn test_batch_mixed_recipient_types() {
     let mut to_ids = Vec::new();
     for i in 1..=2 {
         let c = AgentForCreate {
-            project_id: project.id,
+            project_id: project.id.into(),
             name: format!("MixedTo{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -1566,7 +1621,7 @@ async fn test_batch_mixed_recipient_types() {
     let mut cc_ids = Vec::new();
     for i in 1..=2 {
         let c = AgentForCreate {
-            project_id: project.id,
+            project_id: project.id.into(),
             name: format!("MixedCc{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -1579,7 +1634,7 @@ async fn test_batch_mixed_recipient_types() {
     let mut bcc_ids = Vec::new();
     for i in 1..=2 {
         let c = AgentForCreate {
-            project_id: project.id,
+            project_id: project.id.into(),
             name: format!("MixedBcc{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -1589,12 +1644,15 @@ async fn test_batch_mixed_recipient_types() {
     }
 
     // Send message with 2 TO, 2 CC, 2 BCC (6 total recipients)
+    let to_ids_i64: Vec<i64> = to_ids.iter().map(|id| (*id).into()).collect();
+    let cc_ids_i64: Vec<i64> = cc_ids.iter().map(|id| (*id).into()).collect();
+    let bcc_ids_i64: Vec<i64> = bcc_ids.iter().map(|id| (*id).into()).collect();
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id,
-        recipient_ids: to_ids.clone(),
-        cc_ids: Some(cc_ids.clone()),
-        bcc_ids: Some(bcc_ids.clone()),
+        project_id: project.id.into(),
+        sender_id: sender_id.into(),
+        recipient_ids: to_ids_i64,
+        cc_ids: Some(cc_ids_i64),
+        bcc_ids: Some(bcc_ids_i64),
         subject: "Mixed Batch Test".to_string(),
         body_md: "Testing batch insert with 6 total recipients".to_string(),
         thread_id: None,
@@ -1611,31 +1669,35 @@ async fn test_batch_mixed_recipient_types() {
 
     // Verify all TO recipients received it
     for rid in &to_ids {
-        let inbox = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, *rid, 10)
-            .await
-            .unwrap();
+        let inbox =
+            MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), (*rid).into(), 10)
+                .await
+                .unwrap();
         assert_eq!(inbox.len(), 1, "TO recipient should have message");
     }
 
     // Verify all CC recipients received it
     for rid in &cc_ids {
-        let inbox = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, *rid, 10)
-            .await
-            .unwrap();
+        let inbox =
+            MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), (*rid).into(), 10)
+                .await
+                .unwrap();
         assert_eq!(inbox.len(), 1, "CC recipient should have message");
     }
 
     // Verify all BCC recipients received it
     for rid in &bcc_ids {
-        let inbox = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id, *rid, 10)
-            .await
-            .unwrap();
+        let inbox =
+            MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), (*rid).into(), 10)
+                .await
+                .unwrap();
         assert_eq!(inbox.len(), 1, "BCC recipient should have message");
     }
 
     // Verify sender has exactly 1 message in outbox
-    let outbox = MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project.id, sender_id, 10)
-        .await
-        .unwrap();
+    let outbox =
+        MessageBmc::list_outbox_for_agent(&tc.ctx, &tc.mm, project.id.into(), sender_id.into(), 10)
+            .await
+            .unwrap();
     assert_eq!(outbox.len(), 1, "Sender should have 1 outbox message");
 }

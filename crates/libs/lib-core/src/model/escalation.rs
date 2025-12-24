@@ -102,8 +102,8 @@ impl EscalationBmc {
             ctx,
             mm,
             crate::model::file_reservation::FileReservationForCreate {
-                project_id: msg.project_id,
-                agent_id: msg.sender_id,
+                project_id: crate::types::ProjectId::new(msg.project_id),
+                agent_id: crate::types::AgentId::new(msg.sender_id),
                 path_pattern: pattern.clone(),
                 exclusive: false,
                 reason: format!(

@@ -15,6 +15,7 @@ mod common;
 use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use lib_core::utils::slugify;
 
 /// Test creating a new project
@@ -131,7 +132,7 @@ async fn test_adopt_project() {
 
     // 2. Add an Agent to Source
     let agent_c = AgentForCreate {
-        project_id: src_id,
+        project_id: ProjectId(src_id),
         name: "test-agent".into(),
         program: "test".into(),
         model: "test".into(),
@@ -142,8 +143,8 @@ async fn test_adopt_project() {
     // 3. Add a Message to Source
     let msg_c = lib_core::model::message::MessageForCreate {
         project_id: src_id,
-        sender_id: agent_id,
-        recipient_ids: vec![agent_id],
+        sender_id: agent_id.into(),
+        recipient_ids: vec![agent_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Test adopt".into(),
@@ -172,7 +173,8 @@ async fn test_adopt_project() {
     // Check Agent
     let agent = AgentBmc::get(&tc.ctx, &tc.mm, agent_id).await.unwrap();
     assert_eq!(
-        agent.project_id, dest_id,
+        agent.project_id,
+        ProjectId(dest_id),
         "Agent should be moved to dest project"
     );
 
@@ -199,7 +201,7 @@ async fn test_delete_project_cascade() {
         .expect("Failed to create project");
 
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "doomed-agent".into(),
         program: "test".into(),
         model: "test".into(),
@@ -211,8 +213,8 @@ async fn test_delete_project_cascade() {
 
     let msg = lib_core::model::message::MessageForCreate {
         project_id,
-        sender_id: agent_id,
-        recipient_ids: vec![agent_id],
+        sender_id: agent_id.into(),
+        recipient_ids: vec![agent_id.into()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Doomed message".into(),

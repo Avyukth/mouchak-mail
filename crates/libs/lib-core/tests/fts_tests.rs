@@ -11,6 +11,7 @@ use lib_core::model::ModelManager;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use serial_test::serial;
 
 // --- Test Setup Helper ---
@@ -36,7 +37,7 @@ async fn setup_project_and_agent(ctx: &Ctx, mm: &ModelManager, suffix: &str) -> 
         ctx,
         mm,
         AgentForCreate {
-            project_id: p_id,
+            project_id: ProjectId(p_id),
             name: format!("agent-{}", suffix),
             program: "test".into(),
             model: "test".into(),
@@ -46,7 +47,7 @@ async fn setup_project_and_agent(ctx: &Ctx, mm: &ModelManager, suffix: &str) -> 
     .await
     .unwrap();
 
-    (p_id, a_id)
+    (p_id, a_id.into())
 }
 
 #[tokio::test]

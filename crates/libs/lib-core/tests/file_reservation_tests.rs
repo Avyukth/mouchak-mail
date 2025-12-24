@@ -17,6 +17,7 @@ use chrono::{Duration, Utc};
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::{AgentId, ProjectId};
 use lib_core::utils::slugify;
 
 /// Helper to set up a project and agent for file reservation tests
@@ -29,7 +30,7 @@ async fn setup_project_and_agent(tc: &TestContext) -> (i64, i64) {
         .expect("Failed to create project");
 
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "test-agent".to_string(),
         program: "claude-code".to_string(),
         model: "claude-3".to_string(),
@@ -40,7 +41,7 @@ async fn setup_project_and_agent(tc: &TestContext) -> (i64, i64) {
         .await
         .expect("Failed to create agent");
 
-    (project_id, agent_id)
+    (project_id, agent_id.into())
 }
 
 /// Test creating a file reservation
@@ -54,8 +55,8 @@ async fn test_create_file_reservation() {
 
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "src/**/*.rs".to_string(),
         exclusive: true,
         reason: "Editing source files".to_string(),
@@ -80,8 +81,8 @@ async fn test_get_file_reservation() {
 
     let expires_ts = Utc::now().naive_utc() + Duration::hours(2);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "Cargo.toml".to_string(),
         exclusive: true,
         reason: "Updating dependencies".to_string(),
@@ -97,8 +98,8 @@ async fn test_get_file_reservation() {
         .expect("Failed to get file reservation");
 
     assert_eq!(reservation.id, reservation_id);
-    assert_eq!(reservation.project_id, project_id);
-    assert_eq!(reservation.agent_id, agent_id);
+    assert_eq!(reservation.project_id, ProjectId(project_id));
+    assert_eq!(reservation.agent_id, AgentId(agent_id));
     assert_eq!(reservation.path_pattern, "Cargo.toml");
     assert!(reservation.exclusive);
     assert_eq!(reservation.reason, "Updating dependencies");
@@ -118,8 +119,8 @@ async fn test_list_active_file_reservations() {
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     for pattern in &["src/*.rs", "tests/*.rs", "docs/*.md"] {
         let fr_c = FileReservationForCreate {
-            project_id,
-            agent_id,
+            project_id: ProjectId(project_id),
+            agent_id: AgentId(agent_id),
             path_pattern: pattern.to_string(),
             exclusive: true,
             reason: "Testing".to_string(),
@@ -130,9 +131,10 @@ async fn test_list_active_file_reservations() {
             .expect("Failed to create reservation");
     }
 
-    let active = FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
-        .await
-        .expect("Failed to list active reservations");
+    let active =
+        FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, ProjectId(project_id))
+            .await
+            .expect("Failed to list active reservations");
 
     assert_eq!(active.len(), 3, "Should have 3 active reservations");
 }
@@ -148,8 +150,8 @@ async fn test_release_file_reservation() {
 
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "README.md".to_string(),
         exclusive: false,
         reason: "Updating docs".to_string(),
@@ -176,9 +178,10 @@ async fn test_release_file_reservation() {
     );
 
     // Active list should be empty
-    let active = FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
-        .await
-        .expect("Failed to list active reservations");
+    let active =
+        FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, ProjectId(project_id))
+            .await
+            .expect("Failed to list active reservations");
 
     assert_eq!(
         active.len(),
@@ -199,8 +202,8 @@ async fn test_release_by_path() {
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     let path_pattern = "lib/**/*.rs";
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: path_pattern.to_string(),
         exclusive: true,
         reason: "Refactoring".to_string(),
@@ -235,8 +238,8 @@ async fn test_force_release() {
 
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "config/*.yaml".to_string(),
         exclusive: true,
         reason: "Config update".to_string(),
@@ -274,8 +277,8 @@ async fn test_renew_file_reservation() {
 
     let original_expires = Utc::now().naive_utc() + Duration::hours(1);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "build/**".to_string(),
         exclusive: true,
         reason: "Build process".to_string(),
@@ -317,8 +320,8 @@ async fn test_list_all_for_project() {
 
     // Create and release one reservation
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "old/*.rs".to_string(),
         exclusive: false,
         reason: "Old work".to_string(),
@@ -333,8 +336,8 @@ async fn test_list_all_for_project() {
 
     // Create an active reservation
     let fr_c2 = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "new/*.rs".to_string(),
         exclusive: true,
         reason: "New work".to_string(),
@@ -356,9 +359,10 @@ async fn test_list_all_for_project() {
     );
 
     // list_active should return only 1
-    let active = FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
-        .await
-        .expect("Failed to list active reservations");
+    let active =
+        FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, ProjectId(project_id))
+            .await
+            .expect("Failed to list active reservations");
 
     assert_eq!(active.len(), 1, "Should have 1 active reservation");
 }
@@ -393,15 +397,16 @@ async fn test_list_all_active() {
         .expect("Failed to create project 1");
 
     let agent1 = AgentForCreate {
-        project_id: project1_id,
+        project_id: ProjectId(project1_id),
         name: "agent-one".to_string(),
         program: "claude".to_string(),
         model: "claude-3".to_string(),
         task_description: "Agent one".to_string(),
     };
-    let agent1_id = AgentBmc::create(&tc.ctx, &tc.mm, agent1)
+    let agent1_id: i64 = AgentBmc::create(&tc.ctx, &tc.mm, agent1)
         .await
-        .expect("Failed to create agent 1");
+        .expect("Failed to create agent 1")
+        .into();
 
     // Create second project with reservations
     let human_key2 = "/test/project2";
@@ -411,22 +416,23 @@ async fn test_list_all_active() {
         .expect("Failed to create project 2");
 
     let agent2 = AgentForCreate {
-        project_id: project2_id,
+        project_id: ProjectId(project2_id),
         name: "agent-two".to_string(),
         program: "claude".to_string(),
         model: "claude-3".to_string(),
         task_description: "Agent two".to_string(),
     };
-    let agent2_id = AgentBmc::create(&tc.ctx, &tc.mm, agent2)
+    let agent2_id: i64 = AgentBmc::create(&tc.ctx, &tc.mm, agent2)
         .await
-        .expect("Failed to create agent 2");
+        .expect("Failed to create agent 2")
+        .into();
 
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
 
     // Create reservations in project 1
     let fr1 = FileReservationForCreate {
-        project_id: project1_id,
-        agent_id: agent1_id,
+        project_id: ProjectId(project1_id),
+        agent_id: AgentId(agent1_id),
         path_pattern: "src/*.rs".to_string(),
         exclusive: true,
         reason: "Project 1 work".to_string(),
@@ -438,8 +444,8 @@ async fn test_list_all_active() {
 
     // Create reservations in project 2
     let fr2 = FileReservationForCreate {
-        project_id: project2_id,
-        agent_id: agent2_id,
+        project_id: ProjectId(project2_id),
+        agent_id: AgentId(agent2_id),
         path_pattern: "lib/*.rs".to_string(),
         exclusive: true,
         reason: "Project 2 work".to_string(),
@@ -461,7 +467,7 @@ async fn test_list_all_active() {
     );
 
     // Verify they are from different projects
-    let project_ids: Vec<i64> = all_active.iter().map(|r| r.project_id).collect();
+    let project_ids: Vec<i64> = all_active.iter().map(|r| r.project_id.into()).collect();
     assert!(
         project_ids.contains(&project1_id),
         "Should include project 1"
@@ -483,7 +489,7 @@ use temp_env::async_with_vars;
 /// Helper to create a second agent for conflict testing
 async fn create_second_agent(tc: &TestContext, project_id: i64) -> i64 {
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "other-agent".to_string(),
         program: "claude-code".to_string(),
         model: "claude-3".to_string(),
@@ -492,6 +498,7 @@ async fn create_second_agent(tc: &TestContext, project_id: i64) -> i64 {
     AgentBmc::create(&tc.ctx, &tc.mm, agent)
         .await
         .expect("Failed to create second agent")
+        .into()
 }
 
 /// Test that guard detects conflicts when another agent holds a reservation
@@ -509,8 +516,8 @@ async fn test_guard_detects_reservation_conflict() {
     // Agent 1 reserves src/**/*.rs
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id: agent1_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent1_id),
         path_pattern: "src/**/*.rs".to_string(),
         exclusive: true,
         reason: "Working on source files".to_string(),
@@ -570,8 +577,8 @@ async fn test_guard_allows_own_reservations() {
     // Agent reserves src/**/*.rs
     let expires_ts = Utc::now().naive_utc() + Duration::hours(1);
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent_id),
         path_pattern: "src/**/*.rs".to_string(),
         exclusive: true,
         reason: "Working on source files".to_string(),
@@ -624,8 +631,8 @@ async fn test_guard_ignores_expired_reservations() {
     // Agent 1 reserves src/**/*.rs with expired time
     let expires_ts = Utc::now().naive_utc() - Duration::hours(1); // Already expired!
     let fr_c = FileReservationForCreate {
-        project_id,
-        agent_id: agent1_id,
+        project_id: ProjectId(project_id),
+        agent_id: AgentId(agent1_id),
         path_pattern: "src/**/*.rs".to_string(),
         exclusive: true,
         reason: "Working on source files".to_string(),

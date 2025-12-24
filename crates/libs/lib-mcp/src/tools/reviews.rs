@@ -25,7 +25,7 @@ pub async fn get_review_state_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let messages = MessageBmc::list_by_thread(ctx, mm, project.id, &params.thread_id)
+    let messages = MessageBmc::list_by_thread(ctx, mm, project.id.get(), &params.thread_id)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -83,7 +83,7 @@ pub async fn claim_review_impl(
         .unwrap_or_else(|| format!("TASK-{}", params.message_id));
 
     // Get thread messages to check state
-    let messages = MessageBmc::list_by_thread(ctx, mm, project.id, &thread_id)
+    let messages = MessageBmc::list_by_thread(ctx, mm, project.id.get(), &thread_id)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -115,8 +115,8 @@ pub async fn claim_review_impl(
 
     // Send [REVIEWING] message
     let msg = MessageForCreate {
-        project_id: project.id,
-        sender_id: reviewer.id,
+        project_id: project.id.get(),
+        sender_id: reviewer.id.get(),
         recipient_ids: vec![message.sender_id],
         cc_ids: None,
         bcc_ids: None,

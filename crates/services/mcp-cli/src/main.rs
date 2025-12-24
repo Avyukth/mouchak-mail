@@ -261,12 +261,12 @@ async fn handle_send_message(
         let recipient =
             lib_core::model::agent::AgentBmc::get_by_name(ctx, mm, project.id, &recipient_name)
                 .await?;
-        recipient_ids.push(recipient.id);
+        recipient_ids.push(recipient.id.get());
     }
 
     let msg_c = lib_core::model::message::MessageForCreate {
-        project_id: project.id,
-        sender_id: sender.id,
+        project_id: project.id.get(),
+        sender_id: sender.id.get(),
         recipient_ids,
         cc_ids: None,
         bcc_ids: None,
@@ -327,12 +327,16 @@ async fn handle_projects_command(
 
             println!(
                 "Adopting from '{}' ({}) -> '{}' ({})",
-                src.human_key, src.id, dest.human_key, dest.id
+                src.human_key,
+                src.id.get(),
+                dest.human_key,
+                dest.id.get()
             );
             if dry_run {
                 println!("Dry run: No changes made.");
             } else {
-                lib_core::model::project::ProjectBmc::adopt(ctx, mm, src.id, dest.id).await?;
+                lib_core::model::project::ProjectBmc::adopt(ctx, mm, src.id.get(), dest.id.get())
+                    .await?;
                 println!("Adoption complete.");
             }
         }

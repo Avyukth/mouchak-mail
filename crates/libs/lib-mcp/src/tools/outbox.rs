@@ -27,8 +27,8 @@ pub async fn list_outbox_impl(
     let messages = MessageBmc::list_outbox_for_agent(
         ctx,
         mm,
-        project.id,
-        agent.id,
+        project.id.get(),
+        agent.id.get(),
         params.limit.unwrap_or(50),
     )
     .await

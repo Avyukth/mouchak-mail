@@ -36,7 +36,10 @@ async fn setup_project_with_agents(tc: &TestContext, human_key: &str) -> (i64, i
         model: "test".to_string(),
         task_description: "Sender agent".to_string(),
     };
-    let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
+    let sender_id: i64 = AgentBmc::create(&tc.ctx, &tc.mm, sender_c)
+        .await
+        .unwrap()
+        .into();
 
     let recipient_c = AgentForCreate {
         project_id: project.id,
@@ -45,11 +48,12 @@ async fn setup_project_with_agents(tc: &TestContext, human_key: &str) -> (i64, i
         model: "test".to_string(),
         task_description: "Recipient agent".to_string(),
     };
-    let recipient_id = AgentBmc::create(&tc.ctx, &tc.mm, recipient_c)
+    let recipient_id: i64 = AgentBmc::create(&tc.ctx, &tc.mm, recipient_c)
         .await
-        .unwrap();
+        .unwrap()
+        .into();
 
-    (project.id, sender_id, recipient_id)
+    (project.id.get(), sender_id, recipient_id)
 }
 
 /// Test that unified inbox returns messages from ALL projects

@@ -95,9 +95,15 @@ pub async fn list_pending_reviews_impl(
     };
 
     let limit = params.limit.unwrap_or(5);
-    let rows = MessageBmc::list_pending_reviews(ctx, mm, project_id, sender_id, limit)
-        .await
-        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+    let rows = MessageBmc::list_pending_reviews(
+        ctx,
+        mm,
+        project_id.map(|p| p.get()),
+        sender_id.map(|s| s.get()),
+        limit,
+    )
+    .await
+    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
     let json_str = serde_json::to_string_pretty(&rows)
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;

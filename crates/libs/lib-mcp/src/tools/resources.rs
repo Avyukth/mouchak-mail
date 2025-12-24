@@ -173,9 +173,10 @@ pub async fn read_resource_impl(
                 .await
                 .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
 
-            let messages = MessageBmc::list_inbox_for_agent(ctx, mm, project_id, agent.id, limit)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            let messages =
+                MessageBmc::list_inbox_for_agent(ctx, mm, project_id.get(), agent.id.get(), limit)
+                    .await
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
             let resource_messages: Vec<_> = messages
                 .iter()
@@ -206,9 +207,10 @@ pub async fn read_resource_impl(
                 .await
                 .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
 
-            let messages = MessageBmc::list_outbox_for_agent(ctx, mm, project_id, agent.id, limit)
-                .await
-                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            let messages =
+                MessageBmc::list_outbox_for_agent(ctx, mm, project_id.get(), agent.id.get(), limit)
+                    .await
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
             let resource_messages: Vec<_> = messages
                 .iter()
@@ -235,7 +237,7 @@ pub async fn read_resource_impl(
                 "Missing thread ID".to_string(),
                 None,
             ))?;
-            let messages = MessageBmc::list_by_thread(ctx, mm, project_id, thread_id_str)
+            let messages = MessageBmc::list_by_thread(ctx, mm, project_id.get(), thread_id_str)
                 .await
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -260,7 +262,7 @@ pub async fn read_resource_impl(
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?
         }
         "threads" => {
-            let threads = MessageBmc::list_threads(ctx, mm, project_id, limit)
+            let threads = MessageBmc::list_threads(ctx, mm, project_id.get(), limit)
                 .await
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?;
             serde_json::to_string_pretty(&threads)

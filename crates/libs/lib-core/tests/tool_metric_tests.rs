@@ -16,6 +16,7 @@ use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::project::ProjectBmc;
 use lib_core::model::tool_metric::{ToolMetricBmc, ToolMetricForCreate};
+use lib_core::types::ProjectId;
 use lib_core::utils::slugify;
 
 /// Helper to set up a project for tool metric tests
@@ -297,7 +298,7 @@ async fn test_tool_metric_with_agent() {
     let project_id = setup_project(&tc).await;
 
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "metrics-agent".to_string(),
         program: "claude-code".to_string(),
         model: "claude-3".to_string(),
@@ -309,7 +310,7 @@ async fn test_tool_metric_with_agent() {
 
     let metric_c = ToolMetricForCreate {
         project_id: Some(project_id),
-        agent_id: Some(agent_id),
+        agent_id: Some(agent_id.into()),
         tool_name: "reserve_file".to_string(),
         args_json: Some(r#"{"path": "src/**"}"#.to_string()),
         status: "success".to_string(),
@@ -327,6 +328,6 @@ async fn test_tool_metric_with_agent() {
 
     assert_eq!(metrics.len(), 1);
     assert_eq!(metrics[0].id, metric_id);
-    assert_eq!(metrics[0].agent_id, Some(agent_id));
+    assert_eq!(metrics[0].agent_id, Some(agent_id.into()));
     assert_eq!(metrics[0].tool_name, "reserve_file");
 }

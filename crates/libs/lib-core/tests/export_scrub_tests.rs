@@ -4,6 +4,7 @@ use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::export::{ExportBmc, ExportFormat, ScrubMode};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use uuid::Uuid;
 
 #[tokio::test]
@@ -16,31 +17,33 @@ async fn test_export_scrubbing() -> lib_core::Result<()> {
     let project_slug = Uuid::new_v4().to_string();
     let project_id = ProjectBmc::create(&ctx, &mm, &project_slug, "Export Test").await?;
 
-    let sender = AgentBmc::create(
+    let sender: i64 = AgentBmc::create(
         &ctx,
         &mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId::from(project_id),
             name: "sender".to_string(),
             program: "default".to_string(),
             model: "gpt-4".to_string(),
             task_description: "".to_string(),
         },
     )
-    .await?;
+    .await?
+    .into();
 
-    let recipient = AgentBmc::create(
+    let recipient: i64 = AgentBmc::create(
         &ctx,
         &mm,
         AgentForCreate {
-            project_id,
+            project_id: ProjectId::from(project_id),
             name: "recipient".to_string(),
             program: "default".to_string(),
             model: "gpt-4".to_string(),
             task_description: "".to_string(),
         },
     )
-    .await?;
+    .await?
+    .into();
 
     // Create a message with PII
     let subject = "Sensitive Info: user@example.com (555) 123-4567";

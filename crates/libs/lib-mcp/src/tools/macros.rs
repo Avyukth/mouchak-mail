@@ -33,7 +33,7 @@ pub async fn list_macros_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let macros = MacroDefBmc::list(ctx, mm, project.id)
+    let macros = MacroDefBmc::list(ctx, mm, project.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -62,7 +62,7 @@ pub async fn register_macro_impl(
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
     let macro_c = MacroDefForCreate {
-        project_id: project.id,
+        project_id: project.id.get(),
         name: params.name.clone(),
         description: params.description,
         steps: params.steps,
@@ -84,7 +84,7 @@ pub async fn unregister_macro_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let deleted = MacroDefBmc::delete(ctx, mm, project.id, &params.name)
+    let deleted = MacroDefBmc::delete(ctx, mm, project.id.get(), &params.name)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -104,7 +104,7 @@ pub async fn invoke_macro_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let macro_def = MacroDefBmc::get_by_name(ctx, mm, project.id, &params.name)
+    let macro_def = MacroDefBmc::get_by_name(ctx, mm, project.id.get(), &params.name)
         .await
         .map_err(|e| McpError::invalid_params(format!("Macro not found: {}", e), None))?;
 
@@ -156,15 +156,15 @@ pub async fn quick_standup_workflow_impl(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    let recipient_ids: Vec<i64> = agents.iter().map(|a| a.id).collect();
+    let recipient_ids: Vec<i64> = agents.iter().map(|a| a.id.get()).collect();
 
     let question = params
         .standup_question
         .unwrap_or_else(|| "What are you working on today?".to_string());
 
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: sender.id,
+        project_id: project.id.get(),
+        sender_id: sender.id.get(),
         recipient_ids,
         cc_ids: None,
         bcc_ids: None,
@@ -197,7 +197,7 @@ pub async fn quick_handoff_workflow_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.from_agent)
             .await?;
 
-    let to_agent = helpers::resolve_agent(ctx, mm, project.id, &params.to_agent).await?;
+    let to_agent = helpers::resolve_agent(ctx, mm, project.id.get(), &params.to_agent).await?;
 
     let files_text = if let Some(files) = &params.files {
         format!("\n\nFiles:\n{}", files.join("\n"))
@@ -206,9 +206,9 @@ pub async fn quick_handoff_workflow_impl(
     };
 
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: from_agent.id,
-        recipient_ids: vec![to_agent.id],
+        project_id: project.id.get(),
+        sender_id: from_agent.id.get(),
+        recipient_ids: vec![to_agent.id.get()],
         cc_ids: None,
         bcc_ids: None,
         subject: format!("Task Handoff: {}", params.task_description),
@@ -242,7 +242,7 @@ pub async fn quick_review_workflow_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.requester)
             .await?;
 
-    let reviewer = helpers::resolve_agent(ctx, mm, project.id, &params.reviewer).await?;
+    let reviewer = helpers::resolve_agent(ctx, mm, project.id.get(), &params.reviewer).await?;
 
     // Reserve files for review (non-exclusive)
     let expires_ts = chrono::Utc::now().naive_utc() + chrono::Duration::hours(2);
@@ -261,9 +261,9 @@ pub async fn quick_review_workflow_impl(
     }
 
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: requester.id,
-        recipient_ids: vec![reviewer.id],
+        project_id: project.id.get(),
+        sender_id: requester.id.get(),
+        recipient_ids: vec![reviewer.id.get()],
         cc_ids: None,
         bcc_ids: None,
         subject: "Code Review Request".to_string(),
@@ -382,10 +382,15 @@ pub async fn macro_start_session_impl(
     }
 
     // Fetch inbox
-    let inbox_messages =
-        MessageBmc::list_inbox_for_agent(ctx, mm, project.id, agent.id, params.inbox_limit)
-            .await
-            .unwrap_or_default();
+    let inbox_messages = MessageBmc::list_inbox_for_agent(
+        ctx,
+        mm,
+        project.id.get(),
+        agent.id.get(),
+        params.inbox_limit,
+    )
+    .await
+    .unwrap_or_default();
 
     let inbox_items: Vec<serde_json::Value> = inbox_messages
         .iter()
@@ -465,7 +470,7 @@ pub async fn macro_prepare_thread_impl(
     };
 
     // Get thread messages
-    let thread_messages = MessageBmc::list_by_thread(ctx, mm, project.id, &params.thread_id)
+    let thread_messages = MessageBmc::list_by_thread(ctx, mm, project.id.get(), &params.thread_id)
         .await
         .unwrap_or_default();
 
@@ -496,10 +501,15 @@ pub async fn macro_prepare_thread_impl(
     };
 
     // Fetch inbox
-    let inbox_messages =
-        MessageBmc::list_inbox_for_agent(ctx, mm, project.id, agent.id, params.inbox_limit)
-            .await
-            .unwrap_or_default();
+    let inbox_messages = MessageBmc::list_inbox_for_agent(
+        ctx,
+        mm,
+        project.id.get(),
+        agent.id.get(),
+        params.inbox_limit,
+    )
+    .await
+    .unwrap_or_default();
 
     let inbox_items: Vec<serde_json::Value> = inbox_messages
         .iter()
@@ -697,10 +707,10 @@ pub async fn macro_contact_handshake_impl(
 
     // Create contact request using AgentLinkBmc
     let link_c = AgentLinkForCreate {
-        a_project_id: project.id,
-        a_agent_id: requester.id,
-        b_project_id: project.id,
-        b_agent_id: target.id,
+        a_project_id: project.id.get(),
+        a_agent_id: requester.id.get(),
+        b_project_id: project.id.get(),
+        b_agent_id: target.id.get(),
         reason: params.reason.clone(),
     };
     let link_id = AgentLinkBmc::request_contact(ctx, mm, link_c)
@@ -731,9 +741,9 @@ pub async fn macro_contact_handshake_impl(
     let welcome_result =
         if let (Some(subject), Some(body)) = (params.welcome_subject, params.welcome_body) {
             let msg_c = MessageForCreate {
-                project_id: project.id,
-                sender_id: requester.id,
-                recipient_ids: vec![target.id],
+                project_id: project.id.get(),
+                sender_id: requester.id.get(),
+                recipient_ids: vec![target.id.get()],
                 cc_ids: None,
                 bcc_ids: None,
                 subject,

@@ -18,6 +18,7 @@ use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
 use lib_core::model::tool_metric::{ToolMetricBmc, ToolMetricForCreate};
+use lib_core::types::ProjectId;
 use lib_core::utils::slugify;
 
 /// Helper to set up a project with agent
@@ -30,16 +31,17 @@ async fn setup_project_and_agent(tc: &TestContext) -> (i64, i64) {
         .expect("Failed to create project");
 
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId::from(project_id),
         name: "activity-agent".to_string(),
         program: "claude-code".to_string(),
         model: "claude-3".to_string(),
         task_description: "Testing activity feed".to_string(),
     };
 
-    let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent)
+    let agent_id: i64 = AgentBmc::create(&tc.ctx, &tc.mm, agent)
         .await
-        .expect("Failed to create agent");
+        .expect("Failed to create agent")
+        .into();
 
     (project_id, agent_id)
 }
@@ -55,15 +57,16 @@ async fn test_list_activity_with_messages() {
 
     // Create a second agent as recipient
     let agent2 = AgentForCreate {
-        project_id,
+        project_id: ProjectId::from(project_id),
         name: "recipient-agent".to_string(),
         program: "cursor".to_string(),
         model: "gpt-4".to_string(),
         task_description: "Receiving messages".to_string(),
     };
-    let agent2_id = AgentBmc::create(&tc.ctx, &tc.mm, agent2)
+    let agent2_id: i64 = AgentBmc::create(&tc.ctx, &tc.mm, agent2)
         .await
-        .expect("Failed to create agent 2");
+        .expect("Failed to create agent 2")
+        .into();
 
     // Send a message
     let msg = MessageForCreate {
@@ -148,7 +151,7 @@ async fn test_list_activity_with_agents() {
     // Create multiple agents
     for name in &["agent-alpha", "agent-beta", "agent-gamma"] {
         let agent = AgentForCreate {
-            project_id,
+            project_id: ProjectId::from(project_id),
             name: name.to_string(),
             program: "test-program".to_string(),
             model: "test-model".to_string(),

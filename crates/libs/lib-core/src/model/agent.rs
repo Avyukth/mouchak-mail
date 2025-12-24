@@ -14,6 +14,7 @@
 //! ```no_run
 //! use lib_core::model::agent::{AgentBmc, AgentForCreate};
 //! use lib_core::model::ModelManager;
+//! use lib_core::types::ProjectId;
 //! use lib_core::ctx::Ctx;
 //!
 //! # async fn example() -> lib_core::Result<()> {
@@ -22,7 +23,7 @@
 //!
 //! // Register a new agent
 //! let agent_data = AgentForCreate {
-//!     project_id: 1,
+//!     project_id: ProjectId::new(1),
 //!     name: "worker-1".to_string(),
 //!     program: "claude-code".to_string(),
 //!     model: "claude-sonnet-4-20250514".to_string(),
@@ -41,6 +42,7 @@ use crate::Result;
 use crate::ctx::Ctx;
 use crate::model::ModelManager;
 use crate::store::git_store;
+use crate::types::{AgentId, ProjectId};
 use crate::utils::mistake_detection::suggest_similar;
 use crate::utils::parse_timestamp;
 use chrono::NaiveDateTime;
@@ -67,8 +69,8 @@ use std::path::PathBuf;
 /// - `contact_policy` - Agent communication preferences
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Agent {
-    pub id: i64,
-    pub project_id: i64,
+    pub id: AgentId,
+    pub project_id: ProjectId,
     pub name: String,
     pub program: String,
     pub model: String,
@@ -93,7 +95,7 @@ pub struct Agent {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AgentForCreate {
     /// Project database ID.
-    pub project_id: i64,
+    pub project_id: ProjectId,
     /// Unique agent name within the project.
     pub name: String,
     /// Agent runtime program.
@@ -135,11 +137,12 @@ impl AgentBmc {
     /// ```no_run
     /// # use lib_core::model::agent::{AgentBmc, AgentForCreate};
     /// # use lib_core::model::ModelManager;
+    /// # use lib_core::types::ProjectId;
     /// # use lib_core::ctx::Ctx;
     /// # async fn example(mm: &ModelManager) {
     /// let ctx = Ctx::root_ctx();
     /// let agent = AgentForCreate {
-    ///     project_id: 1,
+    ///     project_id: ProjectId::new(1),
     ///     name: "claude-1".to_string(),
     ///     program: "claude-code".to_string(),
     ///     model: "claude-3.5-sonnet".to_string(),
@@ -148,7 +151,7 @@ impl AgentBmc {
     /// let id = AgentBmc::create(&ctx, mm, agent).await.unwrap();
     /// # }
     /// ```
-    pub async fn create(_ctx: &Ctx, mm: &ModelManager, agent_c: AgentForCreate) -> Result<i64> {
+    pub async fn create(_ctx: &Ctx, mm: &ModelManager, agent_c: AgentForCreate) -> Result<AgentId> {
         let db = mm.db();
 
         // 1. Insert into DB
@@ -164,7 +167,7 @@ impl AgentBmc {
 
         let mut rows = stmt
             .query((
-                agent_c.project_id,
+                agent_c.project_id.get(),
                 agent_c.name.as_str(),
                 agent_c.program.as_str(),
                 agent_c.model.as_str(),
@@ -172,15 +175,15 @@ impl AgentBmc {
             ))
             .await?;
 
-        let id = if let Some(row) = rows.next().await? {
-            row.get::<i64>(0)?
+        let id: AgentId = if let Some(row) = rows.next().await? {
+            AgentId::new(row.get::<i64>(0)?)
         } else {
             return Err(crate::Error::InvalidInput("Failed to create agent".into()));
         };
 
         // 2. Write profile to Git
         let stmt = db.prepare("SELECT slug FROM projects WHERE id = ?").await?;
-        let mut rows = stmt.query([agent_c.project_id]).await?;
+        let mut rows = stmt.query([agent_c.project_id.get()]).await?;
 
         let project_slug: String = if let Some(row) = rows.next().await? {
             row.get(0)?
@@ -231,7 +234,7 @@ impl AgentBmc {
     ///
     /// # Errors
     /// Returns `Error::AgentNotFound` if the ID doesn't exist
-    pub async fn get(_ctx: &Ctx, mm: &ModelManager, id: i64) -> Result<Agent> {
+    pub async fn get(_ctx: &Ctx, mm: &ModelManager, id: AgentId) -> Result<Agent> {
         let db = mm.db();
         let stmt = db.prepare(
             r#"
@@ -239,7 +242,7 @@ impl AgentBmc {
             FROM agents WHERE id = ?
             "#
         ).await?;
-        let mut rows = stmt.query([id]).await?;
+        let mut rows = stmt.query([id.get()]).await?;
 
         if let Some(row) = rows.next().await? {
             // Column indices: 0=id, 1=project_id, 2=name, 3=program, 4=model,
@@ -251,8 +254,8 @@ impl AgentBmc {
             let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             Ok(Agent {
-                id: row.get(0)?,
-                project_id: row.get(1)?,
+                id: AgentId::new(row.get(0)?),
+                project_id: ProjectId::new(row.get(1)?),
                 name: row.get(2)?,
                 program: row.get(3)?,
                 model: row.get(4)?,
@@ -283,7 +286,7 @@ impl AgentBmc {
     pub async fn get_by_name(
         _ctx: &Ctx,
         mm: &ModelManager,
-        project_id: i64,
+        project_id: ProjectId,
         name: &str,
     ) -> Result<Agent> {
         let db = mm.db();
@@ -293,7 +296,7 @@ impl AgentBmc {
             FROM agents WHERE project_id = ? AND name = ?
             "#
         ).await?;
-        let mut rows = stmt.query((project_id, name)).await?;
+        let mut rows = stmt.query((project_id.get(), name)).await?;
 
         if let Some(row) = rows.next().await? {
             // Column indices: 0=id, 1=project_id, 2=name, 3=program, 4=model,
@@ -305,8 +308,8 @@ impl AgentBmc {
             let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             Ok(Agent {
-                id: row.get(0)?,
-                project_id: row.get(1)?,
+                id: AgentId::new(row.get(0)?),
+                project_id: ProjectId::new(row.get(1)?),
                 name: row.get(2)?,
                 program: row.get(3)?,
                 model: row.get(4)?,
@@ -321,7 +324,7 @@ impl AgentBmc {
             let stmt = db
                 .prepare("SELECT name FROM agents WHERE project_id = ?")
                 .await?;
-            let mut rows = stmt.query([project_id]).await?;
+            let mut rows = stmt.query([project_id.get()]).await?;
             let mut all_names: Vec<String> = Vec::new();
             while let Some(row) = rows.next().await? {
                 all_names.push(row.get(0)?);
@@ -359,7 +362,7 @@ impl AgentBmc {
     pub async fn check_reviewer_exists(
         _ctx: &Ctx,
         mm: &ModelManager,
-        project_id: i64,
+        project_id: ProjectId,
         stale_threshold: Option<std::time::Duration>,
     ) -> Result<Option<Agent>> {
         let db = mm.db();
@@ -369,7 +372,7 @@ impl AgentBmc {
             FROM agents WHERE project_id = ? AND LOWER(name) = 'reviewer'
             "#
         ).await?;
-        let mut rows = stmt.query([project_id]).await?;
+        let mut rows = stmt.query([project_id.get()]).await?;
 
         if let Some(row) = rows.next().await? {
             let inception_ts_str: String = row.get(6)?;
@@ -390,8 +393,8 @@ impl AgentBmc {
             }
 
             Ok(Some(Agent {
-                id: row.get(0)?,
-                project_id: row.get(1)?,
+                id: AgentId::new(row.get(0)?),
+                project_id: ProjectId::new(row.get(1)?),
                 name: row.get(2)?,
                 program: row.get(3)?,
                 model: row.get(4)?,
@@ -418,7 +421,7 @@ impl AgentBmc {
     pub async fn list_all_for_project(
         _ctx: &Ctx,
         mm: &ModelManager,
-        project_id: i64,
+        project_id: ProjectId,
     ) -> Result<Vec<Agent>> {
         let db = mm.db();
         let stmt = db.prepare(
@@ -427,7 +430,7 @@ impl AgentBmc {
             FROM agents WHERE project_id = ? ORDER BY name ASC
             "#
         ).await?;
-        let mut rows = stmt.query([project_id]).await?;
+        let mut rows = stmt.query([project_id.get()]).await?;
 
         let mut agents = Vec::new();
         while let Some(row) = rows.next().await? {
@@ -440,8 +443,8 @@ impl AgentBmc {
             let last_active_ts = parse_timestamp(&last_active_ts_str, "agent.last_active_ts");
 
             agents.push(Agent {
-                id: row.get(0)?,
-                project_id: row.get(1)?,
+                id: AgentId::new(row.get(0)?),
+                project_id: ProjectId::new(row.get(1)?),
                 name: row.get(2)?,
                 program: row.get(3)?,
                 model: row.get(4)?,
@@ -464,12 +467,16 @@ impl AgentBmc {
     ///
     /// # Returns
     /// The count of messages where this agent is the sender.
-    pub async fn count_messages_sent(_ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<i64> {
+    pub async fn count_messages_sent(
+        _ctx: &Ctx,
+        mm: &ModelManager,
+        agent_id: AgentId,
+    ) -> Result<i64> {
         let db = mm.db();
         let stmt = db
             .prepare("SELECT COUNT(*) FROM messages WHERE sender_id = ?")
             .await?;
-        let mut rows = stmt.query([agent_id]).await?;
+        let mut rows = stmt.query([agent_id.get()]).await?;
         if let Some(row) = rows.next().await? {
             Ok(row.get(0)?)
         } else {
@@ -489,13 +496,13 @@ impl AgentBmc {
     pub async fn count_messages_received(
         _ctx: &Ctx,
         mm: &ModelManager,
-        agent_id: i64,
+        agent_id: AgentId,
     ) -> Result<i64> {
         let db = mm.db();
         let stmt = db
             .prepare("SELECT COUNT(*) FROM message_recipients WHERE agent_id = ?")
             .await?;
-        let mut rows = stmt.query([agent_id]).await?;
+        let mut rows = stmt.query([agent_id.get()]).await?;
         if let Some(row) = rows.next().await? {
             Ok(row.get(0)?)
         } else {
@@ -519,7 +526,7 @@ impl AgentBmc {
     pub async fn update_profile(
         _ctx: &Ctx,
         mm: &ModelManager,
-        agent_id: i64,
+        agent_id: AgentId,
         update: AgentProfileUpdate,
     ) -> Result<()> {
         let db = mm.db();
@@ -528,21 +535,21 @@ impl AgentBmc {
             let stmt = db
                 .prepare("UPDATE agents SET task_description = ? WHERE id = ?")
                 .await?;
-            stmt.execute((task_description, agent_id)).await?;
+            stmt.execute((task_description, agent_id.get())).await?;
         }
 
         if let Some(attachments_policy) = update.attachments_policy {
             let stmt = db
                 .prepare("UPDATE agents SET attachments_policy = ? WHERE id = ?")
                 .await?;
-            stmt.execute((attachments_policy, agent_id)).await?;
+            stmt.execute((attachments_policy, agent_id.get())).await?;
         }
 
         if let Some(contact_policy) = update.contact_policy {
             let stmt = db
                 .prepare("UPDATE agents SET contact_policy = ? WHERE id = ?")
                 .await?;
-            stmt.execute((contact_policy, agent_id)).await?;
+            stmt.execute((contact_policy, agent_id.get())).await?;
         }
 
         // Update last_active_ts
@@ -551,7 +558,7 @@ impl AgentBmc {
         let stmt = db
             .prepare("UPDATE agents SET last_active_ts = ? WHERE id = ?")
             .await?;
-        stmt.execute((now_str, agent_id)).await?;
+        stmt.execute((now_str, agent_id.get())).await?;
 
         Ok(())
     }
@@ -578,13 +585,13 @@ impl AgentBmc {
     ///
     /// # Errors
     /// Returns an error if the agent ID doesn't exist
-    pub async fn delete(ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<()> {
+    pub async fn delete(ctx: &Ctx, mm: &ModelManager, agent_id: AgentId) -> Result<()> {
         let db = mm.db();
 
         let agent = Self::get(ctx, mm, agent_id).await?;
 
         let stmt = db.prepare("SELECT slug FROM projects WHERE id = ?").await?;
-        let mut rows = stmt.query([agent.project_id]).await?;
+        let mut rows = stmt.query([agent.project_id.get()]).await?;
         let project_slug: String = rows
             .next()
             .await?
@@ -595,41 +602,41 @@ impl AgentBmc {
         let stmt = db
             .prepare("DELETE FROM message_recipients WHERE agent_id = ?")
             .await?;
-        stmt.execute([agent_id]).await?;
+        stmt.execute([agent_id.get()]).await?;
 
         // 2. Delete messages where this agent is sender (FTS5 trigger handles messages_fts)
         let stmt = db
             .prepare("DELETE FROM messages WHERE sender_id = ?")
             .await?;
-        stmt.execute([agent_id]).await?;
+        stmt.execute([agent_id.get()]).await?;
 
         // 3. Delete file_reservations
         let stmt = db
             .prepare("DELETE FROM file_reservations WHERE agent_id = ?")
             .await?;
-        stmt.execute([agent_id]).await?;
+        stmt.execute([agent_id.get()]).await?;
 
         // 4. Delete build_slots
         let stmt = db
             .prepare("DELETE FROM build_slots WHERE agent_id = ?")
             .await?;
-        stmt.execute([agent_id]).await?;
+        stmt.execute([agent_id.get()]).await?;
 
         // 5. Delete agent_links (both sides)
         let stmt = db
             .prepare("DELETE FROM agent_links WHERE a_agent_id = ? OR b_agent_id = ?")
             .await?;
-        stmt.execute([agent_id, agent_id]).await?;
+        stmt.execute([agent_id.get(), agent_id.get()]).await?;
 
         // 6. Delete overseer_messages
         let stmt = db
             .prepare("DELETE FROM overseer_messages WHERE sender_id = ?")
             .await?;
-        stmt.execute([agent_id]).await?;
+        stmt.execute([agent_id.get()]).await?;
 
         // 7. Delete the agent
         let stmt = db.prepare("DELETE FROM agents WHERE id = ?").await?;
-        stmt.execute([agent_id]).await?;
+        stmt.execute([agent_id.get()]).await?;
 
         // 8. Clean up Git archive
         let agent_dir = mm

@@ -30,7 +30,7 @@ pub async fn send_message_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.sender_name)
             .await?;
 
-    if !AgentCapabilityBmc::check(ctx, mm, sender.id, "send_message")
+    if !AgentCapabilityBmc::check(ctx, mm, sender.id.get(), "send_message")
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?
     {
@@ -43,17 +43,19 @@ pub async fn send_message_impl(
         ));
     }
 
-    let recipient_ids = helpers::resolve_agent_names(ctx, mm, project.id, &params.to).await?;
+    let recipient_ids = helpers::resolve_agent_names(ctx, mm, project.id.get(), &params.to).await?;
 
     let cc_ids =
-        helpers::resolve_optional_agent_names(ctx, mm, project.id, params.cc.as_deref()).await?;
+        helpers::resolve_optional_agent_names(ctx, mm, project.id.get(), params.cc.as_deref())
+            .await?;
 
     let bcc_ids =
-        helpers::resolve_optional_agent_names(ctx, mm, project.id, params.bcc.as_deref()).await?;
+        helpers::resolve_optional_agent_names(ctx, mm, project.id.get(), params.bcc.as_deref())
+            .await?;
 
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: sender.id,
+        project_id: project.id.get(),
+        sender_id: sender.id.get(),
         recipient_ids,
         cc_ids,
         bcc_ids,
@@ -85,7 +87,7 @@ pub async fn list_inbox_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.agent_name)
             .await?;
 
-    if !AgentCapabilityBmc::check(ctx, mm, agent.id, "fetch_inbox")
+    if !AgentCapabilityBmc::check(ctx, mm, agent.id.get(), "fetch_inbox")
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?
     {
@@ -98,10 +100,15 @@ pub async fn list_inbox_impl(
         ));
     }
 
-    let messages =
-        MessageBmc::list_inbox_for_agent(ctx, mm, project.id, agent.id, params.limit.unwrap_or(50))
-            .await
-            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+    let messages = MessageBmc::list_inbox_for_agent(
+        ctx,
+        mm,
+        project.id.get(),
+        agent.id.get(),
+        params.limit.unwrap_or(50),
+    )
+    .await
+    .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
     let mut output = format!(
         "Inbox for '{}' ({} messages):\n\n",
@@ -153,7 +160,7 @@ pub async fn search_messages_impl(
     let messages = MessageBmc::search(
         ctx,
         mm,
-        project.id,
+        project.id.get(),
         &params.query,
         params.limit.unwrap_or(20),
     )
@@ -183,7 +190,7 @@ pub async fn get_thread_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let messages = MessageBmc::list_by_thread(ctx, mm, project.id, &params.thread_id)
+    let messages = MessageBmc::list_by_thread(ctx, mm, project.id.get(), &params.thread_id)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -212,7 +219,7 @@ pub async fn reply_message_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.sender_name)
             .await?;
 
-    if !AgentCapabilityBmc::check(ctx, mm, sender.id, "send_message")
+    if !AgentCapabilityBmc::check(ctx, mm, sender.id.get(), "send_message")
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?
     {
@@ -236,8 +243,8 @@ pub async fn reply_message_impl(
     };
 
     let msg_c = MessageForCreate {
-        project_id: project.id,
-        sender_id: sender.id,
+        project_id: project.id.get(),
+        sender_id: sender.id.get(),
         recipient_ids: vec![original_msg.sender_id],
         cc_ids: None,
         bcc_ids: None,
@@ -266,7 +273,7 @@ pub async fn mark_message_read_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.agent_name)
             .await?;
 
-    MessageBmc::mark_read(ctx, mm, params.message_id, agent.id)
+    MessageBmc::mark_read(ctx, mm, params.message_id, agent.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -287,7 +294,7 @@ pub async fn acknowledge_message_impl(
         helpers::resolve_project_and_agent(ctx, mm, &params.project_slug, &params.agent_name)
             .await?;
 
-    if !AgentCapabilityBmc::check(ctx, mm, agent.id, "acknowledge_message")
+    if !AgentCapabilityBmc::check(ctx, mm, agent.id.get(), "acknowledge_message")
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?
     {
@@ -300,7 +307,7 @@ pub async fn acknowledge_message_impl(
         ));
     }
 
-    MessageBmc::acknowledge(ctx, mm, params.message_id, agent.id)
+    MessageBmc::acknowledge(ctx, mm, params.message_id, agent.id.get())
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
@@ -319,7 +326,7 @@ pub async fn list_threads_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let threads = MessageBmc::list_threads(ctx, mm, project.id, params.limit.unwrap_or(50))
+    let threads = MessageBmc::list_threads(ctx, mm, project.id.get(), params.limit.unwrap_or(50))
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 

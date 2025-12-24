@@ -16,9 +16,10 @@ use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::project::ProjectBmc;
 use lib_core::utils::slugify;
+use lib_core::{AgentId, ProjectId};
 
 /// Helper to create a test project
-async fn create_test_project(tc: &TestContext, name: &str) -> i64 {
+async fn create_test_project(tc: &TestContext, name: &str) -> ProjectId {
     let human_key = format!("/test/agents/{}", name);
     let slug = slugify(&human_key);
 
@@ -27,9 +28,10 @@ async fn create_test_project(tc: &TestContext, name: &str) -> i64 {
         return project.id;
     }
 
-    ProjectBmc::create(&tc.ctx, &tc.mm, &slug, &human_key)
+    let id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, &human_key)
         .await
-        .expect("Failed to create project")
+        .expect("Failed to create project");
+    ProjectId(id)
 }
 
 /// Test registering a new agent
@@ -53,7 +55,7 @@ async fn test_register_agent() {
         .await
         .expect("Failed to create agent");
 
-    assert!(agent_id > 0, "Agent should have valid ID");
+    assert!(agent_id.get() > 0, "Agent should have valid ID");
 }
 
 /// Test agent lookup by ID
@@ -145,7 +147,7 @@ async fn test_agent_not_found() {
         .await
         .expect("Failed to create test context");
 
-    let result = AgentBmc::get(&tc.ctx, &tc.mm, 99999).await;
+    let result = AgentBmc::get(&tc.ctx, &tc.mm, AgentId(99999)).await;
 
     assert!(result.is_err(), "Should return error for nonexistent agent");
 }
@@ -170,9 +172,9 @@ async fn test_delete_agent_cascade() {
         .expect("Failed to create agent");
 
     let msg = lib_core::model::message::MessageForCreate {
-        project_id,
-        sender_id: agent_id,
-        recipient_ids: vec![agent_id],
+        project_id: project_id.get(),
+        sender_id: agent_id.get(),
+        recipient_ids: vec![agent_id.get()],
         cc_ids: None,
         bcc_ids: None,
         subject: "From doomed agent".into(),
@@ -192,7 +194,7 @@ async fn test_delete_agent_cascade() {
     let result = AgentBmc::get(&tc.ctx, &tc.mm, agent_id).await;
     assert!(result.is_err(), "Agent should not exist after deletion");
 
-    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await;
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id.get()).await;
     assert!(
         project.is_ok(),
         "Project should still exist after agent deletion"
@@ -205,6 +207,6 @@ async fn test_delete_nonexistent_agent() {
         .await
         .expect("Failed to create test context");
 
-    let result = AgentBmc::delete(&tc.ctx, &tc.mm, 99999).await;
+    let result = AgentBmc::delete(&tc.ctx, &tc.mm, AgentId(99999)).await;
     assert!(result.is_err(), "Deleting nonexistent agent should fail");
 }

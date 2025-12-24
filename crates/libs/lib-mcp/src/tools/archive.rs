@@ -20,7 +20,7 @@ pub async fn commit_archive_impl(
 ) -> Result<CallToolResult, McpError> {
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
-    let oid = ProjectBmc::sync_to_archive(ctx, mm, project.id, &params.message)
+    let oid = ProjectBmc::sync_to_archive(ctx, mm, project.id.get(), &params.message)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 

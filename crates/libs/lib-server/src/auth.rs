@@ -446,7 +446,7 @@ pub async fn capabilities_middleware(
             && let Ok(true) = lib_core::model::agent_capabilities::AgentCapabilityBmc::check(
                 &ctx,
                 mm,
-                agent.id,
+                agent.id.get(),
                 required_capability,
             )
             .await

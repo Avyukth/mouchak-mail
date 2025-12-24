@@ -30,8 +30,8 @@ pub async fn acquire_build_slot_impl(
 
     let ttl = params.ttl_seconds.unwrap_or(1800);
     let slot_c = BuildSlotForCreate {
-        project_id: project.id,
-        agent_id: agent.id,
+        project_id: project.id.get(),
+        agent_id: agent.id.get(),
         slot_name: params.slot_name.clone(),
         ttl_seconds: ttl,
     };

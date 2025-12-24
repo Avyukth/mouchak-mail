@@ -45,6 +45,7 @@ use crate::Result;
 use crate::ctx::Ctx;
 use crate::model::ModelManager;
 use crate::store::git_store;
+use crate::types::ProjectId;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -973,7 +974,7 @@ impl MessageBmc {
     pub async fn list_recent(
         _ctx: &Ctx,
         mm: &ModelManager,
-        project_id: i64,
+        project_id: ProjectId,
         limit: i64,
     ) -> Result<Vec<Message>> {
         let db = mm.db();
@@ -990,7 +991,7 @@ impl MessageBmc {
             "#
         ).await?;
 
-        let mut rows = stmt.query((project_id, limit)).await?;
+        let mut rows = stmt.query((project_id.get(), limit)).await?;
         let mut messages = Vec::new();
 
         while let Some(row) = rows.next().await? {

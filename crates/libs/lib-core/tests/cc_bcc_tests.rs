@@ -16,6 +16,7 @@ use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use lib_core::utils::slugify;
 
 /// Helper to set up project with sender and multiple recipients
@@ -77,11 +78,11 @@ async fn setup_cc_bcc_messaging(tc: &TestContext) -> (i64, i64, i64, i64, i64) {
         .unwrap();
 
     (
-        project.id,
-        sender_id,
-        to_recipient_id,
-        cc_recipient_id,
-        bcc_recipient_id,
+        project.id.into(),
+        sender_id.into(),
+        to_recipient_id.into(),
+        cc_recipient_id.into(),
+        bcc_recipient_id.into(),
     )
 }
 
@@ -403,7 +404,7 @@ async fn test_multiple_cc_recipients() {
 
     // Create a second CC recipient
     let cc_recipient2_c = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "CcRecipient2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -417,7 +418,7 @@ async fn test_multiple_cc_recipients() {
         project_id,
         sender_id,
         recipient_ids: vec![to_recipient_id],
-        cc_ids: Some(vec![cc_recipient_id, cc_recipient2_id]),
+        cc_ids: Some(vec![cc_recipient_id, cc_recipient2_id.into()]),
         bcc_ids: None,
         subject: "Multiple CC Test".to_string(),
         body_md: "This has multiple CC recipients.".to_string(),
@@ -451,7 +452,7 @@ async fn test_multiple_cc_recipients() {
     );
 
     let cc2_inbox =
-        MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project_id, cc_recipient2_id, 10)
+        MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project_id, cc_recipient2_id.into(), 10)
             .await
             .unwrap();
     assert_eq!(
@@ -472,7 +473,7 @@ async fn test_multiple_bcc_recipients() {
 
     // Create a second BCC recipient
     let bcc_recipient2_c = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: "BccRecipient2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -487,7 +488,7 @@ async fn test_multiple_bcc_recipients() {
         sender_id,
         recipient_ids: vec![to_recipient_id],
         cc_ids: None,
-        bcc_ids: Some(vec![bcc_recipient_id, bcc_recipient2_id]),
+        bcc_ids: Some(vec![bcc_recipient_id, bcc_recipient2_id.into()]),
         subject: "Multiple BCC Test".to_string(),
         body_md: "This has multiple BCC recipients.".to_string(),
         thread_id: None,
@@ -520,7 +521,7 @@ async fn test_multiple_bcc_recipients() {
     );
 
     let bcc2_inbox =
-        MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project_id, bcc_recipient2_id, 10)
+        MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project_id, bcc_recipient2_id.into(), 10)
             .await
             .unwrap();
     assert_eq!(

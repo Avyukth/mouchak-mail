@@ -27,7 +27,7 @@ pub async fn export_mailbox_impl(
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-    let threads = MessageBmc::list_threads(ctx, mm, project.id, 100)
+    let threads = MessageBmc::list_threads(ctx, mm, project.id.get(), 100)
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 

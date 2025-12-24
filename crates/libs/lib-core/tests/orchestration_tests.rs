@@ -10,6 +10,7 @@ use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::orchestration::{OrchestrationBmc, OrchestrationState, parse_thread_state};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 
 async fn setup_project(tc: &TestContext, name: &str) -> (i64, String) {
     let slug = format!("test-project-{}", name);
@@ -22,7 +23,7 @@ async fn setup_project(tc: &TestContext, name: &str) -> (i64, String) {
 
 async fn create_agent(tc: &TestContext, project_id: i64, name: &str, role: &str) -> i64 {
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId::from(project_id),
         name: name.to_string(),
         program: "claude-code".to_string(),
         model: "claude-sonnet-4".to_string(),
@@ -31,6 +32,7 @@ async fn create_agent(tc: &TestContext, project_id: i64, name: &str, role: &str)
     AgentBmc::create(&tc.ctx, &tc.mm, agent)
         .await
         .expect("Failed to create agent")
+        .into()
 }
 
 async fn send_message(
@@ -209,9 +211,10 @@ async fn test_single_agent_fallback_no_reviewer() {
     let worker_id = create_agent(&tc, project_id, "worker-solo", "worker").await;
     let human_id = create_agent(&tc, project_id, "human-solo", "human").await;
 
-    let reviewer_exists = AgentBmc::get_by_name(&tc.ctx, &tc.mm, project_id, "reviewer")
-        .await
-        .is_ok();
+    let reviewer_exists =
+        AgentBmc::get_by_name(&tc.ctx, &tc.mm, ProjectId::from(project_id), "reviewer")
+            .await
+            .is_ok();
     assert!(!reviewer_exists, "Reviewer should not exist in this test");
 
     let thread_id = "TASK-solo-001".to_string();

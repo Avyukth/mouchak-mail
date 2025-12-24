@@ -41,16 +41,17 @@ async fn test_agent_capability_lifecycle() {
         task_description: "Testing capabilities".to_string(),
     };
     let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+    let agent_id_raw: i64 = agent_id.into();
 
     // 1. Check capability (should be false)
-    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "send_message")
+    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, "send_message")
         .await
         .unwrap();
     assert!(!has_cap, "Agent should not have capability yet");
 
     // 2. Grant capability
     let cap_c = AgentCapabilityForCreate {
-        agent_id,
+        agent_id: agent_id_raw,
         capability: "send_message".to_string(),
         granted_by: None,
         expires_at: None,
@@ -61,13 +62,13 @@ async fn test_agent_capability_lifecycle() {
     assert!(cap_id > 0);
 
     // 3. Check capability again (should be true)
-    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "send_message")
+    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, "send_message")
         .await
         .unwrap();
     assert!(has_cap, "Agent should have capability now");
 
     // 4. List capabilities
-    let caps = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id)
+    let caps = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id_raw)
         .await
         .unwrap();
     assert_eq!(caps.len(), 1);
@@ -79,7 +80,7 @@ async fn test_agent_capability_lifecycle() {
         .unwrap();
 
     // 6. Check capability (should be false)
-    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "send_message")
+    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, "send_message")
         .await
         .unwrap();
     assert!(!has_cap, "Agent should not have capability after revoke");
@@ -107,9 +108,10 @@ async fn test_grant_defaults_new_agent() {
         task_description: "Testing grant_defaults".to_string(),
     };
     let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+    let agent_id_raw: i64 = agent_id.into();
 
     // Verify agent has no capabilities initially
-    let caps_before = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id)
+    let caps_before = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id_raw)
         .await
         .unwrap();
     assert_eq!(
@@ -119,29 +121,29 @@ async fn test_grant_defaults_new_agent() {
     );
 
     // Grant default capabilities
-    let granted = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id)
+    let granted = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id_raw)
         .await
         .unwrap();
     assert_eq!(granted, 4, "Should grant exactly 4 default capabilities");
 
     // Verify all default capabilities were granted
-    let caps_after = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id)
+    let caps_after = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id_raw)
         .await
         .unwrap();
     assert_eq!(caps_after.len(), 4, "Agent should have 4 capabilities");
 
     // Verify each specific capability using constants
-    let has_send = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, CAP_SEND_MESSAGE)
+    let has_send = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, CAP_SEND_MESSAGE)
         .await
         .unwrap();
     assert!(has_send, "Agent should have send_message capability");
 
-    let has_fetch = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, CAP_FETCH_INBOX)
+    let has_fetch = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, CAP_FETCH_INBOX)
         .await
         .unwrap();
     assert!(has_fetch, "Agent should have fetch_inbox capability");
 
-    let has_file = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, CAP_FILE_RESERVATION)
+    let has_file = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, CAP_FILE_RESERVATION)
         .await
         .unwrap();
     assert!(
@@ -149,7 +151,7 @@ async fn test_grant_defaults_new_agent() {
         "Agent should have file_reservation_paths capability"
     );
 
-    let has_ack = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, CAP_ACKNOWLEDGE_MESSAGE)
+    let has_ack = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, CAP_ACKNOWLEDGE_MESSAGE)
         .await
         .unwrap();
     assert!(has_ack, "Agent should have acknowledge_message capability");
@@ -195,11 +197,12 @@ async fn test_expired_capability_rejected() {
         task_description: "Testing expired capabilities".to_string(),
     };
     let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+    let agent_id_raw: i64 = agent_id.into();
 
     // Grant capability that expires in the past
     let past_time = (Utc::now() - Duration::hours(1)).naive_utc();
     let cap_c = AgentCapabilityForCreate {
-        agent_id,
+        agent_id: agent_id_raw,
         capability: "send_message".to_string(),
         granted_by: None,
         expires_at: Some(past_time),
@@ -209,7 +212,7 @@ async fn test_expired_capability_rejected() {
         .unwrap();
 
     // Expired capability should NOT pass check
-    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "send_message")
+    let has_cap = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, "send_message")
         .await
         .unwrap();
     assert!(!has_cap, "Expired capability should be rejected");
@@ -217,7 +220,7 @@ async fn test_expired_capability_rejected() {
     // Grant capability that expires in the future
     let future_time = (Utc::now() + Duration::hours(1)).naive_utc();
     let cap_c2 = AgentCapabilityForCreate {
-        agent_id,
+        agent_id: agent_id_raw,
         capability: "fetch_inbox".to_string(),
         granted_by: None,
         expires_at: Some(future_time),
@@ -227,7 +230,7 @@ async fn test_expired_capability_rejected() {
         .unwrap();
 
     // Non-expired capability should pass check
-    let has_cap2 = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id, "fetch_inbox")
+    let has_cap2 = AgentCapabilityBmc::check(&tc.ctx, &tc.mm, agent_id_raw, "fetch_inbox")
         .await
         .unwrap();
     assert!(has_cap2, "Non-expired capability should pass");
@@ -255,15 +258,16 @@ async fn test_duplicate_grant_defaults_fails() {
         task_description: "Testing duplicate grant".to_string(),
     };
     let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+    let agent_id_raw: i64 = agent_id.into();
 
     // First grant should succeed
-    let granted = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id)
+    let granted = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id_raw)
         .await
         .unwrap();
     assert_eq!(granted, 4);
 
     // Second grant should fail (UNIQUE constraint)
-    let result = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id).await;
+    let result = AgentCapabilityBmc::grant_defaults(&tc.ctx, &tc.mm, agent_id_raw).await;
     assert!(
         result.is_err(),
         "Duplicate grant_defaults should fail due to UNIQUE constraint"
@@ -294,11 +298,12 @@ async fn test_list_for_agent_filters_expired() {
         task_description: "Testing list_for_agent filters expired".to_string(),
     };
     let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent_c).await.unwrap();
+    let agent_id_raw: i64 = agent_id.into();
 
     // Grant expired capability
     let past_time = (Utc::now() - Duration::hours(1)).naive_utc();
     let expired_cap = AgentCapabilityForCreate {
-        agent_id,
+        agent_id: agent_id_raw,
         capability: "expired_cap".to_string(),
         granted_by: None,
         expires_at: Some(past_time),
@@ -309,7 +314,7 @@ async fn test_list_for_agent_filters_expired() {
 
     // Grant valid capability (no expiry)
     let valid_cap = AgentCapabilityForCreate {
-        agent_id,
+        agent_id: agent_id_raw,
         capability: "valid_cap".to_string(),
         granted_by: None,
         expires_at: None,
@@ -321,7 +326,7 @@ async fn test_list_for_agent_filters_expired() {
     // Grant future-expiring capability
     let future_time = (Utc::now() + Duration::hours(1)).naive_utc();
     let future_cap = AgentCapabilityForCreate {
-        agent_id,
+        agent_id: agent_id_raw,
         capability: "future_cap".to_string(),
         granted_by: None,
         expires_at: Some(future_time),
@@ -331,7 +336,7 @@ async fn test_list_for_agent_filters_expired() {
         .unwrap();
 
     // list_for_agent should only return non-expired capabilities
-    let caps = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id)
+    let caps = AgentCapabilityBmc::list_for_agent(&tc.ctx, &tc.mm, agent_id_raw)
         .await
         .unwrap();
 

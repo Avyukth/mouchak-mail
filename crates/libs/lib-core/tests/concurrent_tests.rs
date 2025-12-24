@@ -19,6 +19,7 @@ use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::{AgentId, ProjectId};
 use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -56,15 +57,16 @@ async fn setup_test_project(mm: &ModelManager) -> (i64, Vec<i64>) {
     let mut agent_ids = Vec::new();
     for i in 0..5 {
         let agent = AgentForCreate {
-            project_id,
+            project_id: ProjectId::from(project_id),
             name: format!("agent-{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
             task_description: "concurrent test agent".to_string(),
         };
-        let id = AgentBmc::create(&ctx, mm, agent)
+        let id: i64 = AgentBmc::create(&ctx, mm, agent)
             .await
-            .expect("create agent");
+            .expect("create agent")
+            .into();
         agent_ids.push(id);
     }
 
@@ -101,8 +103,8 @@ fn make_reservation(
     path_pattern: String,
 ) -> FileReservationForCreate {
     FileReservationForCreate {
-        project_id,
-        agent_id,
+        project_id: ProjectId::from(project_id),
+        agent_id: AgentId::from(agent_id),
         path_pattern,
         exclusive: true,
         reason: "concurrent test".to_string(),
@@ -498,7 +500,7 @@ async fn test_concurrent_agent_registration() {
             tokio::spawn(async move {
                 let ctx = Ctx::root_ctx();
                 let agent = AgentForCreate {
-                    project_id,
+                    project_id: ProjectId::from(project_id),
                     name,
                     program: "test".to_string(),
                     model: "test".to_string(),

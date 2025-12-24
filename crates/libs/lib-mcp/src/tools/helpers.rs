@@ -74,19 +74,24 @@ pub async fn resolve_agent(
         ));
     }
 
-    AgentBmc::get_by_name(ctx, mm, project_id, agent_name)
-        .await
-        .map_err(|_| {
-            mcp_err!(
-                ErrorCode::AgentNotFound,
-                &format!("Agent '{}' not found", agent_name),
-                {
-                    "agent_name": agent_name,
-                    "project_id": project_id,
-                    "suggestion": "Check agent name with list_agents or register with register_agent"
-                }
-            )
-        })
+    AgentBmc::get_by_name(
+        ctx,
+        mm,
+        lib_core::types::ProjectId::new(project_id),
+        agent_name,
+    )
+    .await
+    .map_err(|_| {
+        mcp_err!(
+            ErrorCode::AgentNotFound,
+            &format!("Agent '{}' not found", agent_name),
+            {
+                "agent_name": agent_name,
+                "project_id": project_id,
+                "suggestion": "Check agent name with list_agents or register with register_agent"
+            }
+        )
+    })
 }
 
 /// Resolve project and agent in one call.
@@ -99,7 +104,7 @@ pub async fn resolve_project_and_agent(
     agent_name: &str,
 ) -> Result<(Project, Agent), McpError> {
     let project = resolve_project(ctx, mm, project_slug).await?;
-    let agent = resolve_agent(ctx, mm, project.id, agent_name).await?;
+    let agent = resolve_agent(ctx, mm, project.id.get(), agent_name).await?;
     Ok((project, agent))
 }
 
@@ -119,7 +124,7 @@ pub async fn resolve_agent_names(
         .filter(|s| !s.is_empty())
     {
         let agent = resolve_agent(ctx, mm, project_id, name).await?;
-        ids.push(agent.id);
+        ids.push(agent.id.get());
     }
     Ok(ids)
 }

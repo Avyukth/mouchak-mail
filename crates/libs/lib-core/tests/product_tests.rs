@@ -51,7 +51,7 @@ async fn test_sibling_logic() {
         .await
         .unwrap();
     assert_eq!(sibs_a.len(), 1);
-    assert_eq!(sibs_a[0].id, id_b);
+    assert_eq!(sibs_a[0].id.get(), id_b);
     assert_eq!(sibs_a[0].slug, "proj-b");
 
     // 5. Verify siblings for B -> should be [A]
@@ -59,7 +59,7 @@ async fn test_sibling_logic() {
         .await
         .unwrap();
     assert_eq!(sibs_b.len(), 1);
-    assert_eq!(sibs_b[0].id, id_a);
+    assert_eq!(sibs_b[0].id.get(), id_a);
 
     // 6. Verify siblings for C -> empty
     let sibs_c = ProjectBmc::list_siblings(&tc.ctx, &tc.mm, id_c)

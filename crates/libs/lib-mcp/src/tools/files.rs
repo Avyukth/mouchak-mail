@@ -66,7 +66,7 @@ pub async fn reserve_file_impl(
         .await
         .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
 
-    if !AgentCapabilityBmc::check(ctx, mm, agent.id, "file_reservation_paths")
+    if !AgentCapabilityBmc::check(ctx, mm, agent.id.get(), "file_reservation_paths")
         .await
         .map_err(|e| McpError::internal_error(e.to_string(), None))?
     {

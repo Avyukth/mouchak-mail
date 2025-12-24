@@ -1,6 +1,7 @@
 use crate::Result;
 use crate::model::ModelManager;
 use crate::store::git_store;
+use crate::types::{AgentId, ProjectId};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
@@ -8,8 +9,8 @@ use sha1::{Digest, Sha1};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileReservation {
     pub id: i64,
-    pub project_id: i64,
-    pub agent_id: i64,
+    pub project_id: ProjectId,
+    pub agent_id: AgentId,
     pub path_pattern: String,
     pub exclusive: bool,
     pub reason: String,
@@ -20,8 +21,8 @@ pub struct FileReservation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileReservationForCreate {
-    pub project_id: i64,
-    pub agent_id: i64,
+    pub project_id: ProjectId,
+    pub agent_id: AgentId,
     pub path_pattern: String,
     pub exclusive: bool,
     pub reason: String,
@@ -92,8 +93,8 @@ impl FileReservationBmc {
 
         let mut rows = stmt
             .query((
-                fr_c.project_id,
-                fr_c.agent_id,
+                fr_c.project_id.get(),
+                fr_c.agent_id.get(),
                 fr_c.path_pattern.as_str(),
                 fr_c.exclusive,
                 fr_c.reason.as_str(),
@@ -111,7 +112,7 @@ impl FileReservationBmc {
 
         // Write to Git
         let stmt = db.prepare("SELECT slug FROM projects WHERE id = ?").await?;
-        let mut rows = stmt.query([fr_c.project_id]).await?;
+        let mut rows = stmt.query([fr_c.project_id.get()]).await?;
         let project_slug: String = if let Some(row) = rows.next().await? {
             row.get(0)?
         } else {
@@ -122,7 +123,7 @@ impl FileReservationBmc {
         };
 
         let stmt = db.prepare("SELECT name FROM agents WHERE id = ?").await?;
-        let mut rows = stmt.query([fr_c.agent_id]).await?;
+        let mut rows = stmt.query([fr_c.agent_id.get()]).await?;
         let agent_name: String = if let Some(row) = rows.next().await? {
             row.get(0)?
         } else {
@@ -175,7 +176,7 @@ impl FileReservationBmc {
     pub async fn list_active_for_project(
         _ctx: &crate::Ctx,
         mm: &ModelManager,
-        project_id: i64,
+        project_id: ProjectId,
     ) -> Result<Vec<FileReservation>> {
         let db = mm.db();
         // Select active (not released). Checking expiry is better done in app logic or filter
@@ -187,7 +188,7 @@ impl FileReservationBmc {
             ORDER BY created_ts DESC
             "#
         ).await?;
-        let mut rows = stmt.query([project_id]).await?;
+        let mut rows = stmt.query([project_id.get()]).await?;
 
         let mut reservations = Vec::new();
         while let Some(row) = rows.next().await? {
@@ -408,8 +409,8 @@ impl FileReservationBmc {
 
         Ok(FileReservation {
             id: row.get(0)?,
-            project_id: row.get(1)?,
-            agent_id: row.get(2)?,
+            project_id: ProjectId::new(row.get(1)?),
+            agent_id: AgentId::new(row.get(2)?),
             path_pattern: row.get(3)?,
             exclusive: row.get(4)?,
             reason: row.get(5)?,

@@ -18,6 +18,7 @@ use lib_core::Result;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::message::{MessageBmc, MessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use serial_test::serial;
 
 /// Helper to setup data for queries
@@ -29,7 +30,7 @@ async fn setup_data(tc: &TestContext) -> (i64, i64) {
         &tc.ctx,
         &tc.mm,
         AgentForCreate {
-            project_id: p_id,
+            project_id: ProjectId::from(p_id),
             name: "q-agent".into(),
             program: "test".into(),
             model: "test".into(),
@@ -39,6 +40,9 @@ async fn setup_data(tc: &TestContext) -> (i64, i64) {
     .await
     .unwrap();
 
+    // Convert AgentId to i64 for MessageForCreate
+    let a_id_i64: i64 = a_id.into();
+
     // Create some messages
     for i in 0..5 {
         MessageBmc::create(
@@ -46,7 +50,7 @@ async fn setup_data(tc: &TestContext) -> (i64, i64) {
             &tc.mm,
             MessageForCreate {
                 project_id: p_id,
-                sender_id: a_id,
+                sender_id: a_id_i64,
                 recipient_ids: vec![],
                 cc_ids: None,
                 bcc_ids: None,
@@ -61,7 +65,7 @@ async fn setup_data(tc: &TestContext) -> (i64, i64) {
         .unwrap();
     }
 
-    (p_id, a_id)
+    (p_id, a_id_i64)
 }
 
 #[tokio::test]

@@ -16,6 +16,7 @@ use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::overseer_message::{OverseerMessageBmc, OverseerMessageForCreate};
 use lib_core::model::project::ProjectBmc;
+use lib_core::types::ProjectId;
 use lib_core::utils::slugify;
 
 /// Helper to set up a project with an agent
@@ -28,7 +29,7 @@ async fn setup_project_and_agent(tc: &TestContext, suffix: &str) -> (i64, i64) {
         .expect("Failed to create project");
 
     let agent = AgentForCreate {
-        project_id,
+        project_id: ProjectId(project_id),
         name: format!("overseer-{}", suffix),
         program: "human".to_string(),
         model: "human".to_string(),
@@ -39,7 +40,7 @@ async fn setup_project_and_agent(tc: &TestContext, suffix: &str) -> (i64, i64) {
         .await
         .expect("Failed to create agent");
 
-    (project_id, agent_id)
+    (project_id, agent_id.into())
 }
 
 /// Test creating an overseer message
