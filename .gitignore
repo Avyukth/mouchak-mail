@@ -13,6 +13,7 @@ build/
 
 # Claude Code (user-specific)
 .claude/
+.mcp.json
 
 # Playwright test artifacts (regenerated each run)
 playwright-report/
