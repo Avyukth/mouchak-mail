@@ -280,6 +280,31 @@
 		showBulkDeleteDialog = false;
 	}
 
+	function handleBulkExport() {
+		const projectsToExport = projects.filter(p => selectedIds.has(p.id));
+		const exportData = {
+			exported_at: new Date().toISOString(),
+			projects: projectsToExport.map(p => ({
+				human_key: p.human_key,
+				slug: p.slug,
+				created_at: p.created_at
+			}))
+		};
+
+		const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `projects-export-${Date.now()}.json`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		toast.success(`Exported ${projectsToExport.length} project${projectsToExport.length > 1 ? 's' : ''}`);
+		clearSelection();
+	}
+
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString("en-US", {
 			year: "numeric",
@@ -688,6 +713,7 @@
 	{selectedCount}
 	onClear={clearSelection}
 	onDelete={handleBulkDelete}
+	onExport={handleBulkExport}
 />
 
 <style>

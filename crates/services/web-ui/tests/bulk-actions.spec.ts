@@ -79,6 +79,18 @@ test.describe('Bulk Selection on Projects', () => {
 		await expect(actionBar.locator('button:has-text("Delete")')).toBeVisible();
 	});
 
+	test('bulk action bar has export button', async ({ page }) => {
+		await page.goto('/projects');
+		await page.waitForLoadState('networkidle');
+
+		await page.waitForSelector('.grid a[href^="/projects/"]', { timeout: 10000 });
+
+		await page.locator('[data-testid="project-select-checkbox"]').first().check();
+
+		const actionBar = page.locator('[data-testid="bulk-action-bar"]');
+		await expect(actionBar.locator('[data-testid="bulk-export-button"]')).toBeVisible();
+	});
+
 	test('clear selection button deselects all', async ({ page }) => {
 		await page.goto('/projects');
 		await page.waitForLoadState('networkidle');

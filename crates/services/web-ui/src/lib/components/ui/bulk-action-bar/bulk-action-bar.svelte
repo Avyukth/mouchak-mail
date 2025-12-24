@@ -2,6 +2,7 @@
 	import { fly } from 'svelte/transition';
 	import X from 'lucide-svelte/icons/x';
 	import Trash2 from 'lucide-svelte/icons/trash-2';
+	import Download from 'lucide-svelte/icons/download';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 
@@ -9,10 +10,11 @@
 		selectedCount: number;
 		onClear: () => void;
 		onDelete: () => void;
+		onExport?: () => void;
 		class?: string;
 	}
 
-	let { selectedCount, onClear, onDelete, class: className = '' }: Props = $props();
+	let { selectedCount, onClear, onDelete, onExport, class: className = '' }: Props = $props();
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
@@ -43,7 +45,19 @@
 		<div class="h-4 w-px bg-border"></div>
 
 		<div class="flex items-center gap-2">
+			{#if onExport}
+				<Button
+					data-testid="bulk-export-button"
+					variant="ghost"
+					size="sm"
+					onclick={onExport}
+				>
+					<Download class="h-4 w-4 mr-1.5" />
+					Export
+				</Button>
+			{/if}
 			<Button
+				data-testid="bulk-delete-button"
 				variant="ghost"
 				size="sm"
 				class="text-destructive hover:text-destructive hover:bg-destructive/10"
