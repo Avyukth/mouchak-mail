@@ -12,8 +12,8 @@ use std::sync::Arc;
 use super::helpers;
 use super::{
     EnsureProductParams, LinkProjectToProductParams, ProductInboxParams,
-    SearchMessagesProductParams, SummarizeResult, SummarizeThreadProductParams,
-    ThreadSummaryError, ThreadSummaryItem, UnlinkProjectFromProductParams,
+    SearchMessagesProductParams, SummarizeResult, SummarizeThreadProductParams, ThreadSummaryError,
+    ThreadSummaryItem, UnlinkProjectFromProductParams,
 };
 
 /// Create or get a product for multi-repo coordination.
@@ -143,12 +143,12 @@ pub async fn product_inbox_impl(
             project.human_key, project.slug
         ));
         for m in &messages {
-        output.push_str(&format!(
-            "  - [{}] {} (from: {}, {})\n",
-            m.id, m.subject, m.sender_name, m.created_ts
-        ));
+            output.push_str(&format!(
+                "  - [{}] {} (from: {}, {})\n",
+                m.id, m.subject, m.sender_name, m.created_ts
+            ));
+        }
     }
-}
 
     Ok(CallToolResult::success(vec![Content::text(output)]))
 }

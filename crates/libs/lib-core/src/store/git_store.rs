@@ -382,3 +382,37 @@ pub fn get_commit_time(repo: &Repository, commit_oid: Oid) -> Result<i64> {
     let commit = repo.find_commit(commit_oid)?;
     Ok(commit.time().seconds())
 }
+
+/// Commits the deletion of a path (file or directory) from the repository.
+///
+/// Removes the path from the Git index and creates a commit recording the deletion.
+/// The path should already be removed from the filesystem before calling this.
+///
+/// # Arguments
+///
+/// * `repo` - The Git repository
+/// * `path` - Relative path to remove from the index
+/// * `message` - Commit message
+/// * `author_name` - Git author name
+/// * `author_email` - Git author email
+///
+/// # Returns
+///
+/// The OID of the created commit.
+pub fn commit_deletion<P: AsRef<Path>>(
+    repo: &Repository,
+    path: P,
+    message: &str,
+    author_name: &str,
+    author_email: &str,
+) -> Result<Oid> {
+    let mut index = repo.index()?;
+    index.remove_dir(path.as_ref(), 0)?;
+    index.write()?;
+
+    let tree_oid = index.write_tree()?;
+    let tree = repo.find_tree(tree_oid)?;
+    let signature = Signature::now(author_name, author_email)?;
+
+    create_commit(repo, &tree, &signature, message)
+}

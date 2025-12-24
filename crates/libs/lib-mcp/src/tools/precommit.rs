@@ -1,7 +1,7 @@
 //! Pre-commit guard tool implementations
 
 use lib_core::{ctx::Ctx, model::ModelManager};
-use rmcp::{model::CallToolResult, model::Content, ErrorData as McpError};
+use rmcp::{ErrorData as McpError, model::CallToolResult, model::Content};
 use std::sync::Arc;
 
 use super::helpers;
@@ -74,9 +74,8 @@ pub async fn uninstall_precommit_guard_impl(
     let hook_path = target_path.join(".git").join("hooks").join("pre-commit");
 
     if hook_path.exists() {
-        let content = std::fs::read_to_string(&hook_path).map_err(|e| {
-            McpError::internal_error(format!("Failed to read hook: {}", e), None)
-        })?;
+        let content = std::fs::read_to_string(&hook_path)
+            .map_err(|e| McpError::internal_error(format!("Failed to read hook: {}", e), None))?;
 
         if content.contains("MCP Agent Mail Pre-commit Guard") {
             std::fs::remove_file(&hook_path).map_err(|e| {

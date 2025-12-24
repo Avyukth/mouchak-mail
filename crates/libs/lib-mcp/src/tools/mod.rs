@@ -35,8 +35,8 @@ pub mod outbox;
 mod params;
 pub mod precommit;
 pub mod products;
-pub mod resources;
 pub mod project;
+pub mod resources;
 pub mod reviews;
 
 pub use params::*;

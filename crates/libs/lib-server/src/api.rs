@@ -1,5 +1,5 @@
 use axum::Router;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 
 use crate::AppState;
 use crate::tools;
@@ -29,6 +29,15 @@ pub fn routes() -> Router<AppState> {
             get(tools::list_all_agents_for_project),
         )
         .route("/api/list_agents", get(tools::list_all_agents_for_project)) // Python alias
+        // Delete operations
+        .route(
+            "/api/projects/{project_slug}",
+            delete(tools::delete_project),
+        )
+        .route(
+            "/api/projects/{project_slug}/agents/{agent_name}",
+            delete(tools::delete_agent),
+        )
         // Identity
         .route("/api/agent/register", post(tools::register_agent))
         .route("/api/register_agent", post(tools::register_agent)) // Python alias

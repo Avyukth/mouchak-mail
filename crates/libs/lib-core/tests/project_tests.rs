@@ -185,3 +185,66 @@ async fn test_adopt_project() {
         "Message should be moved to dest project"
     );
 }
+
+#[tokio::test]
+async fn test_delete_project_cascade() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let human_key = "/project/to/delete";
+    let slug = slugify(human_key);
+    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, &slug, human_key)
+        .await
+        .expect("Failed to create project");
+
+    let agent = AgentForCreate {
+        project_id,
+        name: "doomed-agent".into(),
+        program: "test".into(),
+        model: "test".into(),
+        task_description: "Will be deleted".into(),
+    };
+    let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent)
+        .await
+        .expect("Failed to create agent");
+
+    let msg = lib_core::model::message::MessageForCreate {
+        project_id,
+        sender_id: agent_id,
+        recipient_ids: vec![agent_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Doomed message".into(),
+        body_md: "Will be deleted".into(),
+        thread_id: None,
+        importance: None,
+        ack_required: false,
+    };
+    lib_core::model::message::MessageBmc::create(&tc.ctx, &tc.mm, msg)
+        .await
+        .expect("Failed to create message");
+
+    ProjectBmc::delete(&tc.ctx, &tc.mm, project_id)
+        .await
+        .expect("Failed to delete project");
+
+    let result = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await;
+    assert!(result.is_err(), "Project should not exist after deletion");
+
+    let result = AgentBmc::get(&tc.ctx, &tc.mm, agent_id).await;
+    assert!(
+        result.is_err(),
+        "Agent should not exist after project deletion"
+    );
+}
+
+#[tokio::test]
+async fn test_delete_nonexistent_project() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let result = ProjectBmc::delete(&tc.ctx, &tc.mm, 99999).await;
+    assert!(result.is_err(), "Deleting nonexistent project should fail");
+}

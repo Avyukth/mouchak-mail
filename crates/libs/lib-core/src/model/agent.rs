@@ -555,6 +555,112 @@ impl AgentBmc {
 
         Ok(())
     }
+
+    /// Deletes an agent and all related data (cascade delete).
+    ///
+    /// Deletion order for FK constraint satisfaction:
+    /// 1. message_recipients (references agent_id)
+    /// 2. messages (where sender_id = agent_id)
+    /// 3. file_reservations, build_slots
+    /// 4. agent_links (both sides)
+    /// 5. overseer_messages
+    /// 6. agent itself
+    ///
+    /// Also removes the agent directory from the Git archive.
+    ///
+    /// # Arguments
+    /// * `ctx` - Request context
+    /// * `mm` - ModelManager providing database and Git access
+    /// * `agent_id` - The agent database ID to delete
+    ///
+    /// # Returns
+    /// `Ok(())` on successful deletion
+    ///
+    /// # Errors
+    /// Returns an error if the agent ID doesn't exist
+    pub async fn delete(ctx: &Ctx, mm: &ModelManager, agent_id: i64) -> Result<()> {
+        let db = mm.db();
+
+        let agent = Self::get(ctx, mm, agent_id).await?;
+
+        let stmt = db.prepare("SELECT slug FROM projects WHERE id = ?").await?;
+        let mut rows = stmt.query([agent.project_id]).await?;
+        let project_slug: String = rows
+            .next()
+            .await?
+            .ok_or_else(|| crate::Error::project_not_found(format!("ID: {}", agent.project_id)))?
+            .get(0)?;
+
+        // 1. Delete message_recipients for this agent
+        let stmt = db
+            .prepare("DELETE FROM message_recipients WHERE agent_id = ?")
+            .await?;
+        stmt.execute([agent_id]).await?;
+
+        // 2. Delete messages where this agent is sender (FTS5 trigger handles messages_fts)
+        let stmt = db
+            .prepare("DELETE FROM messages WHERE sender_id = ?")
+            .await?;
+        stmt.execute([agent_id]).await?;
+
+        // 3. Delete file_reservations
+        let stmt = db
+            .prepare("DELETE FROM file_reservations WHERE agent_id = ?")
+            .await?;
+        stmt.execute([agent_id]).await?;
+
+        // 4. Delete build_slots
+        let stmt = db
+            .prepare("DELETE FROM build_slots WHERE agent_id = ?")
+            .await?;
+        stmt.execute([agent_id]).await?;
+
+        // 5. Delete agent_links (both sides)
+        let stmt = db
+            .prepare("DELETE FROM agent_links WHERE a_agent_id = ? OR b_agent_id = ?")
+            .await?;
+        stmt.execute([agent_id, agent_id]).await?;
+
+        // 6. Delete overseer_messages
+        let stmt = db
+            .prepare("DELETE FROM overseer_messages WHERE sender_id = ?")
+            .await?;
+        stmt.execute([agent_id]).await?;
+
+        // 7. Delete the agent
+        let stmt = db.prepare("DELETE FROM agents WHERE id = ?").await?;
+        stmt.execute([agent_id]).await?;
+
+        // 8. Clean up Git archive
+        let agent_dir = mm
+            .repo_root
+            .join("projects")
+            .join(&project_slug)
+            .join("agents")
+            .join(&agent.name);
+
+        if agent_dir.exists() {
+            std::fs::remove_dir_all(&agent_dir)?;
+
+            let _git_guard = mm.git_lock.lock().await;
+            let repo_arc = mm.get_repo().await?;
+            let repo = repo_arc.lock().await;
+
+            let relative_path = PathBuf::from("projects")
+                .join(&project_slug)
+                .join("agents")
+                .join(&agent.name);
+            git_store::commit_deletion(
+                &repo,
+                &relative_path,
+                &format!("chore: delete agent {}", agent.name),
+                "mcp-bot",
+                "mcp-bot@localhost",
+            )?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Partial update for agent profile fields.

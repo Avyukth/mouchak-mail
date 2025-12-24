@@ -343,10 +343,7 @@ async fn test_list_for_agent_filters_expired() {
     );
 
     let cap_names: Vec<&str> = caps.iter().map(|c| c.capability.as_str()).collect();
-    assert!(
-        cap_names.contains(&"valid_cap"),
-        "Should contain valid_cap"
-    );
+    assert!(cap_names.contains(&"valid_cap"), "Should contain valid_cap");
     assert!(
         cap_names.contains(&"future_cap"),
         "Should contain future_cap"

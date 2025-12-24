@@ -534,6 +534,160 @@ impl ProjectBmc {
         Ok(oid.to_string())
     }
 
+    /// Deletes a project and all related data (cascade delete).
+    ///
+    /// This method performs a cascading delete in the correct order to respect
+    /// foreign key constraints. SQLite does not enforce FK cascades by default,
+    /// so we manually delete in dependency order:
+    ///
+    /// 1. message_recipients (references messages and agents)
+    /// 2. messages_fts (FTS5 virtual table, synced with messages)
+    /// 3. messages (references project and sender agent)
+    /// 4. file_reservations, build_slots, macros, overseer_messages
+    /// 5. agent_links (references agents)
+    /// 6. project_sibling_suggestions
+    /// 7. agents (references project)
+    /// 8. product_project_links
+    /// 9. project itself
+    ///
+    /// Also removes the project directory from the Git archive.
+    ///
+    /// # Arguments
+    /// * `ctx` - Request context
+    /// * `mm` - ModelManager providing database and Git access
+    /// * `project_id` - The project database ID to delete
+    ///
+    /// # Returns
+    /// `Ok(())` on successful deletion
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - Project ID doesn't exist
+    /// - Database operations fail
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use lib_core::model::project::ProjectBmc;
+    /// # use lib_core::model::ModelManager;
+    /// # use lib_core::ctx::Ctx;
+    /// # async fn example(mm: &ModelManager) {
+    /// let ctx = Ctx::root_ctx();
+    /// ProjectBmc::delete(&ctx, mm, 42).await.unwrap();
+    /// # }
+    /// ```
+    pub async fn delete(ctx: &crate::Ctx, mm: &ModelManager, project_id: i64) -> Result<()> {
+        let db = mm.db();
+
+        // First, verify project exists and get slug for git cleanup
+        let project = Self::get(ctx, mm, project_id).await?;
+        let project_slug = project.slug.clone();
+
+        // Get all agent IDs for this project (needed for message_recipients cleanup)
+        let agents = super::agent::AgentBmc::list_all_for_project(ctx, mm, project_id).await?;
+        let agent_ids: Vec<i64> = agents.iter().map(|a| a.id).collect();
+
+        // 1. Delete message_recipients for messages in this project
+        // (message_recipients references both messages and agents)
+        let stmt = db
+            .prepare(
+                r#"
+                DELETE FROM message_recipients 
+                WHERE message_id IN (SELECT id FROM messages WHERE project_id = ?)
+                "#,
+            )
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 2. Delete messages (FTS5 trigger handles messages_fts automatically)
+        let stmt = db
+            .prepare("DELETE FROM messages WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 3. Delete file_reservations
+        let stmt = db
+            .prepare("DELETE FROM file_reservations WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 4. Delete build_slots
+        let stmt = db
+            .prepare("DELETE FROM build_slots WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 5. Delete macros
+        let stmt = db
+            .prepare("DELETE FROM macros WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 6. Delete overseer_messages
+        let stmt = db
+            .prepare("DELETE FROM overseer_messages WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 7. Delete agent_links
+        if !agent_ids.is_empty() {
+            let placeholders = agent_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+            let sql = format!(
+                "DELETE FROM agent_links WHERE a_agent_id IN ({}) OR b_agent_id IN ({})",
+                placeholders, placeholders
+            );
+            let stmt = db.prepare(&sql).await?;
+            let params: Vec<libsql::Value> = agent_ids
+                .iter()
+                .chain(agent_ids.iter())
+                .map(|id| libsql::Value::Integer(*id))
+                .collect();
+            stmt.execute(params).await?;
+        }
+
+        // 8. Delete project_sibling_suggestions
+        let stmt = db
+            .prepare("DELETE FROM project_sibling_suggestions WHERE project_a_id = ? OR project_b_id = ?")
+            .await?;
+        stmt.execute([project_id, project_id]).await?;
+
+        // 9. Delete agents
+        let stmt = db
+            .prepare("DELETE FROM agents WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 10. Delete product_project_links
+        let stmt = db
+            .prepare("DELETE FROM product_project_links WHERE project_id = ?")
+            .await?;
+        stmt.execute([project_id]).await?;
+
+        // 11. Delete the project itself
+        let stmt = db.prepare("DELETE FROM projects WHERE id = ?").await?;
+        stmt.execute([project_id]).await?;
+
+        // 12. Clean up Git archive
+        let project_dir = mm.repo_root.join("projects").join(&project_slug);
+        if project_dir.exists() {
+            std::fs::remove_dir_all(&project_dir)?;
+
+            let _git_guard = mm.git_lock.lock().await;
+            let repo_arc = mm.get_repo().await?;
+            let repo = repo_arc.lock().await;
+
+            let relative_path = Path::new("projects").join(&project_slug);
+            git_store::commit_deletion(
+                &repo,
+                &relative_path,
+                &format!("chore: delete project {}", project_slug),
+                "mcp-bot",
+                "mcp-bot@localhost",
+            )?;
+        }
+
+        Ok(())
+    }
+
     /// Adopts (merges) artifacts from one project to another.
     ///
     /// Moves all agents and messages from `from_project_id` to `to_project_id`.

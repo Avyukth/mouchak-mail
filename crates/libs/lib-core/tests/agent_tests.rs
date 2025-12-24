@@ -149,3 +149,62 @@ async fn test_agent_not_found() {
 
     assert!(result.is_err(), "Should return error for nonexistent agent");
 }
+
+#[tokio::test]
+async fn test_delete_agent_cascade() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let project_id = create_test_project(&tc, "delete-agent").await;
+
+    let agent = AgentForCreate {
+        project_id,
+        name: "ToDelete".to_string(),
+        program: "test".to_string(),
+        model: "test".to_string(),
+        task_description: "Will be deleted".to_string(),
+    };
+    let agent_id = AgentBmc::create(&tc.ctx, &tc.mm, agent)
+        .await
+        .expect("Failed to create agent");
+
+    let msg = lib_core::model::message::MessageForCreate {
+        project_id,
+        sender_id: agent_id,
+        recipient_ids: vec![agent_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "From doomed agent".into(),
+        body_md: "Will be deleted with agent".into(),
+        thread_id: None,
+        importance: None,
+        ack_required: false,
+    };
+    lib_core::model::message::MessageBmc::create(&tc.ctx, &tc.mm, msg)
+        .await
+        .expect("Failed to create message");
+
+    AgentBmc::delete(&tc.ctx, &tc.mm, agent_id)
+        .await
+        .expect("Failed to delete agent");
+
+    let result = AgentBmc::get(&tc.ctx, &tc.mm, agent_id).await;
+    assert!(result.is_err(), "Agent should not exist after deletion");
+
+    let project = ProjectBmc::get(&tc.ctx, &tc.mm, project_id).await;
+    assert!(
+        project.is_ok(),
+        "Project should still exist after agent deletion"
+    );
+}
+
+#[tokio::test]
+async fn test_delete_nonexistent_agent() {
+    let tc = TestContext::new()
+        .await
+        .expect("Failed to create test context");
+
+    let result = AgentBmc::delete(&tc.ctx, &tc.mm, 99999).await;
+    assert!(result.is_err(), "Deleting nonexistent agent should fail");
+}

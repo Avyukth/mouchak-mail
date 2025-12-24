@@ -98,6 +98,12 @@ export async function getProjectInfo(projectSlug: string): Promise<Project> {
 	});
 }
 
+export async function deleteProject(projectSlug: string): Promise<{ success: boolean; message: string }> {
+	return request<{ success: boolean; message: string }>(`/projects/${projectSlug}`, {
+		method: 'DELETE'
+	});
+}
+
 // ============================================================================
 // Agents
 // ============================================================================
@@ -137,6 +143,18 @@ export async function whois(projectSlug: string, agentName: string): Promise<Age
 		method: 'POST',
 		body: JSON.stringify({ project_slug: projectSlug, agent_name: agentName })
 	});
+}
+
+export async function deleteAgent(
+	projectSlug: string,
+	agentName: string
+): Promise<{ success: boolean; message: string }> {
+	return request<{ success: boolean; message: string }>(
+		`/projects/${projectSlug}/agents/${agentName}`,
+		{
+			method: 'DELETE'
+		}
+	);
 }
 
 // ============================================================================

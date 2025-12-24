@@ -53,12 +53,16 @@ impl ErrorCode {
             | Self::ThreadNotFound
             | Self::ProductNotFound
             | Self::MacroNotFound
-            | Self::ReservationNotFound => McpError::invalid_params(message.to_string(), Some(data)),
+            | Self::ReservationNotFound => {
+                McpError::invalid_params(message.to_string(), Some(data))
+            }
 
             Self::AgentAlreadyExists
             | Self::ProjectAlreadyExists
             | Self::ProductAlreadyExists
-            | Self::ReservationConflict => McpError::invalid_params(message.to_string(), Some(data)),
+            | Self::ReservationConflict => {
+                McpError::invalid_params(message.to_string(), Some(data))
+            }
 
             Self::CapabilityDenied
             | Self::InvalidRecipient
@@ -138,7 +142,10 @@ mod tests {
 
         let data = err.data.expect("should have data");
         assert_eq!(data.get("error_code").unwrap(), "AGENT_ALREADY_EXISTS");
-        assert_eq!(data.get("suggestion").unwrap(), "Use a different agent name");
+        assert_eq!(
+            data.get("suggestion").unwrap(),
+            "Use a different agent name"
+        );
     }
 
     #[test]

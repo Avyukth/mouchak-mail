@@ -399,6 +399,54 @@ pub async fn list_all_projects(
     Ok(Json(project_responses).into_response())
 }
 
+// --- delete_project ---
+#[derive(Serialize)]
+pub struct DeleteResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+pub async fn delete_project(
+    State(app_state): State<AppState>,
+    Path(project_slug): Path<String>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let project =
+        lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug).await?;
+
+    lib_core::model::project::ProjectBmc::delete(&ctx, mm, project.id).await?;
+
+    Ok(Json(DeleteResponse {
+        success: true,
+        message: format!("Project '{}' deleted successfully", project_slug),
+    })
+    .into_response())
+}
+
+// --- delete_agent ---
+pub async fn delete_agent(
+    State(app_state): State<AppState>,
+    Path((project_slug, agent_name)): Path<(String, String)>,
+) -> crate::error::Result<Response> {
+    let ctx = Ctx::root_ctx();
+    let mm = &app_state.mm;
+
+    let project =
+        lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug).await?;
+    let agent =
+        lib_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &agent_name).await?;
+
+    lib_core::model::agent::AgentBmc::delete(&ctx, mm, agent.id).await?;
+
+    Ok(Json(DeleteResponse {
+        success: true,
+        message: format!("Agent '{}' deleted successfully", agent_name),
+    })
+    .into_response())
+}
+
 // --- list_all_agents_for_project ---
 // Keep for backwards compatibility with JSON body requests
 #[derive(Deserialize)]
