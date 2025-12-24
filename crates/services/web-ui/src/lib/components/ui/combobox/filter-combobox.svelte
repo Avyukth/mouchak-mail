@@ -61,7 +61,7 @@
 						<Check class={cn('mr-2 h-4 w-4', value === '' ? 'opacity-100' : 'opacity-0')} />
 						<span class="text-muted-foreground">All</span>
 					</Command.Item>
-					{#each options as option (option)}
+					{#each options as option, i (i)}
 						<Command.Item value={option} onSelect={() => handleSelect(option)}>
 							<Check class={cn('mr-2 h-4 w-4', value === option ? 'opacity-100' : 'opacity-0')} />
 							{option}

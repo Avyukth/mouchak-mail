@@ -5,14 +5,23 @@
 	import { getProjects, getAgents, getInbox, type Project, type Agent, type Message } from '$lib/api/client';
 	import { toast } from 'svelte-sonner';
 	import ComposeMessage from '$lib/components/ComposeMessage.svelte';
+
+	// shadcn/ui components
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { Label } from '$lib/components/ui/label/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Sheet from '$lib/components/ui/sheet/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { FilterCombobox } from '$lib/components/ui/combobox/index.js';
+	import { ShimmerButton, BlurFade } from '$lib/components/magic';
+	import { MessageListSkeleton } from '$lib/components/skeletons';
+
+	// Icons
 	import Inbox from 'lucide-svelte/icons/inbox';
 	import PenSquare from 'lucide-svelte/icons/pen-square';
 	import RefreshCw from 'lucide-svelte/icons/refresh-cw';
 	import X from 'lucide-svelte/icons/x';
-	import { MessageListSkeleton } from '$lib/components/skeletons';
-	import { Badge } from '$lib/components/ui/badge';
-	import { ShimmerButton, BlurFade } from '$lib/components/magic';
-	import * as Sheet from '$lib/components/ui/sheet';
 
 	let projects = $state<Project[]>([]);
 	let agents = $state<Agent[]>([]);
@@ -25,7 +34,7 @@
 	let selectedProject = $state<string>('');
 	let selectedAgent = $state<string>('');
 
-	// Compose modal - use Sheet on mobile, Dialog on desktop
+	// Compose modal
 	let showCompose = $state(false);
 
 	// Detect mobile viewport
@@ -40,6 +49,18 @@
 			return () => window.removeEventListener('resize', checkMobile);
 		}
 	});
+
+	// Derived options for comboboxes
+	let projectOptions = $derived(projects.map(p => p.human_key));
+	let agentOptions = $derived(agents.map(a => a.name));
+
+	// Map display values to slugs
+	function getProjectSlug(humanKey: string): string {
+		return projects.find(p => p.human_key === humanKey)?.slug ?? '';
+	}
+	function getProjectHumanKey(slug: string): string {
+		return projects.find(p => p.slug === slug)?.human_key ?? '';
+	}
 
 	// Use $effect for client-side data loading in Svelte 5
 	$effect(() => {
@@ -80,20 +101,23 @@
 		}
 	}
 
-	async function handleProjectChange() {
+	async function handleProjectChange(humanKey: string) {
+		const slug = getProjectSlug(humanKey);
+		selectedProject = slug;
 		selectedAgent = '';
 		messages = [];
-		if (selectedProject) {
-			await loadAgentsForProject(selectedProject);
+		if (slug) {
+			await loadAgentsForProject(slug);
 			updateUrl();
 		} else {
 			agents = [];
 		}
 	}
 
-	async function handleAgentChange() {
+	async function handleAgentChange(agentName: string) {
+		selectedAgent = agentName;
 		updateUrl();
-		if (selectedProject && selectedAgent) {
+		if (selectedProject && agentName) {
 			await loadMessages();
 		} else {
 			messages = [];
@@ -102,7 +126,7 @@
 
 	async function loadMessages() {
 		if (!selectedProject || !selectedAgent) return;
-		if (loadingMessages) return; // Prevent duplicate loads
+		if (loadingMessages) return;
 
 		loadingMessages = true;
 		error = null;
@@ -144,12 +168,9 @@
 
 	function getImportanceVariant(importance: string): "default" | "secondary" | "destructive" | "outline" {
 		switch (importance) {
-			case 'high':
-				return 'destructive';
-			case 'low':
-				return 'secondary';
-			default:
-				return 'default';
+			case 'high': return 'destructive';
+			case 'low': return 'secondary';
+			default: return 'default';
 		}
 	}
 
@@ -171,8 +192,8 @@
 	<BlurFade delay={0}>
 		<div class="flex items-center justify-between">
 			<div>
-				<h1 class="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Inbox</h1>
-				<p class="text-sm md:text-base text-gray-600 dark:text-gray-400">View messages for your agents</p>
+				<h1 class="text-xl md:text-2xl font-bold text-foreground">Inbox</h1>
+				<p class="text-sm md:text-base text-muted-foreground">View messages for your agents</p>
 			</div>
 			{#if selectedProject && selectedAgent}
 				<ShimmerButton
@@ -189,68 +210,59 @@
 
 	<!-- Filters -->
 	<BlurFade delay={100}>
-		<div class="bg-white dark:bg-gray-800 rounded-xl p-3 md:p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-			<div class="flex flex-col sm:flex-row gap-3 md:gap-4">
-				<!-- Project Selector -->
-				<div class="flex-1">
-					<label for="projectSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						Project
-					</label>
-					<select
-						id="projectSelect"
-						bind:value={selectedProject}
-						onchange={handleProjectChange}
-						class="w-full min-h-[44px] px-3 md:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-					>
-						<option value="">Select a project...</option>
-						{#each projects as project}
-							<option value={project.slug}>{project.human_key}</option>
-						{/each}
-					</select>
-				</div>
-
-				<!-- Agent Selector -->
-				<div class="flex-1">
-					<label for="agentSelect" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-						Agent
-					</label>
-					<select
-						id="agentSelect"
-						bind:value={selectedAgent}
-						onchange={handleAgentChange}
-						disabled={!selectedProject || agents.length === 0}
-						class="w-full min-h-[44px] px-3 md:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						<option value="">Select an agent...</option>
-						{#each agents as agent}
-							<option value={agent.name}>{agent.name}</option>
-						{/each}
-					</select>
-				</div>
-
-				<!-- Refresh Button -->
-				{#if selectedProject && selectedAgent}
-					<div class="flex items-end">
-						<button
-							onclick={loadMessages}
-							disabled={loadingMessages}
-							class="w-full sm:w-auto min-h-[44px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-							aria-label="Refresh messages"
-						>
-							<RefreshCw class="h-4 w-4 {loadingMessages ? 'animate-spin' : ''}" />
-							<span class="sm:inline">Refresh</span>
-						</button>
+		<Card.Root>
+			<Card.Content class="p-3 md:p-4">
+				<div class="flex flex-col sm:flex-row gap-3 md:gap-4">
+					<!-- Project Selector (Searchable Combobox) -->
+					<div class="flex-1 space-y-1.5">
+						<Label class="text-sm font-medium">Project</Label>
+						<FilterCombobox
+							value={getProjectHumanKey(selectedProject)}
+							onValueChange={handleProjectChange}
+							options={projectOptions}
+							placeholder="Select a project..."
+							searchPlaceholder="Search projects..."
+							emptyMessage="No projects found."
+						/>
 					</div>
-				{/if}
-			</div>
-		</div>
+
+					<!-- Agent Selector (Searchable Combobox) -->
+					<div class="flex-1 space-y-1.5">
+						<Label class="text-sm font-medium">Agent</Label>
+						<FilterCombobox
+							value={selectedAgent}
+							onValueChange={handleAgentChange}
+							options={agentOptions}
+							placeholder="Select an agent..."
+							searchPlaceholder="Search agents..."
+							emptyMessage="No agents found."
+						/>
+					</div>
+
+					<!-- Refresh Button -->
+					{#if selectedProject && selectedAgent}
+						<div class="flex items-end">
+							<Button
+								variant="outline"
+								onclick={loadMessages}
+								disabled={loadingMessages}
+								class="w-full sm:w-auto gap-2"
+							>
+								<RefreshCw class="h-4 w-4 {loadingMessages ? 'animate-spin' : ''}" />
+								<span>Refresh</span>
+							</Button>
+						</div>
+					{/if}
+				</div>
+			</Card.Content>
+		</Card.Root>
 	</BlurFade>
 
 	<!-- Error Message -->
 	{#if error}
 		<BlurFade delay={200}>
-			<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-				<p class="text-red-700 dark:text-red-400">{error}</p>
+			<div class="bg-destructive/10 border border-destructive/30 rounded-xl p-4">
+				<p class="text-destructive">{error}</p>
 			</div>
 		</BlurFade>
 	{/if}
@@ -258,45 +270,45 @@
 	<!-- Loading State -->
 	{#if loading}
 		<div class="flex items-center justify-center py-12">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
 		</div>
 	{:else if !selectedProject || !selectedAgent}
 		<!-- Selection Prompt -->
 		<BlurFade delay={200}>
-			<div class="bg-white dark:bg-gray-800 rounded-xl p-8 md:p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-				<div class="mb-4 flex justify-center"><Inbox class="h-12 w-12 text-gray-400" /></div>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Select an Agent</h3>
-				<p class="text-gray-600 dark:text-gray-400">
+			<Card.Root class="p-8 md:p-12 text-center">
+				<div class="mb-4 flex justify-center"><Inbox class="h-12 w-12 text-muted-foreground" /></div>
+				<h3 class="text-lg font-semibold text-foreground mb-2">Select an Agent</h3>
+				<p class="text-muted-foreground">
 					Choose a project and agent to view their inbox.
 				</p>
-			</div>
+			</Card.Root>
 		</BlurFade>
 	{:else if loadingMessages}
 		<MessageListSkeleton rows={5} />
 	{:else if messages.length === 0}
 		<!-- Empty Inbox -->
 		<BlurFade delay={200}>
-			<div class="bg-white dark:bg-gray-800 rounded-xl p-8 md:p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-				<div class="mb-4 flex justify-center"><Inbox class="h-12 w-12 text-gray-400" /></div>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Inbox is empty</h3>
-				<p class="text-gray-600 dark:text-gray-400 mb-4">
+			<Card.Root class="p-8 md:p-12 text-center">
+				<div class="mb-4 flex justify-center"><Inbox class="h-12 w-12 text-muted-foreground" /></div>
+				<h3 class="text-lg font-semibold text-foreground mb-2">Inbox is empty</h3>
+				<p class="text-muted-foreground mb-4">
 					No messages for {selectedAgent} yet.
 				</p>
 				<ShimmerButton on:click={() => showCompose = true}>
 					Send a Message
 				</ShimmerButton>
-			</div>
+			</Card.Root>
 		</BlurFade>
 	{:else}
 		<!-- Messages List -->
 		<BlurFade delay={200}>
-			<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-				<div class="p-3 md:p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-					<span class="text-sm text-gray-600 dark:text-gray-400">
+			<Card.Root class="overflow-hidden">
+				<div class="p-3 md:p-4 border-b border-border flex items-center justify-between">
+					<span class="text-sm text-muted-foreground">
 						{messages.length} message{messages.length === 1 ? '' : 's'}
 					</span>
 				</div>
-				<ul class="divide-y divide-gray-200 dark:divide-gray-700" role="list">
+				<ul class="divide-y divide-border" role="list">
 					{#each messages as message, index}
 						<li
 							class="animate-in fade-in slide-in-from-bottom-2"
@@ -304,12 +316,12 @@
 						>
 							<a
 								href="/inbox/{message.id}?project={selectedProject}&agent={selectedAgent}"
-								class="block min-h-[72px] p-3 md:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors active:bg-gray-100 dark:active:bg-gray-700"
+								class="block min-h-[72px] p-3 md:p-4 hover:bg-muted/50 transition-colors active:bg-muted"
 							>
 								<div class="flex items-start justify-between gap-3 md:gap-4">
 									<div class="flex-1 min-w-0">
 										<div class="flex flex-wrap items-center gap-1.5 md:gap-2 mb-1">
-											<h4 class="font-medium text-gray-900 dark:text-white truncate text-sm md:text-base">
+											<h4 class="font-medium text-foreground truncate text-sm md:text-base">
 												{message.subject || '(No subject)'}
 											</h4>
 											{#if message.importance !== 'normal'}
@@ -328,11 +340,11 @@
 												</Badge>
 											{/if}
 										</div>
-										<p class="text-xs md:text-sm text-gray-600 dark:text-gray-400 truncate">
+										<p class="text-xs md:text-sm text-muted-foreground truncate">
 											{truncateBody(message.body_md)}
 										</p>
 									</div>
-									<div class="text-xs md:text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap shrink-0">
+									<div class="text-xs md:text-sm text-muted-foreground whitespace-nowrap shrink-0">
 										{formatDate(message.created_ts)}
 									</div>
 								</div>
@@ -340,7 +352,7 @@
 						</li>
 					{/each}
 				</ul>
-			</div>
+			</Card.Root>
 		</BlurFade>
 	{/if}
 </div>
@@ -366,27 +378,15 @@
 			</div>
 		</Sheet.Content>
 	</Sheet.Root>
-{:else if showCompose}
-	<div
-		class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-		onclick={(e) => { if (e.target === e.currentTarget) showCompose = false; }}
-		onkeydown={(e) => { if (e.key === 'Escape') showCompose = false; }}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="compose-title"
-		tabindex="-1"
-	>
-		<div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-			<div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-				<h2 id="compose-title" class="text-lg font-semibold text-gray-900 dark:text-white">New Message</h2>
-				<button
-					onclick={() => showCompose = false}
-					class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-					aria-label="Close"
-				>
-					<X class="h-5 w-5" />
-				</button>
-			</div>
+{:else}
+	<Dialog.Root bind:open={showCompose}>
+		<Dialog.Content class="max-w-2xl">
+			<Dialog.Header>
+				<Dialog.Title>New Message</Dialog.Title>
+				<Dialog.Description>
+					Send a message from {selectedAgent}
+				</Dialog.Description>
+			</Dialog.Header>
 			<ComposeMessage
 				projectSlug={selectedProject}
 				senderName={selectedAgent}
@@ -394,8 +394,8 @@
 				onClose={() => showCompose = false}
 				onSent={handleMessageSent}
 			/>
-		</div>
-	</div>
+		</Dialog.Content>
+	</Dialog.Root>
 {/if}
 
 <style>

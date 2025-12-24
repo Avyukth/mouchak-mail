@@ -4,17 +4,24 @@
 	import { browser } from '$app/environment';
 	import { getMessage, getAgents, getThreadMessages, type Message, type Agent } from '$lib/api/client';
 	import ComposeMessage from '$lib/components/ComposeMessage.svelte';
+
+	// shadcn/ui components
+	import { Button } from '$lib/components/ui/button/index.js';
+	import { Badge } from '$lib/components/ui/badge/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Tabs from '$lib/components/ui/tabs/index.js';
+	import * as Sheet from '$lib/components/ui/sheet/index.js';
+	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { BlurFade, ShimmerButton } from '$lib/components/magic';
+
+	// Icons
 	import ArrowLeft from 'lucide-svelte/icons/arrow-left';
 	import Reply from 'lucide-svelte/icons/reply';
 	import Inbox from 'lucide-svelte/icons/inbox';
-	import X from 'lucide-svelte/icons/x';
 	import Clock from 'lucide-svelte/icons/clock';
 	import MessageSquare from 'lucide-svelte/icons/message-square';
 	import Info from 'lucide-svelte/icons/info';
-	import { Badge } from '$lib/components/ui/badge';
-	import * as Tabs from '$lib/components/ui/tabs';
-	import * as Sheet from '$lib/components/ui/sheet';
-	import { BlurFade, ShimmerButton } from '$lib/components/magic';
+
 	import { marked } from 'marked';
 
 	let message = $state<Message | null>(null);
@@ -136,17 +143,19 @@
 <div class="space-y-4 md:space-y-6">
 	<!-- Breadcrumb / Back -->
 	<BlurFade delay={0}>
-		<nav class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-			<button
+		<nav class="flex items-center gap-2 text-sm text-muted-foreground">
+			<Button
+				variant="ghost"
+				size="sm"
 				onclick={goBack}
-				class="min-h-[44px] px-2 -ml-2 hover:text-primary-600 dark:hover:text-primary-400 flex items-center gap-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+				class="-ml-2 gap-1"
 			>
 				<ArrowLeft class="h-4 w-4" />
 				<span>Back to Inbox</span>
-			</button>
+			</Button>
 			{#if agentName}
 				<span>/</span>
-				<span class="text-gray-900 dark:text-white font-medium">{agentName}</span>
+				<span class="text-foreground font-medium">{agentName}</span>
 			{/if}
 		</nav>
 	</BlurFade>
@@ -154,8 +163,8 @@
 	<!-- Error Message -->
 	{#if error}
 		<BlurFade delay={100}>
-			<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-				<p class="text-red-700 dark:text-red-400">{error}</p>
+			<div class="bg-destructive/10 border border-destructive/30 rounded-xl p-4">
+				<p class="text-destructive">{error}</p>
 			</div>
 		</BlurFade>
 	{/if}
@@ -163,17 +172,17 @@
 	<!-- Loading State -->
 	{#if loading}
 		<div class="flex items-center justify-center py-12">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
 		</div>
 	{:else if message}
 		<!-- Message View -->
 		<BlurFade delay={100}>
-			<div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+			<Card.Root class="overflow-hidden">
 				<!-- Message Header -->
-				<div class="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
+				<div class="p-4 md:p-6 border-b border-border">
 					<div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
 						<div class="flex-1 min-w-0">
-							<h1 class="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-2 break-words">
+							<h1 class="text-lg md:text-xl font-bold text-foreground mb-2 break-words">
 								{message.subject || '(No subject)'}
 							</h1>
 							<div class="flex flex-wrap items-center gap-2 text-sm">
@@ -205,7 +214,7 @@
 						{/if}
 					</div>
 
-					<div class="mt-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+					<div class="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
 						<Clock class="h-4 w-4" />
 						<span>{formatDate(message.created_ts)}</span>
 					</div>
@@ -213,7 +222,7 @@
 
 				<!-- Tabs: Message / Details / Thread -->
 				<Tabs.Root value="message" class="w-full">
-					<Tabs.List class="w-full justify-start border-b border-gray-200 dark:border-gray-700 px-4 md:px-6">
+					<Tabs.List class="w-full justify-start border-b border-border px-4 md:px-6">
 						<Tabs.Trigger value="message" class="min-h-[44px] px-4 flex items-center gap-2">
 							<MessageSquare class="h-4 w-4" />
 							<span class="hidden sm:inline">Message</span>
@@ -245,7 +254,7 @@
 						<Tabs.Content value="thread" class="p-4 md:p-6">
 							<div class="relative">
 								<!-- Timeline line -->
-								<div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" aria-hidden="true"></div>
+								<div class="absolute left-4 top-0 bottom-0 w-0.5 bg-border" aria-hidden="true"></div>
 
 								<ul class="space-y-4" role="list">
 									{#each threadMessages as msg, index}
@@ -255,26 +264,26 @@
 										>
 											<!-- Timeline dot -->
 											<div
-												class="absolute left-2.5 w-3 h-3 rounded-full border-2 {msg.id === message.id ? 'bg-primary-600 border-primary-600' : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'}"
+												class="absolute left-2.5 w-3 h-3 rounded-full border-2 {msg.id === message.id ? 'bg-primary border-primary' : 'bg-background border-muted-foreground/30'}"
 												aria-hidden="true"
 											></div>
 
-											<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 {msg.id === message.id ? 'ring-2 ring-primary-500' : ''}">
+											<div class="bg-muted/50 rounded-lg p-4 {msg.id === message.id ? 'ring-2 ring-primary' : ''}">
 												<div class="flex items-center justify-between gap-2 mb-2">
-													<span class="font-medium text-gray-900 dark:text-white text-sm">
+													<span class="font-medium text-foreground text-sm">
 														{msg.subject || '(No subject)'}
 													</span>
-													<span class="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+													<span class="text-xs text-muted-foreground shrink-0">
 														{formatRelativeTime(msg.created_ts)}
 													</span>
 												</div>
-												<p class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+												<p class="text-sm text-muted-foreground line-clamp-2">
 													{msg.body_md.slice(0, 150)}{msg.body_md.length > 150 ? '...' : ''}
 												</p>
 												{#if msg.id !== message.id}
 													<a
 														href="/inbox/{msg.id}?project={projectSlug}&agent={agentName}"
-														class="inline-block mt-2 text-xs text-primary-600 dark:text-primary-400 hover:underline"
+														class="inline-block mt-2 text-xs text-primary hover:underline"
 													>
 														View message
 													</a>
@@ -290,44 +299,45 @@
 					<!-- Details Tab -->
 					<Tabs.Content value="details" class="p-4 md:p-6" data-testid="message-details">
 						<dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-							<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-								<dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">From</dt>
-								<dd class="text-sm text-gray-900 dark:text-white" data-testid="message-sender">{message.sender_name || agentName || 'Unknown'}</dd>
+							<div class="bg-muted/50 rounded-lg p-4">
+								<dt class="text-xs text-muted-foreground uppercase tracking-wider mb-1">From</dt>
+								<dd class="text-sm text-foreground" data-testid="message-sender">{message.sender_name || agentName || 'Unknown'}</dd>
 							</div>
-							<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-								<dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">To</dt>
-								<dd class="text-sm text-gray-900 dark:text-white">{message.recipients?.join(', ') || agentName || 'Unknown'}</dd>
+							<div class="bg-muted/50 rounded-lg p-4">
+								<dt class="text-xs text-muted-foreground uppercase tracking-wider mb-1">To</dt>
+								<dd class="text-sm text-foreground">{message.recipients?.join(', ') || agentName || 'Unknown'}</dd>
 							</div>
 							{#if message.thread_id}
-								<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-									<dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Thread</dt>
-									<dd class="text-sm text-gray-900 dark:text-white" data-testid="message-thread">{message.thread_id}</dd>
+								<div class="bg-muted/50 rounded-lg p-4">
+									<dt class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Thread</dt>
+									<dd class="text-sm text-foreground" data-testid="message-thread">{message.thread_id}</dd>
 								</div>
 							{/if}
-							<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-								<dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Importance</dt>
-								<dd class="text-sm text-gray-900 dark:text-white capitalize">{message.importance}</dd>
+							<div class="bg-muted/50 rounded-lg p-4">
+								<dt class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Importance</dt>
+								<dd class="text-sm text-foreground capitalize">{message.importance}</dd>
 							</div>
-							<div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 sm:col-span-2">
-								<dt class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Sent</dt>
-								<dd class="text-sm text-gray-900 dark:text-white" data-testid="message-timestamp">{formatDate(message.created_ts)}</dd>
+							<div class="bg-muted/50 rounded-lg p-4 sm:col-span-2">
+								<dt class="text-xs text-muted-foreground uppercase tracking-wider mb-1">Sent</dt>
+								<dd class="text-sm text-foreground" data-testid="message-timestamp">{formatDate(message.created_ts)}</dd>
 							</div>
 						</dl>
 					</Tabs.Content>
 				</Tabs.Root>
-			</div>
+			</Card.Root>
 		</BlurFade>
 
 		<!-- Quick Actions -->
 		<BlurFade delay={200}>
 			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-				<button
+				<Button
+					variant="secondary"
 					onclick={goBack}
-					class="min-h-[44px] px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-2"
+					class="gap-2"
 				>
 					<ArrowLeft class="h-4 w-4" />
 					<span>Back to Inbox</span>
-				</button>
+				</Button>
 				{#if projectSlug && agentName && agents.length > 0}
 					<ShimmerButton on:click={() => showReply = true} class="w-full sm:w-auto">
 						<Reply class="h-4 w-4 mr-2" />
@@ -339,16 +349,16 @@
 	{:else}
 		<!-- Not Found -->
 		<BlurFade delay={100}>
-			<div class="bg-white dark:bg-gray-800 rounded-xl p-8 md:p-12 text-center shadow-sm border border-gray-200 dark:border-gray-700">
-				<div class="mb-4 flex justify-center"><Inbox class="h-12 w-12 text-gray-400" /></div>
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Message not found</h3>
-				<p class="text-gray-600 dark:text-gray-400 mb-4">
+			<Card.Root class="p-8 md:p-12 text-center">
+				<div class="mb-4 flex justify-center"><Inbox class="h-12 w-12 text-muted-foreground" /></div>
+				<h3 class="text-lg font-semibold text-foreground mb-2">Message not found</h3>
+				<p class="text-muted-foreground mb-4">
 					The message you're looking for doesn't exist or has been deleted.
 				</p>
 				<ShimmerButton on:click={goBack}>
 					Back to Inbox
 				</ShimmerButton>
-			</div>
+			</Card.Root>
 		</BlurFade>
 	{/if}
 </div>
@@ -381,26 +391,14 @@
 		</Sheet.Content>
 	</Sheet.Root>
 {:else if showReply && message}
-	<div
-		class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-		onclick={(e) => { if (e.target === e.currentTarget) showReply = false; }}
-		onkeydown={(e) => { if (e.key === 'Escape') showReply = false; }}
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="reply-title"
-		tabindex="-1"
-	>
-		<div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-			<div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-				<h2 id="reply-title" class="text-lg font-semibold text-gray-900 dark:text-white">Reply</h2>
-				<button
-					onclick={() => showReply = false}
-					class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-					aria-label="Close"
-				>
-					<X class="h-5 w-5" />
-				</button>
-			</div>
+	<Dialog.Root bind:open={showReply}>
+		<Dialog.Content class="max-w-2xl">
+			<Dialog.Header>
+				<Dialog.Title>Reply</Dialog.Title>
+				<Dialog.Description>
+					Reply from {agentName}
+				</Dialog.Description>
+			</Dialog.Header>
 			<ComposeMessage
 				{projectSlug}
 				senderName={agentName}
@@ -412,8 +410,8 @@
 				onClose={() => showReply = false}
 				onSent={() => { showReply = false; goBack(); }}
 			/>
-		</div>
-	</div>
+		</Dialog.Content>
+	</Dialog.Root>
 {/if}
 
 <style>
