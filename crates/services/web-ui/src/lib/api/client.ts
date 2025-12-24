@@ -481,6 +481,53 @@ export async function checkHealth(): Promise<{ status: string }> {
 }
 
 // ============================================================================
+// Dashboard Stats
+// ============================================================================
+
+export interface DashboardStats {
+	projectCount: number;
+	agentCount: number;
+	inboxCount: number;
+	messageCount: number;
+	projects: Array<Project & { agentCount?: number }>;
+}
+
+/**
+ * Fetch aggregated dashboard statistics.
+ * This fetches projects, aggregates agent counts, and gets inbox stats.
+ */
+export async function getDashboardStats(): Promise<DashboardStats> {
+	// Fetch projects and unified inbox in parallel
+	const [projects, unifiedInbox] = await Promise.all([getProjects(), fetchUnifiedInbox(1000)]);
+
+	// Fetch agents for each project in parallel (limit to first 10 projects for performance)
+	const projectsToFetch = projects.slice(0, 10);
+	const agentResults = await Promise.allSettled(
+		projectsToFetch.map((p) => getAgents(p.slug).catch(() => []))
+	);
+
+	// Count total agents
+	let agentCount = 0;
+	const projectsWithAgents = projects.map((project, index) => {
+		if (index < projectsToFetch.length) {
+			const result = agentResults[index];
+			const agents = result.status === 'fulfilled' ? result.value : [];
+			agentCount += agents.length;
+			return { ...project, agentCount: agents.length };
+		}
+		return { ...project, agentCount: undefined };
+	});
+
+	return {
+		projectCount: projects.length,
+		agentCount,
+		inboxCount: unifiedInbox.messages.filter((m) => !m.is_read).length,
+		messageCount: unifiedInbox.total_count,
+		projects: projectsWithAgents
+	};
+}
+
+// ============================================================================
 // Re-export types for convenience
 // ============================================================================
 

@@ -1,20 +1,26 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { checkHealth, getProjects, type Project } from '$lib/api/client';
-	import * as Card from '$lib/components/ui/card/index.js';
+	import {
+		checkHealth,
+		getDashboardStats,
+		type DashboardStats,
+		type Project
+	} from '$lib/api/client';
 	import * as Alert from '$lib/components/ui/alert/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import FolderKanban from 'lucide-svelte/icons/folder-kanban';
-	import ArrowRight from 'lucide-svelte/icons/arrow-right';
 	import AlertCircle from 'lucide-svelte/icons/alert-circle';
 	import RefreshCw from 'lucide-svelte/icons/refresh-cw';
 	import X from 'lucide-svelte/icons/x';
+	import FolderKanban from 'lucide-svelte/icons/folder-kanban';
+	import Bot from 'lucide-svelte/icons/bot';
 	import Inbox from 'lucide-svelte/icons/inbox';
+	import Mail from 'lucide-svelte/icons/mail';
 	import { DashboardSkeleton } from '$lib/components/skeletons';
-	import { NumberTicker, BlurFade, GridPattern, ShimmerButton, StatusIndicator } from '$lib/components/magic';
+	import { BlurFade, GridPattern } from '$lib/components/magic';
+	import { StatCard, ProjectList, QuickActions } from '$lib/components/dashboard';
 
 	let healthStatus = $state<string>('checking...');
-	let projects = $state<Project[]>([]);
+	let stats = $state<DashboardStats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let errorDismissed = $state(false);
@@ -35,8 +41,8 @@
 			healthStatus = health.status;
 			error = null;
 
-			const projectList = await getProjects();
-			projects = projectList;
+			const dashboardStats = await getDashboardStats();
+			stats = dashboardStats;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to connect to backend';
 			healthStatus = 'offline';
@@ -58,14 +64,18 @@
 
 	// Status indicator mapping
 	const statusMap = $derived(
-		healthStatus === 'ok' ? 'online' :
-		healthStatus === 'checking...' ? 'away' : 'offline'
+		healthStatus === 'ok' ? 'online' : healthStatus === 'checking...' ? 'away' : 'offline'
 	);
 
 	const statusLabel = $derived(
-		healthStatus === 'ok' ? 'Online' :
-		healthStatus === 'checking...' ? 'Checking...' : 'Offline'
+		healthStatus === 'ok' ? 'Online' : healthStatus === 'checking...' ? 'Checking...' : 'Offline'
 	);
+
+	// Attention count for header subtitle
+	const attentionCount = $derived(stats?.inboxCount ?? 0);
+
+	// Recent projects (top 5)
+	const recentProjects = $derived(stats?.projects.slice(0, 5) ?? []);
 </script>
 
 <GridPattern pattern="dots" opacity={0.05} masked class="min-h-screen -m-4 md:-m-6 p-4 md:p-6">
@@ -74,16 +84,34 @@
 		<BlurFade delay={0}>
 			<header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 				<div>
-					<h1 class="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
-					<p class="text-muted-foreground mt-1">Welcome to MCP Agent Mail</p>
+					<h1 class="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+						Welcome back!
+					</h1>
+					<p class="text-sm text-muted-foreground mt-1">
+						{#if attentionCount > 0}
+							{attentionCount}
+							{attentionCount === 1 ? 'item needs' : 'items need'} your attention
+						{:else}
+							Everything's looking good
+						{/if}
+					</p>
 				</div>
 				<!-- Compact Status Badge -->
-				<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium
-					{statusMap === 'online' ? 'bg-green-500/10 text-green-500' :
-					 statusMap === 'away' ? 'bg-yellow-500/10 text-yellow-500' :
-					 'bg-red-500/10 text-red-500'}">
-					<span class="h-2 w-2 rounded-full {statusMap === 'online' ? 'bg-green-500' :
-						statusMap === 'away' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}"></span>
+				<span
+					class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium
+					{statusMap === 'online'
+						? 'bg-green-500/10 text-green-500'
+						: statusMap === 'away'
+							? 'bg-yellow-500/10 text-yellow-500'
+							: 'bg-red-500/10 text-red-500'}"
+				>
+					<span
+						class="h-2 w-2 rounded-full {statusMap === 'online'
+							? 'bg-green-500'
+							: statusMap === 'away'
+								? 'bg-yellow-500 animate-pulse'
+								: 'bg-red-500'}"
+					></span>
 					{statusLabel}
 				</span>
 			</header>
@@ -137,108 +165,55 @@
 				</BlurFade>
 			{/if}
 
-			<!-- Stats Cards -->
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-				<!-- Projects Count -->
-				<BlurFade delay={100}>
-					<Card.Root class="h-full">
-						<Card.Header class="pb-2">
-							<div class="flex items-center gap-3">
-								<FolderKanban class="h-5 w-5 text-primary shrink-0" aria-hidden="true" />
-								<Card.Title class="text-base">Projects</Card.Title>
-							</div>
-						</Card.Header>
-						<Card.Content>
-							<p class="text-2xl font-bold text-primary">
-								<NumberTicker value={projects.length} delay={200} />
-								<span class="sr-only">{projects.length} projects</span>
-							</p>
-						</Card.Content>
-					</Card.Root>
-				</BlurFade>
+			<!-- Stats Grid: 2 cols mobile, 4 cols desktop -->
+			<BlurFade delay={100}>
+				<section class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+					<StatCard
+						icon={FolderKanban}
+						value={stats?.projectCount ?? 0}
+						label="Projects"
+						href="/projects"
+						delay={0}
+					/>
+					<StatCard
+						icon={Bot}
+						value={stats?.agentCount ?? 0}
+						label="Agents"
+						href="/agents"
+						delay={50}
+					/>
+					<StatCard
+						icon={Inbox}
+						value={stats?.inboxCount ?? 0}
+						label="Inbox"
+						href="/inbox"
+						highlight={attentionCount > 0}
+						delay={100}
+					/>
+					<StatCard
+						icon={Mail}
+						value={stats?.messageCount ?? 0}
+						label="Messages"
+						href="/mail"
+						delay={150}
+					/>
+				</section>
+			</BlurFade>
 
-				<!-- Quick Actions -->
-				<BlurFade delay={150}>
-					<Card.Root class="h-full">
-						<Card.Header class="pb-2">
-							<Card.Title class="text-base">Quick Actions</Card.Title>
-						</Card.Header>
-						<Card.Content class="space-y-3">
-							<a href="/projects" class="block">
-								<ShimmerButton class="w-full justify-between">
-									<span class="flex items-center gap-2">
-										<FolderKanban class="h-4 w-4" />
-										View Projects
-									</span>
-									<ArrowRight class="h-4 w-4" />
-								</ShimmerButton>
-							</a>
-							<a
-								href="/inbox"
-								class="flex items-center justify-between min-h-[44px] px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-							>
-								<span class="flex items-center gap-2 font-medium">
-									<Inbox class="h-4 w-4" />
-									Check Inbox
-								</span>
-								<ArrowRight class="h-4 w-4" aria-hidden="true" />
-							</a>
-						</Card.Content>
-					</Card.Root>
-				</BlurFade>
-			</div>
+			<!-- Main Content Grid: Projects (2 cols) + Quick Actions (1 col) -->
+			<BlurFade delay={200}>
+				<section class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+					<!-- Recent Projects (2 cols on desktop) -->
+					<div class="md:col-span-2">
+						<ProjectList projects={recentProjects} />
+					</div>
 
-			<!-- Recent Projects -->
-			{#if projects.length > 0}
-				<BlurFade delay={200}>
-					<Card.Root>
-						<Card.Header>
-							<Card.Title>Recent Projects</Card.Title>
-						</Card.Header>
-						<Card.Content class="p-0">
-							<ul class="divide-y divide-border" role="list">
-								{#each projects.slice(0, 5) as project, index}
-									<li
-										class="animate-in fade-in slide-in-from-bottom-2"
-										style="animation-delay: {index * 50}ms; animation-fill-mode: both;"
-									>
-										<a
-											href="/projects/{project.slug}"
-											class="block min-h-[60px] px-6 py-4 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-										>
-											<p class="font-medium text-foreground">{project.human_key}</p>
-										</a>
-									</li>
-								{/each}
-							</ul>
-						</Card.Content>
-					</Card.Root>
-				</BlurFade>
-			{/if}
+					<!-- Quick Actions (1 col) -->
+					<div>
+						<QuickActions inboxCount={attentionCount} />
+					</div>
+				</section>
+			</BlurFade>
 		{/if}
 	</div>
 </GridPattern>
-
-<style>
-	/* Staggered animation keyframes */
-	@keyframes fade-in {
-		from { opacity: 0; }
-		to { opacity: 1; }
-	}
-
-	@keyframes slide-in-from-bottom-2 {
-		from { transform: translateY(8px); }
-		to { transform: translateY(0); }
-	}
-
-	.animate-in {
-		animation: fade-in 300ms ease-out, slide-in-from-bottom-2 300ms ease-out;
-	}
-
-	/* Respect reduced motion */
-	@media (prefers-reduced-motion: reduce) {
-		.animate-in {
-			animation: none;
-		}
-	}
-</style>
