@@ -51,6 +51,7 @@
     {type}
     {disabled}
     class="shimmer-button relative overflow-hidden rounded-lg font-medium transition-colors
+           inline-flex items-center justify-center
            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
            disabled:pointer-events-none disabled:opacity-50
            {sizeClasses[size]} {variantClasses[variant]} {className}"
@@ -62,7 +63,7 @@
     {#if !prefersReducedMotion && !disabled}
         <span class="shimmer-effect absolute inset-0 pointer-events-none" aria-hidden="true"></span>
     {/if}
-    <span class="relative z-10">
+    <span class="relative z-10 inline-flex items-center">
         <slot />
     </span>
 </button>

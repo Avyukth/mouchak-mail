@@ -70,11 +70,22 @@
 
 <GridPattern pattern="dots" opacity={0.05} masked class="min-h-screen -m-4 md:-m-6 p-4 md:p-6">
 	<div class="space-y-6 max-w-6xl mx-auto">
-		<!-- Page Header with proper hierarchy -->
+		<!-- Page Header with status badge -->
 		<BlurFade delay={0}>
-			<header>
-				<h1 class="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
-				<p class="text-muted-foreground mt-1">Welcome to MCP Agent Mail</p>
+			<header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div>
+					<h1 class="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
+					<p class="text-muted-foreground mt-1">Welcome to MCP Agent Mail</p>
+				</div>
+				<!-- Compact Status Badge -->
+				<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium
+					{statusMap === 'online' ? 'bg-green-500/10 text-green-500' :
+					 statusMap === 'away' ? 'bg-yellow-500/10 text-yellow-500' :
+					 'bg-red-500/10 text-red-500'}">
+					<span class="h-2 w-2 rounded-full {statusMap === 'online' ? 'bg-green-500' :
+						statusMap === 'away' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}"></span>
+					{statusLabel}
+				</span>
 			</header>
 		</BlurFade>
 
@@ -126,27 +137,10 @@
 				</BlurFade>
 			{/if}
 
-			<!-- Status Cards with consistent spacing -->
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-				<!-- Backend Status -->
-				<BlurFade delay={100}>
-					<Card.Root class="h-full">
-						<Card.Header class="pb-2">
-							<Card.Title class="text-base flex items-center gap-3">
-								<StatusIndicator status={statusMap} size="md" />
-								Backend Status
-							</Card.Title>
-						</Card.Header>
-						<Card.Content>
-							<p class="text-2xl font-bold text-foreground capitalize">
-								{statusLabel}
-							</p>
-						</Card.Content>
-					</Card.Root>
-				</BlurFade>
-
+			<!-- Stats Cards -->
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 				<!-- Projects Count -->
-				<BlurFade delay={150}>
+				<BlurFade delay={100}>
 					<Card.Root class="h-full">
 						<Card.Header class="pb-2">
 							<div class="flex items-center gap-3">
@@ -164,7 +158,7 @@
 				</BlurFade>
 
 				<!-- Quick Actions -->
-				<BlurFade delay={200}>
+				<BlurFade delay={150}>
 					<Card.Root class="h-full">
 						<Card.Header class="pb-2">
 							<Card.Title class="text-base">Quick Actions</Card.Title>
@@ -196,7 +190,7 @@
 
 			<!-- Recent Projects -->
 			{#if projects.length > 0}
-				<BlurFade delay={250}>
+				<BlurFade delay={200}>
 					<Card.Root>
 						<Card.Header>
 							<Card.Title>Recent Projects</Card.Title>

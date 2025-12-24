@@ -326,26 +326,6 @@
 				</Tabs.Root>
 			</Card.Root>
 		</BlurFade>
-
-		<!-- Quick Actions -->
-		<BlurFade delay={200}>
-			<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-				<Button
-					variant="secondary"
-					onclick={goBack}
-					class="gap-2"
-				>
-					<ArrowLeft class="h-4 w-4" />
-					<span>Back to Inbox</span>
-				</Button>
-				{#if projectSlug && agentName && agents.length > 0}
-					<ShimmerButton on:click={() => showReply = true} class="w-full sm:w-auto">
-						<Reply class="h-4 w-4 mr-2" />
-						Reply to Message
-					</ShimmerButton>
-				{/if}
-			</div>
-		</BlurFade>
 	{:else}
 		<!-- Not Found -->
 		<BlurFade delay={100}>
