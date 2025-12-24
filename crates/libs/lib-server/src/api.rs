@@ -19,6 +19,8 @@ pub fn routes() -> Router<AppState> {
         // Attachments
         .route("/api/health", get(tools::health_check))
         .route("/api/health_check", get(tools::health_check)) // Python alias
+        .route("/api/ready", get(tools::readiness_check))
+        .route("/api/readiness", get(tools::readiness_check)) // Alias
         .route("/api/project/ensure", post(tools::ensure_project))
         .route("/api/ensure_project", post(tools::ensure_project)) // Python alias
         .route("/api/projects", get(tools::list_all_projects))

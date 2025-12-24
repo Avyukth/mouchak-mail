@@ -1,8 +1,10 @@
 use axum::{
     Json,
     extract::{Path, Query, State},
+    http::StatusCode,
     response::{IntoResponse, Response},
 };
+use std::time::Instant;
 use chrono::Utc;
 use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
 use lib_core::{self, Ctx};
@@ -23,6 +25,71 @@ pub async fn health_check(_state: State<AppState>) -> crate::error::Result<Respo
         timestamp: Utc::now().to_rfc3339(),
     })
     .into_response())
+}
+
+// --- readiness_check ---
+#[derive(Serialize)]
+pub struct ReadinessResponse {
+    status: &'static str,
+    version: &'static str,
+    uptime_seconds: u64,
+    checks: ReadinessChecks,
+}
+
+#[derive(Serialize)]
+pub struct ReadinessChecks {
+    database: DatabaseCheckResult,
+}
+
+#[derive(Serialize)]
+pub struct DatabaseCheckResult {
+    ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    latency_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+/// Readiness probe - checks if the service can handle requests
+/// Returns 200 OK when ready, 503 Service Unavailable when not ready
+pub async fn readiness_check(State(app_state): State<AppState>) -> impl IntoResponse {
+    let start = Instant::now();
+
+    // Check database connectivity
+    let db_check = match app_state.mm.health_check().await {
+        Ok(true) => DatabaseCheckResult {
+            ok: true,
+            latency_ms: Some(start.elapsed().as_millis() as u64),
+            error: None,
+        },
+        Ok(false) => DatabaseCheckResult {
+            ok: false,
+            latency_ms: None,
+            error: Some("Database query returned no rows".to_string()),
+        },
+        Err(e) => DatabaseCheckResult {
+            ok: false,
+            latency_ms: None,
+            error: Some(e.to_string()),
+        },
+    };
+
+    let all_ok = db_check.ok;
+    let status = if all_ok { "ready" } else { "not_ready" };
+    let http_status = if all_ok {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+
+    let response = ReadinessResponse {
+        status,
+        version: env!("CARGO_PKG_VERSION"),
+        uptime_seconds: app_state.start_time.elapsed().as_secs(),
+        checks: ReadinessChecks { database: db_check },
+    };
+
+    (http_status, Json(response))
 }
 
 // --- ensure_project ---
