@@ -188,14 +188,37 @@
 		border-radius: 8px;
 		pointer-events: none;
 		z-index: 0;
-		/* Initial dimensions for smooth first animation */
 		width: 0;
 		height: 44px;
+		overflow: hidden;
 		transition:
 			transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
 			width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
 			height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
 			opacity 0.15s ease;
+	}
+
+	.nav-spotlight::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: repeating-linear-gradient(
+			45deg,
+			transparent 0px,
+			transparent 2px,
+			hsl(var(--primary) / 0.15) 2px,
+			hsl(var(--primary) / 0.15) 3px,
+			transparent 3px,
+			transparent 5px
+		);
+		background-size: 7.07px 7.07px;
+		opacity: 0;
+		animation: stripe-slide 2000ms linear infinite paused;
+	}
+
+	.nav-container:hover .nav-spotlight::before {
+		opacity: 1;
+		animation: stripe-fade-in 100ms ease-out forwards, stripe-slide 2000ms linear infinite;
 	}
 
 	.nav-link {

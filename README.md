@@ -62,7 +62,7 @@ flowchart TB
     subgraph Clients["Client Layer"]
         MCP[/"MCP Clients<br/>(Claude, Cline, VS Code)"/]
         REST[/"REST Clients<br/>(curl, Postman, Apps)"/]
-        WebUI[/"Web UI<br/>(Leptos WASM)"/]
+        WebUI[/"Web UI<br/>(SvelteKit + TypeScript)"/]
         CLI[/"CLI<br/>(mcp-cli)"/]
     end
 
@@ -75,12 +75,14 @@ flowchart TB
     subgraph App["Application Layer (lib-server)"]
         MW["Middleware Stack"]
         Handlers["Route Handlers"]
-        Tools["MCP Tool Router<br/>(50+ tools)"]
+        Tools["MCP Tool Router<br/>(45+ tools)"]
+        Embed["Embedded Assets<br/>(rust-embed)"]
     end
 
     subgraph Business["Business Layer (lib-core)"]
         BMC["Backend Model Controllers"]
         MM["ModelManager"]
+        Types["Strong Newtypes<br/>(ProjectId, AgentId)"]
         Val["Validation Layer"]
     end
 
@@ -98,12 +100,14 @@ flowchart TB
     STDIO --> Tools
     SSE --> Tools
     HTTP --> MW --> Handlers
+    Embed --> Handlers
 
     Handlers --> BMC
     Tools --> BMC
 
     BMC --> MM
-    MM --> Val
+    MM --> Types
+    Types --> Val
     Val --> SQLite
     Val --> Git
 ```
@@ -134,25 +138,33 @@ flowchart LR
 
 ### Backend Model Controller (BMC) Pattern
 
-The BMC pattern separates concerns for each entity with stateless controllers:
+The BMC pattern separates concerns for each entity with stateless controllers and strong newtypes:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│                    Strong Newtypes (lib-core/types.rs)           │
+├─────────────────────────────────────────────────────────────────┤
+│  ProjectId(i64)    │ Compile-time safe project ID               │
+│  AgentId(i64)      │ Compile-time safe agent ID                 │
+│  MessageId(i64)    │ Compile-time safe message ID               │
+│  ProjectSlug(String) │ URL-safe project identifier              │
+│  AgentName(String) │ Agent name identifier                      │
+├─────────────────────────────────────────────────────────────────┤
 │                    Data Structures                               │
 ├─────────────────────────────────────────────────────────────────┤
-│  Agent          │  AgentForCreate    │  AgentForUpdate          │
-│  ├─ id: i64     │  ├─ name           │  ├─ program             │
-│  ├─ name        │  ├─ project_id     │  └─ model               │
-│  ├─ project_id  │  ├─ program        │                          │
-│  └─ created_at  │  └─ model          │                          │
+│  Agent              │  AgentForCreate    │  AgentForUpdate       │
+│  ├─ id: AgentId     │  ├─ name           │  ├─ program          │
+│  ├─ name            │  ├─ project_id     │  └─ model            │
+│  ├─ project_id      │  ├─ program        │                       │
+│  └─ created_at      │  └─ model          │                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                    BMC Controller (Stateless)                    │
 ├─────────────────────────────────────────────────────────────────┤
-│  AgentBmc::create(ctx, mm, data) -> Result<i64>                 │
-│  AgentBmc::get(ctx, mm, id) -> Result<Agent>                    │
-│  AgentBmc::get_by_name(ctx, mm, project_id, name) -> Result<Agent> │
-│  AgentBmc::list_for_project(ctx, mm, project_id) -> Result<Vec<Agent>> │
-│  AgentBmc::update(ctx, mm, id, data) -> Result<()>              │
+│  AgentBmc::create(ctx, mm, data) -> Result<AgentId>             │
+│  AgentBmc::get(ctx, mm, id: AgentId) -> Result<Agent>           │
+│  AgentBmc::get_by_name(ctx, mm, ProjectId, name) -> Result<Agent> │
+│  AgentBmc::list_for_project(ctx, mm, ProjectId) -> Result<Vec<Agent>> │
+│  AgentBmc::update(ctx, mm, AgentId, data) -> Result<()>         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -189,6 +201,51 @@ data/archive/projects/{slug}/
 └── threads/{thread_id}/
     └── {message_id}.md
 ```
+
+### Frontend Architecture (SvelteKit)
+
+```mermaid
+flowchart TB
+    subgraph UI["SvelteKit Application"]
+        Routes["Routes Layer"]
+        Components["Component Library"]
+        State["State Management"]
+    end
+
+    subgraph Routes
+        Dashboard["/"]
+        Inbox["/inbox"]
+        Projects["/projects"]
+        Agents["/agents"]
+        Mail["/mail"]
+        Thread["/thread/[id]"]
+    end
+
+    subgraph Components
+        UI_Lib["shadcn/ui Components<br/>(bits-ui headless)"]
+        Layout["Layout Components<br/>(Sidebar, Header)"]
+        Magic["Magic Components<br/>(ShimmerButton, effects)"]
+        Skeletons["Loading Skeletons"]
+    end
+
+    subgraph State
+        Stores["Svelte Stores"]
+        API["API Client<br/>(/api proxy)"]
+    end
+
+    Routes --> Components
+    Components --> State
+    API -->|"fetch"| Backend["Rust Backend<br/>(:9765)"]
+```
+
+**UI Component Categories:**
+| Category | Components |
+|----------|------------|
+| **Primitives** | Button, Card, Input, Badge, Checkbox, Tooltip |
+| **Layout** | Sidebar, Sheet, Tabs, Pagination, Resizable |
+| **Data** | Table, Command Palette, Filter Combobox |
+| **Feedback** | Skeleton, Alert, Progress, Status Indicator |
+| **Effects** | ShimmerButton, Spotlight, Theme Toggle |
 
 ---
 
@@ -294,11 +351,11 @@ stateDiagram-v2
 ### Prerequisites
 
 - **Rust** 1.85+ (Edition 2024)
-- **Trunk** (for Leptos WASM frontend)
+- **Bun** 1.0+ (for SvelteKit frontend)
 
 ```bash
-# Install Trunk for frontend builds
-cargo install trunk
+# Install Bun (macOS/Linux)
+curl -fsSL https://bun.sh/install | bash
 
 # Optional: Install cargo-deny for dependency auditing
 cargo install cargo-deny
@@ -314,22 +371,30 @@ cd mcp-agent-mail-rs
 # Build all Rust components
 cargo build --workspace
 
-# Run development servers (API + Web UI)
-make dev
+# Install frontend dependencies
+cd crates/services/web-ui && bun install && cd ../../..
+
+# Run development servers
+make dev-backend    # Terminal 1: API on :9765
+make dev-frontend   # Terminal 2: SvelteKit with HMR on :5173
 ```
 
 Development servers:
-- **API Server**: http://localhost:8765
-- **Web UI**: http://localhost:8080 (Leptos WASM)
+- **API Server**: http://localhost:9765
+- **Web UI**: http://localhost:5173 (SvelteKit with HMR, proxies to API)
 
 ### Production Build
 
 ```bash
-# Build everything for production
-make build-prod
+# Build unified binary with embedded UI
+make build-sidecar
 
-# Run production server
-cargo run -p mcp-server --release
+# Run production server (embedded SvelteKit UI)
+./target/release/mcp-agent-mail serve http --port 8765
+
+# Or install globally as 'am'
+make install-am-full
+am serve http --port 8765
 ```
 
 ### Unified CLI
@@ -380,16 +445,22 @@ mcp-agent-mail-rs/
 │   │   ├── lib-server/           # Axum REST API, middleware, OpenAPI
 │   │   │   ├── src/api.rs        # 70+ REST endpoints
 │   │   │   ├── src/auth.rs       # Bearer/JWT authentication
-│   │   │   └── src/ratelimit.rs  # Rate limiting (governor)
+│   │   │   ├── src/ratelimit.rs  # Rate limiting (governor)
+│   │   │   └── src/embedded.rs   # rust-embed for SvelteKit assets
 │   │   └── lib-mcp/              # MCP tool definitions
 │   │       ├── src/lib.rs        # AgentMailService with #[tool_router]
-│   │       └── src/tools/        # Tool modules (50+ tools)
+│   │       ├── src/tools/        # Tool modules (45+ tools)
+│   │       └── src/params.rs     # Auto-generated schemas (JsonSchema)
 │   ├── services/
 │   │   ├── mcp-server/           # REST API server binary
 │   │   ├── mcp-stdio/            # MCP protocol server (stdio + SSE)
 │   │   ├── mcp-cli/              # CLI for testing
-│   │   ├── mcp-agent-mail/       # Unified CLI binary
-│   │   └── web-ui-leptos/        # Leptos WASM frontend (SPA)
+│   │   ├── mcp-agent-mail/       # Unified CLI binary (with embedded UI)
+│   │   ├── web-ui/               # SvelteKit frontend (TypeScript)
+│   │   │   ├── src/routes/       # SvelteKit routes (inbox, projects, agents)
+│   │   │   ├── src/lib/components/  # shadcn/ui-style components
+│   │   │   └── static/           # Static assets
+│   │   └── web-ui-leptos/        # Legacy Leptos WASM frontend
 │   └── tests/
 │       └── e2e/                  # Playwright E2E tests
 ├── migrations/                   # SQLite schema (4 migrations, FTS5)
@@ -406,8 +477,11 @@ mcp-agent-mail-rs/
 | **Database** | libsql (SQLite) with FTS5 full-text search |
 | **Storage** | git2 for audit trail |
 | **Protocol** | MCP via rmcp SDK (stdio + SSE) |
-| **Frontend** | Leptos 0.8 (WASM, CSR mode) |
+| **Frontend** | SvelteKit 2.0, TypeScript 5.0, TailwindCSS 3.4 |
+| **Components** | shadcn/ui-style (bits-ui), Lucide icons |
+| **Build** | Vite 6.0, Bun, rust-embed (embedded assets) |
 | **Metrics** | Prometheus (metrics-exporter-prometheus) |
+| **Testing** | Playwright (E2E), cargo test (unit/integration) |
 | **Quality** | cargo-deny, clippy, pmat |
 
 ---
@@ -482,7 +556,7 @@ mcp-agent-mail-rs/
 
 ## MCP Protocol
 
-### Tool Categories (50+ tools)
+### Tool Categories (45+ tools)
 
 | Category | Tools | Description |
 |----------|-------|-------------|
@@ -579,15 +653,26 @@ sequenceDiagram
 ### Commands (make)
 
 ```bash
-make dev            # Run API + Web UI (parallel)
-make dev-api        # Run API server only
-make dev-mcp        # Run MCP stdio server
-make build-release  # Build release with LTO
-make build-prod     # Full production build
-make test           # Run all tests
+# Development (two terminals recommended)
+make dev-backend    # API server on :9765
+make dev-frontend   # SvelteKit HMR on :5173 (proxies to API)
+
+# Single server with embedded UI
+make dev-web        # Build SvelteKit + serve on :8765
+
+# Build
+make build-release  # Build Rust release with LTO
+make build-sidecar  # Build unified binary with embedded SvelteKit UI
+make build-prod     # Full production build (UI + Rust)
+
+# Testing
+make test           # Run all integration tests
 make test-fast      # Run unit tests only
-make audit          # Run security audits
-make quality-gate   # Run all quality gates
+make lint           # Run clippy lints
+
+# Quality & Security
+make audit          # Run cargo audit + cargo deny
+make quality-gate   # Run all quality gates (fmt, lint, test, pmat)
 ```
 
 ### Quality Gates

@@ -326,6 +326,14 @@
 	--stripe-color: var(--stripe-dark);
 }
 
+.card-interactive {
+	@apply stripe-hover cursor-pointer transition-all duration-150;
+}
+
+.card-interactive:hover {
+	@apply border-primary/50 shadow-lg;
+}
+
 /* === Reduced Motion Preference === */
 @media (prefers-reduced-motion: reduce) {
 	*,

@@ -2,15 +2,15 @@
 	import { type VariantProps, tv } from "tailwind-variants";
 
 	export const badgeVariants = tv({
-		base: "focus:ring-ring inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
+		base: "focus:ring-ring relative inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 overflow-hidden [&>*]:relative [&>*]:z-10",
 		variants: {
 			variant: {
 				default:
-					"bg-primary text-primary-foreground hover:bg-primary/80 border-transparent",
+					"bg-primary text-primary-foreground hover:bg-primary/80 border-transparent stripe-hover stripe-hover--light",
 				secondary:
-					"bg-secondary text-secondary-foreground hover:bg-secondary/80 border-transparent",
+					"bg-secondary text-secondary-foreground hover:bg-secondary/80 border-transparent stripe-hover stripe-hover--dark",
 				destructive:
-					"bg-destructive text-destructive-foreground hover:bg-destructive/80 border-transparent",
+					"bg-destructive text-destructive-foreground hover:bg-destructive/80 border-transparent stripe-hover stripe-hover--light",
 				outline: "text-foreground",
 			},
 		},
