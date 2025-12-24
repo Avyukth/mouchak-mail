@@ -17,6 +17,10 @@ pub struct EnsureProjectParams {
     pub human_key: String,
 }
 
+/// Parameters for list_projects tool (no parameters required)
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ListProjectsParams {}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegisterAgentParams {
     /// Project slug the agent belongs to

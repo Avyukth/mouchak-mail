@@ -38,8 +38,10 @@ pub mod products;
 pub mod project;
 pub mod resources;
 pub mod reviews;
+mod schema;
 
 pub use params::*;
+pub use schema::schema_from_params;
 
 // ============================================================================
 // Schema Export Types
@@ -77,1119 +79,241 @@ pub fn get_tool_schemas(worktrees_enabled: bool) -> Vec<ToolSchema> {
         .collect()
 }
 
-/// Get all tool schemas regardless of configuration
+/// Auto-generates tool schemas from JsonSchema-deriving parameter structs.
+/// params.rs is the single source of truth for parameter definitions.
 fn get_all_tool_schemas() -> Vec<ToolSchema> {
     vec![
-        ToolSchema {
-            name: "ensure_project".into(),
-            description: "Ensure a project exists, creating it if necessary.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug (URL-safe identifier)".into(),
-                },
-                ParameterSchema {
-                    name: "human_key".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Human-readable project name".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "register_agent".into(),
-            description: "Register a new agent in a project.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "program".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent program name".into(),
-                },
-                ParameterSchema {
-                    name: "model".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "AI model used".into(),
-                },
-                ParameterSchema {
-                    name: "task_description".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent's task description".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "send_message".into(),
-            description: "Send a message from one agent to others.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "sender_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Sender agent name".into(),
-                },
-                ParameterSchema {
-                    name: "to".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Recipient agent names (comma-separated)".into(),
-                },
-                ParameterSchema {
-                    name: "cc".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "CC recipient agent names (comma-separated)".into(),
-                },
-                ParameterSchema {
-                    name: "bcc".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "BCC recipient agent names (comma-separated)".into(),
-                },
-                ParameterSchema {
-                    name: "subject".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Message subject".into(),
-                },
-                ParameterSchema {
-                    name: "body_md".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Message body in markdown".into(),
-                },
-                ParameterSchema {
-                    name: "importance".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Message importance level".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "check_inbox".into(),
-            description: "Check an agent's inbox for new messages.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum messages to return".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "reply_message".into(),
-            description: "Reply to an existing message in a thread.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "sender_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Sender agent name".into(),
-                },
-                ParameterSchema {
-                    name: "message_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Message ID to reply to".into(),
-                },
-                ParameterSchema {
-                    name: "body_md".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Reply body in markdown".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_projects".into(),
-            description: "List all projects.".into(),
-            parameters: vec![],
-        },
-        ToolSchema {
-            name: "list_agents".into(),
-            description: "List all agents in a project.".into(),
-            parameters: vec![ParameterSchema {
-                name: "project_slug".into(),
-                param_type: "string".into(),
-                required: true,
-                description: "Project slug".into(),
-            }],
-        },
-        ToolSchema {
-            name: "get_message".into(),
-            description: "Get a specific message by ID.".into(),
-            parameters: vec![ParameterSchema {
-                name: "message_id".into(),
-                param_type: "integer".into(),
-                required: true,
-                description: "Message ID".into(),
-            }],
-        },
-        ToolSchema {
-            name: "search_messages".into(),
-            description: "Full-text search messages.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "query".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Search query".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum results".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "reserve_file".into(),
-            description: "Reserve a file path for exclusive editing.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "path_pattern".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "File path or glob pattern".into(),
-                },
-                ParameterSchema {
-                    name: "reason".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Reason for reservation".into(),
-                },
-                ParameterSchema {
-                    name: "ttl_minutes".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Time-to-live in minutes".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "release_reservation".into(),
-            description: "Release a file reservation by ID.".into(),
-            parameters: vec![ParameterSchema {
-                name: "reservation_id".into(),
-                param_type: "integer".into(),
-                required: true,
-                description: "Reservation ID".into(),
-            }],
-        },
-        ToolSchema {
-            name: "list_file_reservations".into(),
-            description: "List active file reservations in a project.".into(),
-            parameters: vec![ParameterSchema {
-                name: "project_slug".into(),
-                param_type: "string".into(),
-                required: true,
-                description: "Project slug".into(),
-            }],
-        },
-        ToolSchema {
-            name: "force_release_reservation".into(),
-            description: "Force release a file reservation (emergency override).".into(),
-            parameters: vec![ParameterSchema {
-                name: "reservation_id".into(),
-                param_type: "integer".into(),
-                required: true,
-                description: "Reservation ID".into(),
-            }],
-        },
-        ToolSchema {
-            name: "renew_file_reservation".into(),
-            description: "Extend the TTL of a file reservation.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "reservation_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Reservation ID".into(),
-                },
-                ParameterSchema {
-                    name: "ttl_seconds".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "New TTL in seconds".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "request_contact".into(),
-            description: "Request to add another agent as a contact.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "from_project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "From project slug".into(),
-                },
-                ParameterSchema {
-                    name: "from_agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "From agent name".into(),
-                },
-                ParameterSchema {
-                    name: "to_project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "To project slug".into(),
-                },
-                ParameterSchema {
-                    name: "to_agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "To agent name".into(),
-                },
-                ParameterSchema {
-                    name: "reason".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Reason for contact request".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "respond_contact".into(),
-            description: "Accept or reject a contact request.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "link_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Agent link ID".into(),
-                },
-                ParameterSchema {
-                    name: "accept".into(),
-                    param_type: "boolean".into(),
-                    required: true,
-                    description: "Accept or reject".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_contacts".into(),
-            description: "List all contacts for an agent.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "acquire_build_slot".into(),
-            description: "Acquire an exclusive build slot for CI/CD isolation.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "slot_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Slot name".into(),
-                },
-                ParameterSchema {
-                    name: "ttl_seconds".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "TTL in seconds".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "release_build_slot".into(),
-            description: "Release a held build slot.".into(),
-            parameters: vec![ParameterSchema {
-                name: "slot_id".into(),
-                param_type: "integer".into(),
-                required: true,
-                description: "Slot ID".into(),
-            }],
-        },
-        ToolSchema {
-            name: "list_macros".into(),
-            description: "List all available macros in a project.".into(),
-            parameters: vec![ParameterSchema {
-                name: "project_slug".into(),
-                param_type: "string".into(),
-                required: true,
-                description: "Project slug".into(),
-            }],
-        },
-        ToolSchema {
-            name: "register_macro".into(),
-            description: "Register a new macro definition.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Macro name".into(),
-                },
-                ParameterSchema {
-                    name: "description".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Macro description".into(),
-                },
-                ParameterSchema {
-                    name: "steps".into(),
-                    param_type: "array".into(),
-                    required: true,
-                    description: "Macro steps as JSON array".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "invoke_macro".into(),
-            description: "Execute a pre-defined macro and get its steps.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Macro name".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "ensure_product".into(),
-            description: "Create or get a product for multi-repo coordination.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "product_uid".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Product UID".into(),
-                },
-                ParameterSchema {
-                    name: "name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Product name".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "link_project_to_product".into(),
-            description: "Link a project to a product for unified messaging.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "product_uid".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Product UID".into(),
-                },
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_products".into(),
-            description: "List all products and their linked projects.".into(),
-            parameters: vec![],
-        },
-        ToolSchema {
-            name: "product_inbox".into(),
-            description: "Get aggregated inbox across all projects in a product.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "product_uid".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Product UID".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Max messages per project".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "export_mailbox".into(),
-            description: "Export a project's mailbox to HTML, JSON, or Markdown format.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "format".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Export format: html, json, or markdown".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "get_project_info".into(),
-            description: "Get detailed information about a project.".into(),
-            parameters: vec![ParameterSchema {
-                name: "project_slug".into(),
-                param_type: "string".into(),
-                required: true,
-                description: "Project slug".into(),
-            }],
-        },
-        ToolSchema {
-            name: "get_agent_profile".into(),
-            description: "Get detailed profile information for an agent.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_threads".into(),
-            description: "List all conversation threads in a project.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum threads".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "summarize_thread".into(),
-            description: "Summarize one or more conversation threads. Accepts single thread_id (string) or multiple (array). Partial failures returned in errors array.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "thread_id".into(),
-                    param_type: "string|array".into(),
-                    required: true,
-                    description: "Thread ID (string) or array of thread IDs".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "mark_message_read".into(),
-            description: "Mark a message as read by a recipient.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name marking as read".into(),
-                },
-                ParameterSchema {
-                    name: "message_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Message ID".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "acknowledge_message".into(),
-            description: "Acknowledge a message (sets both read and acknowledged).".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name acknowledging".into(),
-                },
-                ParameterSchema {
-                    name: "message_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Message ID".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "set_contact_policy".into(),
-            description: "Set an agent's contact policy (open, auto, contacts_only, block_all)."
-                .into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "contact_policy".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Policy: open, auto, contacts_only, block_all".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "renew_build_slot".into(),
-            description: "Extend the TTL of a build slot.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "slot_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Slot ID".into(),
-                },
-                ParameterSchema {
-                    name: "ttl_seconds".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "New TTL in seconds".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_outbox".into(),
-            description: "List messages in an agent's outbox (sent messages).".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum messages to return".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "file_reservation_paths".into(),
-            description: "Reserve multiple file paths with conflict detection.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "paths".into(),
-                    param_type: "array".into(),
-                    required: true,
-                    description: "File paths to reserve".into(),
-                },
-                ParameterSchema {
-                    name: "exclusive".into(),
-                    param_type: "boolean".into(),
-                    required: true,
-                    description: "Whether reservation is exclusive".into(),
-                },
-                ParameterSchema {
-                    name: "reason".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Reason for reservation".into(),
-                },
-                ParameterSchema {
-                    name: "ttl_seconds".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "TTL in seconds".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "install_precommit_guard".into(),
-            description: "Install pre-commit guard for file reservation checks.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "target_repo_path".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Target repository path".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "uninstall_precommit_guard".into(),
-            description: "Uninstall pre-commit guard.".into(),
-            parameters: vec![ParameterSchema {
-                name: "target_repo_path".into(),
-                param_type: "string".into(),
-                required: true,
-                description: "Target repository path".into(),
-            }],
-        },
-        ToolSchema {
-            name: "add_attachment".into(),
-            description: "Add an attachment to a message.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "message_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Message ID".into(),
-                },
-                ParameterSchema {
-                    name: "filename".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Filename".into(),
-                },
-                ParameterSchema {
-                    name: "content_base64".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Base64 encoded content".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "get_attachment".into(),
-            description: "Get an attachment from a message.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "attachment_id".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Attachment ID".into(),
-                },
-                ParameterSchema {
-                    name: "filename".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Filename".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_tool_metrics".into(),
-            description: "List recent tool usage metrics.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_id".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Optional project ID filter".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum results".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "get_tool_stats".into(),
-            description: "Get aggregated tool usage statistics.".into(),
-            parameters: vec![ParameterSchema {
-                name: "project_id".into(),
-                param_type: "integer".into(),
-                required: false,
-                description: "Optional project ID filter".into(),
-            }],
-        },
-        ToolSchema {
-            name: "list_activity".into(),
-            description: "List recent activity for a project.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Project ID".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum results".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_pending_reviews".into(),
-            description:
-                "List messages requiring acknowledgment that haven't been fully acknowledged."
-                    .into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Filter by project slug".into(),
-                },
-                ParameterSchema {
-                    name: "sender_name".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Filter by sender agent name (requires project_slug)".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum results (default 5, max 50)".into(),
-                },
-            ],
-        },
-        // Product-level cross-project tools
-        ToolSchema {
-            name: "search_messages_product".into(),
-            description: "Search messages across all projects linked to a product.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "product_uid".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Product UID".into(),
-                },
-                ParameterSchema {
-                    name: "query".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Search query".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum results per project".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "summarize_thread_product".into(),
-            description: "Summarize a thread across all projects in a product.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "product_uid".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Product UID".into(),
-                },
-                ParameterSchema {
-                    name: "thread_id".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Thread ID to summarize".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "whois".into(),
-            description: "Get information about an agent including their program, model, and task description.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name to look up".into(),
-                },
-            ],
-        },
-        // NTM compatibility aliases - these map to existing tools
-        ToolSchema {
-            name: "fetch_inbox".into(),
-            description: "Check an agent's inbox for new messages. (Alias for check_inbox/list_inbox)".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent name".into(),
-                },
-                ParameterSchema {
-                    name: "limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Maximum messages to return".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "release_file_reservations".into(),
-            description: "Release a file reservation by ID. (Alias for release_reservation)".into(),
-            parameters: vec![ParameterSchema {
-                name: "reservation_id".into(),
-                param_type: "integer".into(),
-                required: true,
-                description: "Reservation ID".into(),
-            }],
-        },
-        ToolSchema {
-            name: "renew_file_reservations".into(),
-            description: "Extend the TTL of a file reservation. (Alias for renew_file_reservation)".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "reservation_id".into(),
-                    param_type: "integer".into(),
-                    required: true,
-                    description: "Reservation ID".into(),
-                },
-                ParameterSchema {
-                    name: "ttl_seconds".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "New TTL in seconds".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "list_project_agents".into(),
-            description: "List all agents in a project. (Alias for list_agents)".into(),
-            parameters: vec![ParameterSchema {
-                name: "project_slug".into(),
-                param_type: "string".into(),
-                required: true,
-                description: "Project slug".into(),
-            }],
-        },
-        ToolSchema {
-            name: "create_agent_identity".into(),
-            description: "Create a unique agent identity with auto-generated name.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "project_slug".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Project slug".into(),
-                },
-                ParameterSchema {
-                    name: "hint".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Optional hint for name generation (e.g., 'blue' for BlueMountain)".into(),
-                },
-            ],
-        },
-        ToolSchema {
-            name: "macro_start_session".into(),
-            description: "Boot a project session: ensure project, register agent, optionally reserve files, fetch inbox.".into(),
-            parameters: vec![
-                ParameterSchema {
-                    name: "human_key".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Human-readable project key (creates if not exists)".into(),
-                },
-                ParameterSchema {
-                    name: "program".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Agent program identifier".into(),
-                },
-                ParameterSchema {
-                    name: "model".into(),
-                    param_type: "string".into(),
-                    required: true,
-                    description: "Model being used".into(),
-                },
-                ParameterSchema {
-                    name: "task_description".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Description of agent's task".into(),
-                },
-                ParameterSchema {
-                    name: "agent_name".into(),
-                    param_type: "string".into(),
-                    required: false,
-                    description: "Agent name (auto-generated if not provided)".into(),
-                },
-                ParameterSchema {
-                    name: "file_reservation_paths".into(),
-                    param_type: "array".into(),
-                    required: false,
-                    description: "Optional file paths to reserve".into(),
-                },
-                ParameterSchema {
-                    name: "inbox_limit".into(),
-                    param_type: "integer".into(),
-                    required: false,
-                    description: "Number of inbox messages to fetch".into(),
-                },
-            ],
-        },
+        // Project Management
+        schema_from_params::<EnsureProjectParams>(
+            "ensure_project",
+            "Ensure a project exists, creating it if necessary.",
+        ),
+        schema_from_params::<ListProjectsParams>("list_projects", "List all projects."),
+        schema_from_params::<GetProjectInfoParams>(
+            "get_project_info",
+            "Get detailed project information.",
+        ),
+        schema_from_params::<ListProjectSiblingsParams>(
+            "list_project_siblings",
+            "List sibling projects (related repositories).",
+        ),
+        schema_from_params::<CommitArchiveParams>(
+            "commit_archive",
+            "Commit current state to the archive.",
+        ),
+        // Agent Management
+        schema_from_params::<RegisterAgentParams>(
+            "register_agent",
+            "Register a new agent in a project.",
+        ),
+        schema_from_params::<ListAgentsParams>("list_agents", "List all agents in a project."),
+        schema_from_params::<ListAgentsParams>(
+            "list_project_agents",
+            "List all agents in a project. (Alias for list_agents)",
+        ),
+        schema_from_params::<WhoisParams>("whois", "Look up agent information by name."),
+        schema_from_params::<GetAgentProfileParams>(
+            "get_agent_profile",
+            "Get detailed agent profile.",
+        ),
+        schema_from_params::<UpdateAgentProfileParams>(
+            "update_agent_profile",
+            "Update agent profile settings.",
+        ),
+        schema_from_params::<CreateAgentIdentityParams>(
+            "create_agent_identity",
+            "Create a unique agent identity with auto-generated name.",
+        ),
+        // Messaging
+        schema_from_params::<SendMessageParams>(
+            "send_message",
+            "Send a message from one agent to others.",
+        ),
+        schema_from_params::<ListInboxParams>(
+            "check_inbox",
+            "Check an agent's inbox for new messages.",
+        ),
+        schema_from_params::<ReplyMessageParams>(
+            "reply_message",
+            "Reply to an existing message in a thread.",
+        ),
+        schema_from_params::<GetMessageParams>("get_message", "Get a specific message by ID."),
+        schema_from_params::<ListOutboxParams>("list_outbox", "List messages sent by an agent."),
+        schema_from_params::<MarkMessageReadParams>("mark_message_read", "Mark a message as read."),
+        schema_from_params::<AcknowledgeMessageParams>(
+            "acknowledge_message",
+            "Acknowledge receipt of a message.",
+        ),
+        schema_from_params::<SearchMessagesParams>(
+            "search_messages",
+            "Search messages using full-text search.",
+        ),
+        // Threads
+        schema_from_params::<ListThreadsParams>(
+            "list_threads",
+            "List message threads in a project.",
+        ),
+        schema_from_params::<GetThreadParams>("get_thread", "Get all messages in a thread."),
+        schema_from_params::<SummarizeThreadParams>(
+            "summarize_thread",
+            "Summarize one or more threads.",
+        ),
+        schema_from_params::<SummarizeThreadParams>(
+            "summarize_threads",
+            "Summarize multiple threads.",
+        ),
+        // Reviews
+        schema_from_params::<GetReviewStateParams>(
+            "get_review_state",
+            "Get the review state of a task thread.",
+        ),
+        schema_from_params::<ClaimReviewParams>("claim_review", "Claim a task for review."),
+        schema_from_params::<ListPendingReviewsParams>(
+            "list_pending_reviews",
+            "List messages awaiting acknowledgment.",
+        ),
+        // Contacts
+        schema_from_params::<RequestContactParams>(
+            "request_contact",
+            "Request contact permission with another agent.",
+        ),
+        schema_from_params::<RespondContactParams>(
+            "respond_contact",
+            "Accept or reject a contact request.",
+        ),
+        schema_from_params::<ListContactsParams>("list_contacts", "List agent contacts."),
+        schema_from_params::<SetContactPolicyParams>(
+            "set_contact_policy",
+            "Set agent contact policy.",
+        ),
+        // File Reservations
+        schema_from_params::<FileReservationParams>("reserve_file", "Reserve a file path pattern."),
+        schema_from_params::<FileReservationPathsParams>(
+            "file_reservation_paths",
+            "Reserve multiple file paths at once.",
+        ),
+        schema_from_params::<ListReservationsParams>(
+            "list_file_reservations",
+            "List active file reservations.",
+        ),
+        schema_from_params::<ReleaseReservationParams>(
+            "release_reservation",
+            "Release a file reservation.",
+        ),
+        schema_from_params::<ForceReleaseReservationParams>(
+            "force_release_reservation",
+            "Force release a reservation (for emergencies).",
+        ),
+        schema_from_params::<RenewFileReservationParams>(
+            "renew_file_reservation",
+            "Extend a file reservation's TTL.",
+        ),
+        // Build Slots
+        schema_from_params::<AcquireBuildSlotParams>(
+            "acquire_build_slot",
+            "Acquire an exclusive build slot.",
+        ),
+        schema_from_params::<RenewBuildSlotParams>("renew_build_slot", "Renew a build slot's TTL."),
+        schema_from_params::<ReleaseBuildSlotParams>("release_build_slot", "Release a build slot."),
+        // Macros
+        schema_from_params::<ListMacrosParams>("list_macros", "List registered macros."),
+        schema_from_params::<RegisterMacroParams>("register_macro", "Register a new macro."),
+        schema_from_params::<UnregisterMacroParams>(
+            "unregister_macro",
+            "Remove a registered macro.",
+        ),
+        schema_from_params::<InvokeMacroParams>("invoke_macro", "Invoke a registered macro."),
+        // Macro Convenience Tools
+        schema_from_params::<MacroStartSessionParams>(
+            "macro_start_session",
+            "Boot a project session: ensure project, register agent, optionally reserve files, fetch inbox.",
+        ),
+        schema_from_params::<MacroPrepareThreadParams>(
+            "macro_prepare_thread",
+            "Prepare context for working on a specific thread.",
+        ),
+        schema_from_params::<MacroFileReservationCycleParams>(
+            "macro_file_reservation_cycle",
+            "Reserve files, optionally auto-release.",
+        ),
+        schema_from_params::<MacroContactHandshakeParams>(
+            "macro_contact_handshake",
+            "Establish contact between agents.",
+        ),
+        // Workflows
+        schema_from_params::<ListBuiltinWorkflowsParams>(
+            "list_builtin_workflows",
+            "List available built-in workflows.",
+        ),
+        schema_from_params::<QuickStandupWorkflowParams>(
+            "quick_standup_workflow",
+            "Run a quick standup workflow.",
+        ),
+        schema_from_params::<QuickHandoffWorkflowParams>(
+            "quick_handoff_workflow",
+            "Hand off a task between agents.",
+        ),
+        schema_from_params::<QuickReviewWorkflowParams>(
+            "quick_review_workflow",
+            "Request a code review from another agent.",
+        ),
+        // Products (Multi-Project)
+        schema_from_params::<EnsureProductParams>(
+            "ensure_product",
+            "Ensure a product exists, creating if necessary.",
+        ),
+        schema_from_params::<LinkProjectToProductParams>(
+            "link_project_to_product",
+            "Link a project to a product.",
+        ),
+        schema_from_params::<UnlinkProjectFromProductParams>(
+            "unlink_project_from_product",
+            "Unlink a project from a product.",
+        ),
+        schema_from_params::<ProductInboxParams>(
+            "product_inbox",
+            "Get inbox across all product projects.",
+        ),
+        schema_from_params::<SearchMessagesProductParams>(
+            "search_messages_product",
+            "Search messages across product projects.",
+        ),
+        schema_from_params::<SummarizeThreadProductParams>(
+            "summarize_thread_product",
+            "Summarize threads across product projects.",
+        ),
+        // Export & Attachments
+        schema_from_params::<ExportMailboxParams>("export_mailbox", "Export a project's mailbox."),
+        schema_from_params::<AddAttachmentParams>(
+            "add_attachment",
+            "Add an attachment to a message.",
+        ),
+        schema_from_params::<GetAttachmentParams>("get_attachment", "Get an attachment's content."),
+        // Pre-commit Guard
+        schema_from_params::<InstallPrecommitGuardParams>(
+            "install_precommit_guard",
+            "Install pre-commit guard in a repository.",
+        ),
+        schema_from_params::<UninstallPrecommitGuardParams>(
+            "uninstall_precommit_guard",
+            "Remove pre-commit guard from a repository.",
+        ),
+        // Observability
+        schema_from_params::<ListToolMetricsParams>(
+            "list_tool_metrics",
+            "List tool usage metrics.",
+        ),
+        schema_from_params::<ListActivityParams>(
+            "list_activity",
+            "List recent activity in a project.",
+        ),
+        // Overseer
+        schema_from_params::<SendOverseerMessageParams>(
+            "send_overseer_message",
+            "Send a message from human overseer to an agent.",
+        ),
     ]
 }
-
 /// The main MCP service for Agent Mail
 // Simple macro for early return locally
 macro_rules! guard_unwrap {
