@@ -5,3 +5,4 @@
  */
 
 export { formatRelativeTime, formatDate, formatDateTime } from './date';
+export { slugify, isValidSlug } from './slugify';

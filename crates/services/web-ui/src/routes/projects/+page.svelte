@@ -6,6 +6,7 @@
 		deleteProject,
 		type Project,
 	} from "$lib/api/client";
+	import { slugify } from "$lib/utils/slugify";
 	import { toast } from "svelte-sonner";
 	import FolderKanban from "lucide-svelte/icons/folder-kanban";
 	import ArrowRight from "lucide-svelte/icons/arrow-right";
@@ -13,6 +14,7 @@
 	import Calendar from "lucide-svelte/icons/calendar";
 	import MoreVertical from "lucide-svelte/icons/more-vertical";
 	import Trash2 from "lucide-svelte/icons/trash-2";
+	import Pencil from "lucide-svelte/icons/pencil";
 	import { ProjectTableSkeleton } from "$lib/components/skeletons";
 	import {
 		BlurFade,
@@ -27,6 +29,7 @@
 	import { Badge } from "$lib/components/ui/badge";
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
+	import { Textarea } from "$lib/components/ui/textarea";
 
 	let projects = $state<Project[]>([]);
 	let loading = $state(true);
@@ -34,8 +37,44 @@
 
 	// New project form
 	let showNewForm = $state(false);
-	let newProjectPath = $state("");
+	let projectName = $state("");
+	let projectDescription = $state("");
+	let projectIdentifier = $state("");
+	let identifierEdited = $state(false);
 	let creating = $state(false);
+	let nameError = $state<string | null>(null);
+
+	// Auto-generate identifier from name (unless manually edited)
+	$effect(() => {
+		if (!identifierEdited && projectName) {
+			projectIdentifier = slugify(projectName);
+		}
+	});
+
+	function handleIdentifierInput() {
+		identifierEdited = true;
+	}
+
+	function resetForm() {
+		projectName = "";
+		projectDescription = "";
+		projectIdentifier = "";
+		identifierEdited = false;
+		nameError = null;
+	}
+
+	function validateName(): boolean {
+		if (!projectName.trim()) {
+			nameError = "Project name is required";
+			return false;
+		}
+		if (projectName.trim().length < 2) {
+			nameError = "Project name must be at least 2 characters";
+			return false;
+		}
+		nameError = null;
+		return true;
+	}
 
 	// Use $effect for client-side data loading in Svelte 5
 	$effect(() => {
@@ -57,21 +96,53 @@
 	}
 
 	async function createProject() {
-		if (!newProjectPath.trim()) return;
+		if (!validateName()) return;
+		if (!projectIdentifier.trim()) return;
 
 		creating = true;
 		error = null;
 		try {
-			await ensureProject(newProjectPath.trim());
+			// Use identifier as the human_key for the API
+			await ensureProject(projectIdentifier.trim());
 			await loadProjects();
-			toast.success("Project created successfully");
-			newProjectPath = "";
+			toast.success(`Project "${projectName}" created successfully`);
+			resetForm();
 			showNewForm = false;
 		} catch (e) {
 			error = e instanceof Error ? e.message : "Failed to create project";
 			toast.error(error);
 		} finally {
 			creating = false;
+		}
+	}
+
+	// Delete project state
+	let showDeleteDialog = $state(false);
+	let projectToDelete = $state<Project | null>(null);
+	let deleting = $state(false);
+
+	function handleDeleteClick(e: Event, project: Project) {
+		e.preventDefault();
+		e.stopPropagation();
+		projectToDelete = project;
+		showDeleteDialog = true;
+	}
+
+	async function confirmDelete() {
+		if (!projectToDelete) return;
+		deleting = true;
+		try {
+			await deleteProject(projectToDelete.slug);
+			toast.success(`Project "${projectToDelete.human_key}" deleted`);
+			await loadProjects();
+		} catch (e) {
+			toast.error(
+				e instanceof Error ? e.message : "Failed to delete project",
+			);
+		} finally {
+			deleting = false;
+			showDeleteDialog = false;
+			projectToDelete = null;
 		}
 	}
 
@@ -180,9 +251,41 @@
 											</h3>
 										</div>
 									</div>
-									<ArrowRight
-										class="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all"
-									/>
+									<DropdownMenu.Root>
+										<DropdownMenu.Trigger
+											asChild
+											let:builder
+										>
+											<Button
+												builders={[builder]}
+												variant="ghost"
+												size="icon"
+												class="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+												onclick={(e: Event) => {
+													e.preventDefault();
+													e.stopPropagation();
+												}}
+											>
+												<MoreVertical class="h-4 w-4" />
+												<span class="sr-only"
+													>More options</span
+												>
+											</Button>
+										</DropdownMenu.Trigger>
+										<DropdownMenu.Content align="end">
+											<DropdownMenu.Item
+												class="text-destructive focus:text-destructive"
+												onclick={(e: Event) =>
+													handleDeleteClick(
+														e,
+														project,
+													)}
+											>
+												<Trash2 class="h-4 w-4 mr-2" />
+												Delete
+											</DropdownMenu.Item>
+										</DropdownMenu.Content>
+									</DropdownMenu.Root>
 								</div>
 
 								<div
@@ -210,7 +313,7 @@
 		<Dialog.Header>
 			<Dialog.Title>Create New Project</Dialog.Title>
 			<Dialog.Description>
-				Enter the absolute path to your project directory.
+				Create a new project to organize agents and messages.
 			</Dialog.Description>
 		</Dialog.Header>
 		<form
@@ -220,22 +323,78 @@
 			}}
 			class="space-y-4"
 		>
+			<!-- Project Name (required) -->
 			<div class="space-y-2">
-				<Label for="projectPath">Project Path (human_key)</Label>
+				<Label for="projectName">
+					Project Name <span class="text-destructive">*</span>
+				</Label>
 				<Input
-					id="projectPath"
+					id="projectName"
 					type="text"
-					bind:value={newProjectPath}
-					placeholder="/path/to/your/project"
+					bind:value={projectName}
+					placeholder="My Awesome Project"
+					class={nameError ? "border-destructive" : ""}
+					aria-invalid={!!nameError}
+					aria-describedby={nameError ? "name-error" : undefined}
+				/>
+				{#if nameError}
+					<p id="name-error" class="text-sm text-destructive">{nameError}</p>
+				{/if}
+			</div>
+
+			<!-- Description (optional) -->
+			<div class="space-y-2">
+				<Label for="projectDescription">Description</Label>
+				<Textarea
+					id="projectDescription"
+					bind:value={projectDescription}
+					placeholder="A brief description of this project..."
+					rows={2}
 				/>
 			</div>
+
+			<!-- Identifier (auto-generated from name) -->
+			<div class="space-y-2">
+				<Label for="projectIdentifier" class="flex items-center gap-2">
+					Identifier
+					<Badge variant="secondary" class="text-xs">Auto-generated</Badge>
+				</Label>
+				<div class="flex gap-2">
+					<Input
+						id="projectIdentifier"
+						type="text"
+						bind:value={projectIdentifier}
+						oninput={handleIdentifierInput}
+						placeholder="my-awesome-project"
+						class="font-mono text-sm"
+					/>
+					{#if identifierEdited}
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							title="Reset to auto-generated"
+							onclick={() => {
+								identifierEdited = false;
+								projectIdentifier = slugify(projectName);
+							}}
+						>
+							<Pencil class="h-4 w-4" />
+						</Button>
+					{/if}
+				</div>
+				<p class="text-xs text-muted-foreground">
+					Used in URLs and API calls. Can be edited manually.
+				</p>
+			</div>
+
 			<Dialog.Footer class="flex-col sm:flex-row gap-2">
 				<Button
 					type="button"
 					variant="outline"
 					onclick={() => {
 						showNewForm = false;
-						newProjectPath = "";
+						resetForm();
 					}}
 					class="w-full sm:w-auto"
 				>
@@ -243,7 +402,7 @@
 				</Button>
 				<Button
 					type="submit"
-					disabled={creating || !newProjectPath.trim()}
+					disabled={creating || !projectName.trim() || !projectIdentifier.trim()}
 					class="w-full sm:w-auto"
 				>
 					{creating ? "Creating..." : "Create Project"}
@@ -252,6 +411,38 @@
 		</form>
 	</Dialog.Content>
 </Dialog.Root>
+
+<!-- Delete Project Confirmation Dialog -->
+<AlertDialog.Root bind:open={showDeleteDialog}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Delete Project</AlertDialog.Title>
+			<AlertDialog.Description>
+				Are you sure you want to delete <strong
+					>{projectToDelete?.human_key}</strong
+				>? This action cannot be undone. All agents, messages, and data
+				associated with this project will be permanently deleted.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel
+				onclick={() => {
+					showDeleteDialog = false;
+					projectToDelete = null;
+				}}
+			>
+				Cancel
+			</AlertDialog.Cancel>
+			<AlertDialog.Action
+				class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+				disabled={deleting}
+				onclick={confirmDelete}
+			>
+				{deleting ? "Deleting..." : "Delete Project"}
+			</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <style>
 	/* Staggered animation keyframes */
