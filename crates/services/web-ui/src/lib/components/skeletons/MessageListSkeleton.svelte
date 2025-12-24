@@ -10,7 +10,7 @@
 	</div>
 	<ul class="divide-y divide-gray-200 dark:divide-gray-700">
 		{#each Array(rows) as _, i}
-			<li class="p-4">
+			<li data-testid="message-skeleton" class="p-4">
 				<div class="flex items-start justify-between gap-4">
 					<div class="flex-1 min-w-0 space-y-2">
 						<div class="flex items-center gap-2">

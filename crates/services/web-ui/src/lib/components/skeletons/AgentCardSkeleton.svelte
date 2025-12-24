@@ -2,7 +2,7 @@
 	import { Skeleton } from '$lib/components/ui/skeleton/index.js';
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+<div data-testid="agent-skeleton" class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
 	<div class="flex items-start justify-between mb-4">
 		<div class="flex items-center gap-3">
 			<Skeleton class="w-10 h-10 rounded-full skeleton-shimmer" />

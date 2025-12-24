@@ -15,7 +15,7 @@
 	import MoreVertical from "lucide-svelte/icons/more-vertical";
 	import Trash2 from "lucide-svelte/icons/trash-2";
 	import Pencil from "lucide-svelte/icons/pencil";
-	import { ProjectTableSkeleton } from "$lib/components/skeletons";
+	import { ProjectCardSkeleton } from "$lib/components/skeletons";
 	import {
 		BlurFade,
 		ShimmerButton,
@@ -365,7 +365,11 @@
 
 	<!-- Loading State -->
 	{#if loading}
-		<ProjectTableSkeleton rows={3} />
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			{#each Array(6) as _}
+				<ProjectCardSkeleton />
+			{/each}
+		</div>
 	{:else if projects.length === 0}
 		<!-- Empty State - No Projects -->
 		<BlurFade delay={100}>
