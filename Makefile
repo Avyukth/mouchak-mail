@@ -1,7 +1,7 @@
 # MCP Agent Mail - Makefile
 # Unified build and run commands for the Rust implementation
 
-.PHONY: all build build-release build-web build-web-leptos build-web-svelte dev run run-all clean test test-fast coverage audit quality-gate help export-static-data build-web-static push-github-pages deploy-github-pages full-deploy-github-pages
+.PHONY: all build build-release build-web build-web-leptos build-web-svelte dev run run-all clean test test-fast coverage audit quality-gate help export-static-data build-web-static deploy-github-pages full-deploy-github-pages push-github-pages
 
 # Default target
 all: build
@@ -246,29 +246,35 @@ export-static-data:
 	@echo "✅ Data exported to crates/services/web-ui/static/data/"
 
 ## Build SvelteKit for static GitHub Pages deployment
-## Preserves .git folder if it exists (for push-github-pages workflow)
 build-web-static: export-static-data
 	@echo "🌐 Building SvelteKit for static deployment..."
-	@if [ -d crates/services/web-ui/build-static/.git ]; then \
-		mv crates/services/web-ui/build-static/.git /tmp/.git-build-static-backup; \
-	fi
 	cd crates/services/web-ui && \
 		VITE_DATA_MODE=static VITE_BUILD_MODE=static bun run build
-	@if [ -d /tmp/.git-build-static-backup ]; then \
-		mv /tmp/.git-build-static-backup crates/services/web-ui/build-static/.git; \
-	fi
 	@echo "✅ Static build complete (web-ui/build-static)"
 
 ## Push static build to GitHub Pages (git-based, single commit)
-## Requires: build-static dir initialized with git remote to archive repo
+## Env vars: GITHUB_PAGES_URL (repo URL), GITHUB_PAGES_CNAME (custom domain)
+## Example: make push-github-pages GITHUB_PAGES_URL=https://github.com/user/repo.git GITHUB_PAGES_CNAME=mail.example.com
 push-github-pages: build-web-static
-	@echo "🚀 Pushing to GitHub Pages..."
+	@echo "🚀 Deploying to GitHub Pages..."
+	@if [ -z "$(GITHUB_PAGES_URL)" ]; then \
+		echo "❌ Error: GITHUB_PAGES_URL is required"; \
+		echo "   Example: make push-github-pages GITHUB_PAGES_URL=https://github.com/user/repo.git"; \
+		exit 1; \
+	fi
 	cd crates/services/web-ui/build-static && \
+		rm -rf .git && \
+		git init && \
+		git remote add origin $(GITHUB_PAGES_URL) && \
+		$(if $(GITHUB_PAGES_CNAME),echo "$(GITHUB_PAGES_CNAME)" > CNAME &&) \
+		git checkout -b gh-pages && \
 		git add -A && \
-		git diff --cached --quiet || git commit -m "Deploy static site $$(date +%Y-%m-%d)" && \
-		git push origin gh-pages
+		git commit -m "Deploy static site $$(date +%Y-%m-%d)" && \
+		git push -f origin gh-pages
 	@echo "✅ Deployed to GitHub Pages"
-	@echo "🌐 Live at: https://mail.pathshala.dev/"
+	@if [ -n "$(GITHUB_PAGES_CNAME)" ]; then \
+		echo "🌐 Live at: https://$(GITHUB_PAGES_CNAME)/"; \
+	fi
 
 ## Deploy to GitHub Pages (requires GITHUB_TOKEN)
 ## Usage: make deploy-github-pages GITHUB_PAGES_REPO=mail-archive
@@ -365,7 +371,7 @@ help:
 	@echo "GitHub Pages Deployment:"
 	@echo "  export-static-data      Export DB to static JSON files"
 	@echo "  build-web-static        Build static site for GitHub Pages"
-	@echo "  push-github-pages       Git push to GitHub Pages (fast, single commit)"
+	@echo "  push-github-pages       Git push (GITHUB_PAGES_URL, GITHUB_PAGES_CNAME)"
 	@echo "  deploy-github-pages     Deploy via API (needs GITHUB_PAGES_REPO)"
 	@echo "  full-deploy-github-pages Complete workflow: build + export + deploy"
 	@echo ""
