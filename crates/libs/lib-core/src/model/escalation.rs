@@ -1,3 +1,31 @@
+//! Escalation handling for overdue message acknowledgments.
+//!
+//! When messages requiring acknowledgment go unacknowledged past a threshold,
+//! this module provides escalation actions:
+//!
+//! - **Log mode**: Log a warning for human review
+//! - **File reservation mode**: Create a lock to draw attention
+//! - **Overseer mode**: Send an urgent message to human oversight
+//!
+//! # Example
+//!
+//! ```no_run
+//! use lib_core::model::escalation::{EscalationBmc, EscalationMode};
+//! use lib_core::model::ModelManager;
+//! use lib_core::ctx::Ctx;
+//!
+//! # async fn example() -> lib_core::Result<()> {
+//! # let mm: ModelManager = todo!();
+//! let ctx = Ctx::root_ctx();
+//!
+//! // Find messages overdue by 24+ hours and log warnings
+//! let results = EscalationBmc::escalate_overdue(
+//!     &ctx, &mm, 24, EscalationMode::Log, false
+//! ).await?;
+//! # Ok(())
+//! # }
+//! ```
+
 use crate::Result;
 use crate::ctx::Ctx;
 use crate::model::ModelManager;
@@ -8,17 +36,39 @@ use tracing::{info, warn};
 
 pub use lib_common::config::EscalationMode;
 
+/// Result of an escalation action on a single message.
 #[derive(Debug, Clone, Serialize)]
 pub struct EscalationResult {
+    /// The message ID that was escalated.
     pub message_id: i64,
+    /// Description of the action taken (e.g., "logged", "overseer_message_sent").
     pub action_taken: String,
+    /// Whether the escalation action succeeded.
     pub success: bool,
+    /// Additional details about the action or error.
     pub details: Option<String>,
 }
 
+/// Backend Model Controller for escalation operations.
 pub struct EscalationBmc;
 
 impl EscalationBmc {
+    /// Escalates all overdue message acknowledgments.
+    ///
+    /// Finds messages that require acknowledgment but haven't been acknowledged
+    /// within the threshold period, then takes the specified escalation action.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - Request context
+    /// * `mm` - Model manager
+    /// * `threshold_hours` - Hours after which a message is considered overdue
+    /// * `mode` - Escalation mode (Log, FileReservation, or Overseer)
+    /// * `dry_run` - If true, only report what would be done without taking action
+    ///
+    /// # Returns
+    ///
+    /// A vector of results, one per overdue message processed.
     pub async fn escalate_overdue(
         ctx: &Ctx,
         mm: &ModelManager,
@@ -184,6 +234,20 @@ impl EscalationBmc {
         }
     }
 
+    /// Sends a reminder message to the recipient of an overdue message.
+    ///
+    /// Creates a new high-priority message with "REMINDER:" prefix that
+    /// references the original overdue message.
+    ///
+    /// # Arguments
+    ///
+    /// * `ctx` - Request context
+    /// * `mm` - Model manager
+    /// * `msg` - The overdue message to send a reminder for
+    ///
+    /// # Returns
+    ///
+    /// The ID of the newly created reminder message.
     pub async fn send_reminder(ctx: &Ctx, mm: &ModelManager, msg: &OverdueMessage) -> Result<i64> {
         let reminder = MessageForCreate {
             project_id: msg.project_id,

@@ -1,23 +1,65 @@
+//! Image processing and validation utilities (PORT-7.3).
+//!
+//! Provides functions for validating and processing image attachments.
+//!
+//! # Supported Formats
+//!
+//! - PNG, JPEG, GIF, WebP, BMP
+//! - Data URIs with base64 encoding
+//!
+//! # Size Limits
+//!
+//! - Maximum dimensions: 7680x4320 (8K)
+//! - No minimum dimension requirement
+
 use crate::Result;
 use base64::{Engine as _, engine::general_purpose};
 use image::{GenericImageView, ImageFormat};
 
+/// Errors that can occur during image processing.
 #[derive(Debug, thiserror::Error)]
 pub enum ImageError {
+    /// Image data is corrupted or unreadable.
     #[error("Invalid image data: {0}")]
     InvalidData(String),
+    /// Image format is not supported.
     #[error("Unsupported image format")]
     UnsupportedFormat,
+    /// Image dimensions are below minimum requirements.
     #[error("Image too small: {width}x{height}")]
-    TooSmall { width: u32, height: u32 },
+    TooSmall {
+        /// Image width in pixels.
+        width: u32,
+        /// Image height in pixels.
+        height: u32,
+    },
+    /// Image dimensions exceed maximum limits (8K).
     #[error("Image too large: {width}x{height}")]
-    TooLarge { width: u32, height: u32 },
+    TooLarge {
+        /// Image width in pixels.
+        width: u32,
+        /// Image height in pixels.
+        height: u32,
+    },
+    /// Data URI is malformed or not base64 encoded.
     #[error("Invalid data URI")]
     InvalidDataUri,
 }
 
-/// Process and validate image data.
-/// Returns the image format and dimensions if valid.
+/// Validates image data and returns format and dimensions.
+///
+/// # Arguments
+///
+/// * `data` - Raw image bytes
+///
+/// # Returns
+///
+/// A tuple of (format, width, height) if valid.
+///
+/// # Errors
+///
+/// - `ImageError::InvalidData` - Image is corrupted
+/// - `ImageError::TooLarge` - Exceeds 7680x4320 pixels
 pub fn validate_image(data: &[u8]) -> Result<(ImageFormat, u32, u32)> {
     // 1. Guess format
     let format = image::guess_format(data).map_err(|e| ImageError::InvalidData(e.to_string()))?;
@@ -41,7 +83,19 @@ pub fn validate_image(data: &[u8]) -> Result<(ImageFormat, u32, u32)> {
     Ok((format, width, height))
 }
 
-/// Decode data URI to bytes
+/// Decodes a base64 data URI to raw bytes.
+///
+/// # Arguments
+///
+/// * `uri` - Data URI string (e.g., `data:image/png;base64,iVBOR...`)
+///
+/// # Returns
+///
+/// A tuple of (bytes, media_type) where media_type is e.g. "image/png".
+///
+/// # Errors
+///
+/// Returns `ImageError::InvalidDataUri` if the URI is malformed or not base64.
 pub fn decode_data_uri(uri: &str) -> Result<(Vec<u8>, String)> {
     if !uri.starts_with("data:") {
         return Err(ImageError::InvalidDataUri.into());
@@ -74,8 +128,9 @@ pub fn decode_data_uri(uri: &str) -> Result<(Vec<u8>, String)> {
     Ok((data, media_type.to_string()))
 }
 
-/// Check if image is a "malformed" or special edge case we want to detect?
-/// For now relying on image crate's load validation.
+/// Checks if image data is valid without returning details.
+///
+/// A convenience wrapper around [`validate_image`] for simple boolean checks.
 pub fn is_valid_image(data: &[u8]) -> bool {
     validate_image(data).is_ok()
 }
