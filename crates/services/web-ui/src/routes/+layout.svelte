@@ -33,7 +33,7 @@
 	<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 		<!-- Header with breadcrumbs (desktop only, mobile has header in sidebar) -->
 		<AppHeader />
-		<main class="flex-1 p-4 md:p-6 bg-background overflow-y-auto">
+		<main class="flex-1 px-4 md:px-6 pt-[61px] md:pt-0 bg-background overflow-y-auto">
 			{@render children()}
 		</main>
 	</div>

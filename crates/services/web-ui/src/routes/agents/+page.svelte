@@ -132,33 +132,29 @@
 	});
 </script>
 
-<div class="space-y-4 md:space-y-6">
-	<!-- Header (scrolls away) -->
-	<BlurFade delay={0}>
-		<div>
-			<h1 class="text-xl md:text-2xl font-bold text-foreground">All Agents</h1>
-			<p class="text-sm md:text-base text-muted-foreground">Browse agents across all projects</p>
-		</div>
-	</BlurFade>
+<div class="pb-4 md:pb-6">
+	<!-- Page Header (scrolls away) -->
+	<div class="pt-4 md:pt-6 pb-4">
+		<h1 class="text-xl md:text-2xl font-bold text-foreground">All Agents</h1>
+		<p class="text-sm text-muted-foreground">Browse agents across all projects</p>
+	</div>
 
-	<!-- Sticky Toolbar: Search + Filter + Sort + Count -->
-	<div class="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background/95 backdrop-blur-sm border-b border-border">
-		<div class="flex flex-col md:flex-row gap-3 md:gap-4">
-			<!-- Search -->
+	<!-- Sticky Toolbar (sticks directly below header on mobile, breadcrumb on desktop) -->
+	<div class="sticky top-0 z-20 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background border-b border-border">
+		<div class="flex flex-col sm:flex-row gap-3 sm:items-center">
 			<div class="flex-1">
 				<div class="relative">
 					<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 					<Input
 						type="text"
 						bind:value={searchQuery}
-						placeholder="Search by name, program, model, or task..."
-						class="pl-10"
+						placeholder="Search agents..."
+						class="pl-10 h-9"
 					/>
 				</div>
 			</div>
 
-			<!-- Project Filter -->
-			<div class="md:w-64">
+			<div class="flex items-center gap-2">
 				<FilterCombobox
 					value={selectedProject ? getProjectName(selectedProject) : ''}
 					onValueChange={handleProjectChange}
@@ -167,41 +163,38 @@
 					searchPlaceholder="Search projects..."
 					emptyMessage="No projects found."
 				/>
-			</div>
 
-			<!-- Sort Controls -->
-			<div class="flex items-center gap-1">
-				<span class="text-xs text-muted-foreground mr-2">Sort by:</span>
-				<SortButton
-					field="name"
-					label="Name"
-					currentField={sortField}
-					currentDirection={sortDirection}
-					onSort={handleSort}
-				/>
-				<SortButton
-					field="model"
-					label="Model"
-					currentField={sortField}
-					currentDirection={sortDirection}
-					onSort={handleSort}
-				/>
-				<SortButton
-					field="activity"
-					label="Activity"
-					currentField={sortField}
-					currentDirection={sortDirection}
-					onSort={handleSort}
-				/>
+				<div class="flex items-center gap-1 border-l border-border pl-2">
+					<SortButton
+						field="name"
+						label="Name"
+						currentField={sortField}
+						currentDirection={sortDirection}
+						onSort={handleSort}
+					/>
+					<SortButton
+						field="model"
+						label="Model"
+						currentField={sortField}
+						currentDirection={sortDirection}
+						onSort={handleSort}
+					/>
+					<SortButton
+						field="activity"
+						label="Activity"
+						currentField={sortField}
+						currentDirection={sortDirection}
+						onSort={handleSort}
+					/>
+				</div>
 			</div>
 		</div>
 
-		<!-- Stats (always visible when not loading) -->
 		{#if !loading}
-			<div class="flex items-center gap-4 text-sm text-muted-foreground mt-3">
-				<span>Showing {filteredAgents().length} of {allAgents.length} agents</span>
+			<div class="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+				<span>{filteredAgents().length} of {allAgents.length} agents</span>
 				{#if selectedProject}
-					<Badge variant="secondary">
+					<Badge variant="secondary" class="text-xs">
 						{getProjectName(selectedProject)}
 					</Badge>
 				{/if}
@@ -209,6 +202,8 @@
 		{/if}
 	</div>
 
+	<!-- Content area with spacing after sticky toolbar -->
+	<div class="mt-4 space-y-4">
 	<!-- Error Message -->
 	{#if error}
 		<BlurFade delay={150}>
@@ -255,70 +250,64 @@
 			</Card.Root>
 		</BlurFade>
 	{:else}
-		<!-- Agents Grid -->
 		<BlurFade delay={200}>
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
 				{#each filteredAgents() as agent, index}
-					<div
-						class="animate-in fade-in slide-in-from-bottom-2"
+					<a
+						href="/inbox?project={agent.projectSlug}&agent={agent.name}"
+						class="group block animate-in fade-in slide-in-from-bottom-2"
 						style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 					>
-						<Card.Root class="h-full hover:shadow-md transition-shadow">
-							<Card.Content class="p-5 md:p-6">
-								<div class="flex items-start justify-between mb-4">
-									<div class="flex items-center gap-3">
-										<div class="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-											<Bot class="h-5 w-5 text-primary" />
-										</div>
-										<div>
-											<h3 class="font-semibold text-foreground">{agent.name}</h3>
-											<p class="text-sm text-muted-foreground">{agent.program}</p>
-										</div>
+						<Card.Root class="h-full shadow-material hover:shadow-material-hover hover:border-primary/30 transition-all duration-300 hover:-translate-y-1">
+							<Card.Content class="p-4">
+								<div class="flex items-start gap-3 mb-3">
+									<div class="flex-shrink-0 w-11 h-11 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center group-hover:from-primary/30 group-hover:to-primary/20 transition-all duration-300">
+										<Bot class="h-5 w-5 text-primary" />
+									</div>
+									<div class="flex-1 min-w-0">
+										<h3 class="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors" title={agent.name}>
+											{agent.name}
+										</h3>
+										<p class="text-xs text-muted-foreground truncate">{agent.program}</p>
 									</div>
 								</div>
 
-								<div class="space-y-2 text-sm">
-									<div class="flex justify-between">
+								<div class="space-y-1.5 text-xs mb-3">
+									<div class="flex justify-between items-center">
 										<span class="text-muted-foreground">Project</span>
-										<a
-											href="/projects/{agent.projectSlug}"
-											class="text-primary hover:underline font-medium"
-										>
+										<span class="text-foreground font-medium truncate ml-2 max-w-[120px]" title={getProjectName(agent.projectSlug)}>
 											{getProjectName(agent.projectSlug)}
-										</a>
+										</span>
 									</div>
-									<div class="flex justify-between">
+									<div class="flex justify-between items-center">
 										<span class="text-muted-foreground">Model</span>
-										<span class="text-foreground font-mono">{agent.model}</span>
-									</div>
-									{#if agent.task_description}
-										<div>
-											<span class="text-muted-foreground">Task</span>
-											<p class="text-foreground/80 mt-1 line-clamp-2">{agent.task_description}</p>
-										</div>
-									{/if}
-									<div class="flex justify-between pt-2 border-t border-border">
-										<span class="text-muted-foreground">Last Active</span>
-										<span class="text-muted-foreground">{formatDate(agent.last_active_ts)}</span>
+										<span class="text-foreground font-mono truncate ml-2 max-w-[120px]" title={agent.model}>{agent.model}</span>
 									</div>
 								</div>
 
-								<div class="mt-4 pt-4 border-t border-border">
-									<a
-										href="/inbox?project={agent.projectSlug}&agent={agent.name}"
-										class="text-primary hover:text-primary/80 text-sm font-medium inline-flex items-center gap-1"
-									>
-										<span>View Inbox</span>
-										<ArrowRight class="h-4 w-4" />
-									</a>
+								<div class="h-10 mb-3">
+									{#if agent.task_description}
+										<p class="text-xs text-muted-foreground line-clamp-2" title={agent.task_description}>{agent.task_description}</p>
+									{:else}
+										<p class="text-xs text-muted-foreground/50 italic">No task description</p>
+									{/if}
+								</div>
+
+								<div class="flex items-center justify-between pt-3 border-t border-border/40">
+									<span class="text-[10px] text-muted-foreground">{formatDate(agent.last_active_ts)}</span>
+									<span class="text-xs text-primary font-medium inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+										Inbox
+										<ArrowRight class="h-3 w-3" />
+									</span>
 								</div>
 							</Card.Content>
 						</Card.Root>
-					</div>
+					</a>
 				{/each}
 			</div>
 		</BlurFade>
 	{/if}
+	</div>
 </div>
 
 <style>

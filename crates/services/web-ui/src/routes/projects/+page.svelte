@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from "$app/environment";
 	import {
-		getProjects,
+		getProjectsWithStats,
 		ensureProject,
 		deleteProject,
 		type Project,
@@ -15,6 +15,9 @@
 	import MoreVertical from "lucide-svelte/icons/more-vertical";
 	import Trash2 from "lucide-svelte/icons/trash-2";
 	import Pencil from "lucide-svelte/icons/pencil";
+	import Bot from "lucide-svelte/icons/bot";
+	import Mail from "lucide-svelte/icons/mail";
+	import Sparkles from "lucide-svelte/icons/sparkles";
 	import { ProjectCardSkeleton } from "$lib/components/skeletons";
 	import {
 		BlurFade,
@@ -179,7 +182,7 @@
 		loading = true;
 		error = null;
 		try {
-			projects = await getProjects();
+			projects = await getProjectsWithStats();
 		} catch (e) {
 			error = e instanceof Error ? e.message : "Failed to load projects";
 		} finally {
@@ -314,41 +317,30 @@
 	}
 </script>
 
-<div class="space-y-4 md:space-y-6">
-	<!-- Header (scrolls away) -->
-	<BlurFade delay={0}>
-		<div
-			class="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-		>
-			<div>
-				<h1 class="text-xl md:text-2xl font-bold text-foreground">
-					Projects
-				</h1>
-				<p class="text-sm md:text-base text-muted-foreground">
-					Manage your agent mail projects
-				</p>
-			</div>
-			<ShimmerButton on:click={() => (showNewForm = true)}>
-				<Plus class="h-4 w-4 mr-2" />
-				New Project
-			</ShimmerButton>
+<div class="pb-4 md:pb-6">
+	<!-- Page Header (scrolls away) -->
+	<div class="flex items-center justify-between pt-4 md:pt-6 pb-4">
+		<div>
+			<h1 class="text-xl md:text-2xl font-bold text-foreground">Projects</h1>
+			<p class="text-sm text-muted-foreground">Manage your agent mail projects</p>
 		</div>
-	</BlurFade>
+		<ShimmerButton on:click={() => (showNewForm = true)}>
+			<Plus class="h-4 w-4 mr-1" />
+			New Project
+		</ShimmerButton>
+	</div>
 
-	<!-- Sticky Toolbar: Select All + Search + Sort + Count -->
-	<div class="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background/95 backdrop-blur-sm border-b border-border">
+	<!-- Sticky Toolbar (sticks directly below header on mobile, breadcrumb on desktop) -->
+	<div class="sticky top-0 z-20 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background border-b border-border">
 		<div class="flex flex-col sm:flex-row gap-3 sm:items-center">
-			<!-- Select All Checkbox -->
 			{#if filteredProjects().length > 0}
-				<div class="flex items-center gap-2">
-					<Checkbox
-						data-testid="select-all-checkbox"
-						checked={allSelected()}
-						indeterminate={someSelected()}
-						onCheckedChange={toggleSelectAll}
-						aria-label="Select all projects"
-					/>
-				</div>
+				<Checkbox
+					data-testid="select-all-checkbox"
+					checked={allSelected()}
+					indeterminate={someSelected()}
+					onCheckedChange={toggleSelectAll}
+					aria-label="Select all projects"
+				/>
 			{/if}
 			<div class="flex-1 max-w-md">
 				<SearchInput
@@ -356,8 +348,7 @@
 					placeholder="Search projects..."
 				/>
 			</div>
-			<div class="flex items-center gap-1">
-				<span class="text-xs text-muted-foreground mr-2">Sort by:</span>
+			<div class="flex items-center gap-1 border-l border-border pl-2">
 				<SortButton
 					field="name"
 					label="Name"
@@ -375,15 +366,15 @@
 			</div>
 		</div>
 
-		<!-- Stats (always visible when not loading) -->
 		{#if !loading}
-			<div class="flex items-center gap-4 text-sm text-muted-foreground mt-3">
-				<span>Showing {filteredProjects().length} of {projects.length} projects</span>
+			<div class="text-xs text-muted-foreground mt-2">
+				{filteredProjects().length} of {projects.length} projects
 			</div>
 		{/if}
 	</div>
 
-	<!-- Error Message -->
+	<!-- Content area with spacing after sticky toolbar -->
+	<div class="mt-4 space-y-4">
 	{#if error}
 		<BlurFade delay={100}>
 			<div
@@ -434,52 +425,61 @@
 			</Card.Root>
 		</BlurFade>
 	{:else}
-		<!-- Projects Grid - Cards with hover effects -->
 		<BlurFade delay={100}>
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
 				{#each filteredProjects() as project, index}
-					<div
-						class="group relative animate-in fade-in slide-in-from-bottom-2"
+					{@const isInactive = (project.agent_count ?? 0) === 0 && (project.message_count ?? 0) === 0}
+					<a
+						href="/projects/{project.slug}"
+						class="group block animate-in fade-in slide-in-from-bottom-2"
 						style="animation-delay: calc({index} * var(--delay-stagger)); animation-fill-mode: both;"
 					>
-						<a
-							href="/projects/{project.slug}"
-							class="block"
+						<Card.Root
+							class="h-full transition-all duration-300 hover:-translate-y-1 {isSelected(project.id) 
+								? 'ring-2 ring-primary border-primary shadow-primary' 
+								: isInactive 
+									? 'border-dashed border-muted-foreground/30 bg-muted/5 hover:bg-muted/10 hover:border-muted-foreground/50' 
+									: 'shadow-material hover:shadow-material-hover hover:border-primary/30'}"
 						>
-							<Card.Root
-								class="h-full hover:shadow-lg hover:border-primary/50 transition-all duration-200 hover:-translate-y-1 {isSelected(project.id) ? 'ring-2 ring-primary border-primary' : ''}"
-							>
-								<Card.Content class="p-5 md:p-6 relative">
-									<!-- Selection Checkbox - inside card content -->
+							<Card.Content class="p-4">
+								<div class="flex items-start gap-3 mb-3">
 									<div
-										class="absolute top-3 left-3 z-20"
-										onclick={(e: Event) => toggleSelection(project.id, e)}
+										class="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 {isInactive 
+											? 'bg-muted/50' 
+											: 'bg-gradient-to-br from-primary/20 to-primary/10 group-hover:from-primary/30 group-hover:to-primary/20 group-hover:shadow-lg'}"
 									>
-										<Checkbox
-											data-testid="project-select-checkbox"
-											checked={isSelected(project.id)}
-											aria-label="Select project {project.human_key}"
-											class="bg-background/80 backdrop-blur-sm border-muted-foreground/50"
+										<FolderKanban
+											class="h-5 w-5 {isInactive ? 'text-muted-foreground' : 'text-primary'}"
 										/>
 									</div>
-									<div
-										class="flex items-center justify-between mb-4 ml-8"
-									>
-										<div class="flex items-center gap-3">
-											<div
-												class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors"
-											>
-												<FolderKanban
-													class="h-5 w-5 text-primary"
-												/>
-											</div>
-											<div class="min-w-0">
-												<h3
-													class="font-semibold text-foreground truncate group-hover:text-primary transition-colors"
-												>
-													{project.human_key}
-												</h3>
-											</div>
+									
+									<div class="flex-1 min-w-0">
+										<h3
+											class="font-semibold text-sm text-foreground truncate group-hover:text-primary transition-colors duration-200"
+											title={project.human_key}
+										>
+											{project.human_key}
+										</h3>
+										<div class="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+											<Calendar class="h-3 w-3 flex-shrink-0" />
+											<span>{formatDate(project.created_at)}</span>
+										</div>
+									</div>
+									
+									<div class="flex items-center gap-0.5 flex-shrink-0">
+										<div
+											role="button"
+											tabindex="0"
+											class="w-7 h-7 flex items-center justify-center rounded hover:bg-muted/50"
+											onclick={(e: Event) => toggleSelection(project.id, e)}
+											onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelection(project.id, e); } }}
+										>
+											<Checkbox
+												data-testid="project-select-checkbox"
+												checked={isSelected(project.id)}
+												aria-label="Select project {project.human_key}"
+												class="h-4 w-4"
+											/>
 										</div>
 										<DropdownMenu.Root
 											open={openDropdownId === project.id}
@@ -493,7 +493,7 @@
 														{...props}
 														variant="ghost"
 														size="icon"
-														class="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+														class="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
 														onclick={(e: Event) => {
 															e.preventDefault();
 															e.stopPropagation();
@@ -519,25 +519,37 @@
 											</DropdownMenu.Content>
 										</DropdownMenu.Root>
 									</div>
-
-									<div
-										class="flex items-center gap-2 text-sm text-muted-foreground ml-8"
-									>
-										<Calendar class="h-4 w-4" />
-										<span
-											>Created {formatDate(
-												project.created_at,
-											)}</span
-										>
-									</div>
-								</Card.Content>
-							</Card.Root>
-						</a>
-					</div>
+								</div>
+								
+								<div class="flex items-center gap-2 pt-3 border-t border-border/40 min-h-[28px]">
+									{#if isInactive}
+										<Badge variant="secondary" class="text-[10px] px-2 py-0.5">
+											<Sparkles class="h-3 w-3 mr-1" />
+											Get Started
+										</Badge>
+									{:else}
+										{#if (project.agent_count ?? 0) > 0}
+											<div class="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs">
+												<Bot class="h-3 w-3" />
+												<span class="font-medium">{project.agent_count}</span>
+											</div>
+										{/if}
+										{#if (project.message_count ?? 0) > 0}
+											<div class="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary text-xs">
+												<Mail class="h-3 w-3" />
+												<span class="font-medium">{project.message_count}</span>
+											</div>
+										{/if}
+									{/if}
+								</div>
+							</Card.Content>
+						</Card.Root>
+					</a>
 				{/each}
 			</div>
 		</BlurFade>
 	{/if}
+	</div>
 </div>
 
 <!-- New Project Dialog -->

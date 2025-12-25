@@ -57,7 +57,7 @@
     <title>Archive Browser | MCP Agent Mail</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class="pt-4 md:pt-6 pb-4 md:pb-6 space-y-6">
     <!-- Breadcrumb -->
     <nav class="text-sm text-muted-foreground">
         <span class="font-medium text-foreground"

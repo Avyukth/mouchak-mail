@@ -5,12 +5,14 @@
 
 	type CardProps = WithElementRef<HTMLAttributes<HTMLDivElement>> & {
 		interactive?: boolean;
+		elevated?: boolean;
 	};
 
 	let {
 		ref = $bindable(null),
 		class: className,
 		interactive = false,
+		elevated = false,
 		children,
 		...restProps
 	}: CardProps = $props();
@@ -19,8 +21,14 @@
 <div
 	bind:this={ref}
 	class={cn(
-		"bg-card text-card-foreground rounded-lg border shadow-sm",
-		interactive && "stripe-hover stripe-hover--dark cursor-pointer transition-all duration-150 hover:border-primary/50 hover:shadow-lg [&>*]:relative [&>*]:z-10",
+		"bg-card text-card-foreground rounded-xl border border-border/60 shadow-material transition-all duration-300",
+		elevated && "shadow-lg bg-gradient-to-b from-card to-card/95",
+		interactive && [
+			"cursor-pointer",
+			"hover:shadow-material-hover hover:-translate-y-1",
+			"hover:border-primary/30",
+			"active:scale-[0.99] active:shadow-material-active"
+		],
 		className
 	)}
 	{...restProps}

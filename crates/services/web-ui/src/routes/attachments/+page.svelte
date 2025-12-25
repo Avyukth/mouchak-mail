@@ -134,7 +134,7 @@
     <title>Attachments | MCP Agent Mail</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class="pt-4 md:pt-6 pb-4 md:pb-6 space-y-6">
     <!-- Page Header -->
     <div class="flex items-center gap-3">
         <div class="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl">

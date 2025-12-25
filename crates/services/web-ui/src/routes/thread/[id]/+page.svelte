@@ -172,7 +172,7 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
-    class="thread-view space-y-4"
+    class="thread-view pt-4 md:pt-6 pb-4 md:pb-6 space-y-4"
     tabindex="0"
     onkeydown={handleKeydown}
     role="application"

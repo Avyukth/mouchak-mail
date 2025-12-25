@@ -206,7 +206,7 @@
     <title>Search Messages | MCP Agent Mail</title>
 </svelte:head>
 
-<div class="space-y-6">
+<div class="pt-4 md:pt-6 pb-4 md:pb-6 space-y-6">
     <!-- Header -->
     <div class="space-y-4">
         <div class="flex items-center gap-3">

@@ -12,6 +12,8 @@ export interface Project {
     slug: string;
     human_key: string;
     created_at: string;
+    agent_count?: number;
+    message_count?: number;
 }
 
 export interface Agent {

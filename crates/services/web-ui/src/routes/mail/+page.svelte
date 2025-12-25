@@ -232,13 +232,20 @@
 <div
 	data-testid="mail-root"
 	data-fullscreen={$isFullscreen}
-	class={`space-y-4 ${$isFullscreen ? 'fixed inset-0 z-40 bg-background p-6 overflow-auto' : ''}`}
+	class={$isFullscreen ? 'fixed inset-0 z-40 bg-background p-6 overflow-auto' : 'pt-4 md:pt-6 pb-4 md:pb-6 space-y-4'}
 >
-	<!-- Header -->
-	<div class="flex flex-col gap-3 sticky top-0 z-20 bg-background/95 backdrop-blur -mx-6 px-6 py-4 border-b border-border">
+	{#if !$isFullscreen}
+		<div>
+			<h1 class="text-xl md:text-2xl font-bold text-foreground">Unified Inbox</h1>
+			<p class="text-sm text-muted-foreground">All messages across projects in one place</p>
+		</div>
+	{/if}
+
+	<div class={$isFullscreen
+		? 'pb-4 border-b border-border'
+		: 'sticky top-0 z-20 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-background border-b border-border'}>
 		<div class="flex flex-wrap items-center gap-3">
-			<!-- Search Input -->
-			<div class="flex-1 min-w-[240px]">
+			<div class="flex-1 min-w-[200px]">
 				<div class="relative">
 					<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 					<Input
@@ -246,17 +253,13 @@
 						bind:value={$searchQuery}
 						data-testid="mail-search-input"
 						aria-label="Search mail"
-						placeholder="Search across all mail..."
-						class="pl-10 pr-16"
+						placeholder="Search mail..."
+						class="pl-10 h-9"
 					/>
-					<span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-						<kbd class="px-1.5 py-0.5 bg-muted rounded text-2xs">⌘K</kbd>
-					</span>
 				</div>
 			</div>
 
-			<!-- Action Buttons -->
-			<div class="flex flex-wrap items-center gap-2">
+			<div class="flex items-center gap-2">
 				<Button
 					variant="outline"
 					size="sm"
@@ -272,10 +275,8 @@
 				>
 					{#if $viewMode === 'split'}
 						<List class="h-4 w-4" />
-						List
 					{:else}
 						<LayoutGrid class="h-4 w-4" />
-						Split
 					{/if}
 				</Button>
 				<Button
@@ -285,10 +286,8 @@
 				>
 					{#if $isFullscreen}
 						<Minimize class="h-4 w-4" />
-						Exit
 					{:else}
 						<Maximize class="h-4 w-4" />
-						Expand
 					{/if}
 				</Button>
 				<Button
@@ -298,28 +297,23 @@
 					disabled={$isRefreshing}
 				>
 					<RefreshCw class="h-4 w-4 {$isRefreshing ? 'animate-spin' : ''}" />
-					{$isRefreshing ? 'Refreshing' : 'Refresh'}
 				</Button>
 			</div>
 		</div>
 
-		<!-- Auto-refresh and shortcuts -->
-		<div class="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+		<div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
 			<label class="flex items-center gap-2 cursor-pointer">
 				<Checkbox
 					checked={$autoRefreshEnabled}
 					onCheckedChange={(checked) => autoRefreshEnabled.set(checked === true)}
 				/>
-				<span>Auto-refresh (45s)</span>
+				<span>Auto-refresh</span>
 			</label>
-			<span class="hidden sm:inline">
-				<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">f</kbd> fullscreen
-				<kbd class="px-1 py-0.5 bg-muted rounded text-2xs ml-2">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">k</kbd> navigate
+			<span class="hidden sm:inline text-muted-foreground/60">
+				<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">k</kbd> nav
 			</span>
 		</div>
 	</div>
-
-	<!-- Filters Panel -->
 	{#if $showFilters}
 		<div
 			class="bg-card border border-border rounded-xl p-4 shadow-sm"

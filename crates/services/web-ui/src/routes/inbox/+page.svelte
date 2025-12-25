@@ -188,7 +188,7 @@
 	}
 </script>
 
-<div class="space-y-4 md:space-y-6">
+<div class="pt-4 md:pt-6 pb-4 md:pb-6 space-y-4 md:space-y-6">
 	<!-- Header -->
 	<BlurFade delay={0}>
 		<div class="flex items-center justify-between">

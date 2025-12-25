@@ -104,6 +104,34 @@ export async function deleteProject(projectSlug: string): Promise<{ success: boo
 	});
 }
 
+interface ProjectInfoResponse {
+	id: number;
+	slug: string;
+	human_key: string;
+	created_at: string;
+	agent_count: number;
+	message_count: number;
+}
+
+export async function getProjectsWithStats(): Promise<Project[]> {
+	const projects = await getProjects();
+	
+	const statsPromises = projects.map(p =>
+		request<ProjectInfoResponse>('/project/info', {
+			method: 'POST',
+			body: JSON.stringify({ project_slug: p.slug })
+		}).catch(() => ({ agent_count: 0, message_count: 0 }))
+	);
+	
+	const stats = await Promise.all(statsPromises);
+	
+	return projects.map((p, i) => ({
+		...p,
+		agent_count: stats[i]?.agent_count ?? 0,
+		message_count: stats[i]?.message_count ?? 0
+	}));
+}
+
 // ============================================================================
 // Agents
 // ============================================================================

@@ -78,7 +78,7 @@
 	const recentProjects = $derived(stats?.projects.slice(0, 5) ?? []);
 </script>
 
-<GridPattern pattern="dots" opacity={0.05} masked class="min-h-screen -m-4 md:-m-6 p-4 md:p-6">
+<GridPattern pattern="dots" opacity={0.05} masked class="min-h-screen -mx-4 md:-mx-6 p-4 md:p-6">
 	<div class="space-y-6 max-w-6xl mx-auto">
 		<!-- Page Header with status badge -->
 		<BlurFade delay={0}>

@@ -140,7 +140,7 @@
 	}
 </script>
 
-<div class="space-y-4 md:space-y-6">
+<div class="pt-4 md:pt-6 pb-4 md:pb-6 space-y-4 md:space-y-6">
 	<!-- Breadcrumb / Back -->
 	<BlurFade delay={0}>
 		<nav class="flex items-center gap-2 text-sm text-muted-foreground">

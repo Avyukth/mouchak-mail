@@ -4,9 +4,9 @@
 
 @layer base {
 	:root {
-		/* === Factory.ai Design System === */
-		/* Primary: #EF6F2E | Accent: #6A7282 | Background: #EEEEEE | Text: #020202 */
-		--background: 0 0% 93%;
+		/* === Command Center Design System === */
+		/* Primary: #EF6F2E | Accent: #6A7282 | Background: #F8F8F8 | Text: #020202 */
+		--background: 0 0% 97%;
 		--foreground: 0 0% 1%;
 		--card: 0 0% 100%;
 		--card-foreground: 0 0% 1%;
@@ -14,18 +14,27 @@
 		--popover-foreground: 0 0% 1%;
 		--primary: 18 86% 56%;
 		--primary-foreground: 0 0% 100%;
-		--secondary: 220 10% 90%;
+		--primary-soft: 18 86% 96%;
+		--secondary: 220 10% 92%;
 		--secondary-foreground: 0 0% 1%;
-		--muted: 220 10% 90%;
-		--muted-foreground: 220 10% 46%;
+		--muted: 220 10% 92%;
+		--muted-foreground: 220 10% 40%;
 		--accent: 220 10% 46%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 0 84% 60%;
 		--destructive-foreground: 0 0% 100%;
-		--border: 220 10% 80%;
-		--input: 220 10% 85%;
+		--border: 220 10% 85%;
+		--input: 220 10% 88%;
 		--ring: 18 86% 56%;
-		--radius: 0.5rem;
+		--radius: 0.75rem;
+
+		/* === Surface Layers for Depth === */
+		--surface-elevated: 0 0% 100%;
+		--surface-sunken: 0 0% 96%;
+
+		/* === Typography === */
+		--font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+		--font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
 		/* === Spacing Scale (8px grid) === */
 		--space-1: 0.25rem;  /* 4px */
@@ -69,37 +78,67 @@
 		--stripe-dark: #4d4947;
 		--stripe-light: #a49d9a;
 
+		/* === Industrial Accent Colors === */
+		--accent-steel: 210 15% 45%;
+		--accent-copper: 25 85% 55%;
+		--accent-titanium: 200 10% 65%;
+
+		/* === Background Layers for Depth === */
+		--bg-layer-1: 0 0% 98%;
+		--bg-layer-2: 0 0% 96%;
+		--bg-layer-3: 0 0% 94%;
+
+		/* === Metal Colors === */
+		--metal-light: 0 0% 95%;
+		--metal-medium: 0 0% 85%;
+		--metal-dark: 0 0% 75%;
+
 		/* === Shadow Tokens === */
-		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-		--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-		--shadow-focus: 0 0 0 3px hsl(var(--ring) / 0.3);
+		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+		--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+		--shadow-focus: 0 0 0 3px hsl(var(--ring) / 0.25);
+
+		/* === Material Shadow System === */
+		--shadow-material: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+		--shadow-material-hover: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 4px 10px -4px rgb(0 0 0 / 0.06);
+		--shadow-material-active: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+		--shadow-primary: 0 8px 24px -4px hsl(var(--primary) / 0.25);
+		--shadow-glow: 0 0 20px -5px hsl(var(--primary) / 0.4);
+
+		/* === Gradient Accents === */
+		--gradient-primary: linear-gradient(135deg, hsl(18 86% 56%), hsl(25 80% 52%));
+		--gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(0 0% 98%));
 
 		/* === Touch Target === */
 		--touch-target-min: 44px;
 	}
 
 	.dark {
-		--background: 0 0% 2%;
-		--foreground: 0 0% 93%;
-		--card: 0 0% 6%;
-		--card-foreground: 0 0% 93%;
-		--popover: 0 0% 6%;
-		--popover-foreground: 0 0% 93%;
-		--primary: 18 86% 56%;
+		--background: 0 0% 4%;
+		--foreground: 0 0% 95%;
+		--card: 0 0% 7%;
+		--card-foreground: 0 0% 95%;
+		--popover: 0 0% 7%;
+		--popover-foreground: 0 0% 95%;
+		--primary: 18 86% 58%;
 		--primary-foreground: 0 0% 0%;
-		--secondary: 0 0% 12%;
-		--secondary-foreground: 0 0% 93%;
-		--muted: 0 0% 12%;
-		--muted-foreground: 0 0% 55%;
-		--accent: 220 10% 20%;
-		--accent-foreground: 0 0% 93%;
-		--destructive: 0 62% 30%;
-		--destructive-foreground: 0 0% 93%;
-		--border: 0 0% 18%;
-		--input: 0 0% 15%;
-		--ring: 18 86% 56%;
+		--primary-soft: 18 40% 15%;
+		--secondary: 0 0% 14%;
+		--secondary-foreground: 0 0% 95%;
+		--muted: 0 0% 14%;
+		--muted-foreground: 0 0% 60%;
+		--accent: 220 10% 22%;
+		--accent-foreground: 0 0% 95%;
+		--destructive: 0 62% 35%;
+		--destructive-foreground: 0 0% 95%;
+		--border: 0 0% 16%;
+		--input: 0 0% 14%;
+		--ring: 18 86% 58%;
+
+		--surface-elevated: 0 0% 10%;
+		--surface-sunken: 0 0% 3%;
 
 		--success: 160 84% 39%;
 		--success-foreground: 0 0% 100%;
@@ -110,11 +149,31 @@
 
 		--shimmer-color: 0 0% 100%;
 
-		/* === Shadow Tokens (Dark) === */
-		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
-		--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+		--accent-steel: 210 15% 55%;
+		--accent-copper: 25 85% 60%;
+		--accent-titanium: 200 10% 70%;
+
+		--bg-layer-1: 0 0% 5%;
+		--bg-layer-2: 0 0% 7%;
+		--bg-layer-3: 0 0% 10%;
+
+		--metal-light: 0 0% 25%;
+		--metal-medium: 0 0% 20%;
+		--metal-dark: 0 0% 15%;
+
+		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+		--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.4);
+
+		--shadow-material: 0 2px 8px -2px rgb(0 0 0 / 0.5), 0 1px 3px -1px rgb(0 0 0 / 0.4);
+		--shadow-material-hover: 0 10px 30px -5px rgb(0 0 0 / 0.6), 0 4px 12px -4px rgb(0 0 0 / 0.4);
+		--shadow-material-active: 0 1px 4px -1px rgb(0 0 0 / 0.4);
+		--shadow-primary: 0 8px 30px -4px hsl(var(--primary) / 0.45);
+		--shadow-glow: 0 0 30px -5px hsl(var(--primary) / 0.5);
+
+		--gradient-primary: linear-gradient(135deg, hsl(18 86% 58%), hsl(25 80% 54%));
+		--gradient-subtle: linear-gradient(180deg, hsl(0 0% 8%), hsl(0 0% 6%));
 	}
 }
 
@@ -225,6 +284,44 @@
 	to { background-position: 28.28px -28.28px; }
 }
 
+@keyframes bounce-in {
+	0% { opacity: 0; transform: scale(0.3) translateY(20px); }
+	50% { opacity: 1; transform: scale(1.05) translateY(-5px); }
+	70% { transform: scale(0.98) translateY(2px); }
+	100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes card-enter {
+	from {
+		opacity: 0;
+		transform: translateY(16px) scale(0.97);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+@keyframes selection-pulse {
+	0% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+	100% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0); }
+}
+
+@keyframes glow-pulse {
+	0%, 100% { box-shadow: var(--shadow-glow); }
+	50% { box-shadow: 0 0 40px -5px hsl(var(--primary) / 0.6); }
+}
+
+@keyframes industrial-shimmer {
+	0% { background-position: -200% 0; }
+	100% { background-position: 200% 0; }
+}
+
+@keyframes industrial-pulse {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.8; transform: scale(1.02); }
+}
+
 /* === Pulse animation for status indicators === */
 @keyframes pulse-status {
 	0%, 100% {
@@ -332,6 +429,63 @@
 
 .card-interactive:hover {
 	@apply border-primary/50 shadow-lg;
+}
+
+.shadow-material { box-shadow: var(--shadow-material); }
+.shadow-material-hover { box-shadow: var(--shadow-material-hover); }
+.shadow-material-active { box-shadow: var(--shadow-material-active); }
+.shadow-primary { box-shadow: var(--shadow-primary); }
+.shadow-glow { box-shadow: var(--shadow-glow); }
+
+.font-mono { font-family: var(--font-mono); }
+
+.gradient-primary {
+	background: var(--gradient-primary);
+}
+
+.gradient-text {
+	background: var(--gradient-primary);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.surface-elevated { background: hsl(var(--surface-elevated)); }
+.surface-sunken { background: hsl(var(--surface-sunken)); }
+
+.animate-bounce-in {
+	animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-card-enter {
+	animation: card-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-selection-pulse {
+	animation: selection-pulse 0.3s ease-out;
+}
+
+.animate-glow-pulse {
+	animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-industrial-shimmer {
+	background: linear-gradient(90deg, hsl(var(--metal-light)) 0%, hsl(var(--metal-medium)) 50%, hsl(var(--metal-light)) 100%);
+	background-size: 200% 100%;
+	animation: industrial-shimmer 2s infinite ease-in-out;
+}
+
+.animate-industrial-pulse {
+	animation: industrial-pulse 2s infinite ease-in-out;
+}
+
+.industrial-texture {
+	background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
+	background-size: 20px 20px;
+}
+
+.dark .industrial-texture {
+	background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
 }
 
 /* === Reduced Motion Preference === */

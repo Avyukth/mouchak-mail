@@ -131,45 +131,50 @@
 
 <!-- Tablet/Desktop: Fixed sidebar (>= 768px) -->
 <aside
-	class="hidden md:flex flex-col h-screen border-r border-border bg-card transition-all duration-300 w-64"
+	class="hidden md:flex flex-col h-screen border-r border-border/40 bg-gradient-to-b from-card to-card/98 transition-all duration-300 w-64"
 >
 	<!-- Header - h-14 matches AppHeader -->
-	<div class="flex items-center gap-2 border-b border-border h-14 px-4 flex-shrink-0">
-		<Mail class="h-5 w-5 text-primary" />
+	<div class="flex items-center gap-3 border-b border-border/40 h-14 px-4 flex-shrink-0">
+		<div class="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center shadow-lg">
+			<Mail class="h-4.5 w-4.5 text-white" />
+		</div>
 		<div class="flex flex-col">
-			<span class="text-sm font-bold text-primary">Agent Mail</span>
-			<span class="text-xs text-muted-foreground">MCP Communication Hub</span>
+			<span class="text-sm font-bold text-foreground tracking-tight">Agent Mail</span>
+			<span class="text-[11px] text-muted-foreground font-medium">Command Center</span>
 		</div>
 	</div>
 
-	<!-- Navigation with Factory.ai Spotlight -->
+	<!-- Navigation with Spotlight -->
 	<nav
 		bind:this={navContainer}
-		class="nav-container flex-1 flex flex-col gap-1 p-2 overflow-y-auto relative"
+		class="nav-container flex-1 flex flex-col gap-0.5 p-3 overflow-y-auto relative"
 		onmouseleave={handleNavLeave}
 	>
+		<span class="text-[10px] uppercase tracking-widest text-muted-foreground/60 font-semibold px-3 mb-2">Navigation</span>
 		<div class="nav-spotlight" style={spotlightStyle}></div>
 		{#each navItemsWithBadge as item}
 			<a
 				href={item.href}
 				onmouseenter={handleNavHover}
-				class="nav-link flex items-center gap-3 rounded-lg px-3 min-h-[44px] transition-colors relative z-10 {isActive(
+				class="nav-link group flex items-center gap-3 rounded-xl px-3 min-h-[44px] transition-all duration-200 relative z-10 {isActive(
 					item.href
 				)
-					? 'bg-primary/10 text-primary border-l-4 border-primary -ml-0.5 pl-2.5'
-					: 'text-foreground'}"
+					? 'bg-primary/12 text-primary font-semibold shadow-sm'
+					: 'text-muted-foreground hover:text-foreground'}"
 			>
-				<item.icon class="h-5 w-5 flex-shrink-0" />
-				<span class="font-medium flex-1">{item.label}</span>
+				<div class="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 {isActive(item.href) ? 'bg-primary/15' : 'group-hover:bg-accent/60'}">
+					<item.icon class="h-[18px] w-[18px] flex-shrink-0 transition-colors duration-200 {isActive(item.href) ? 'text-primary' : 'group-hover:text-primary'}" />
+				</div>
+				<span class="flex-1 transition-colors duration-200 text-[13px]">{item.label}</span>
 				{#if item.badge && item.badge > 0}
-					<Badge variant="destructive">{item.badge}</Badge>
+					<Badge variant="destructive" class="h-5 min-w-5 text-[10px] px-1.5">{item.badge}</Badge>
 				{/if}
 			</a>
 		{/each}
 	</nav>
 
-	<!-- Footer with Factory.ai Theme Toggle -->
-	<div class="border-t border-border p-2 flex items-center justify-center flex-shrink-0 bg-card">
+	<!-- Footer with Theme Toggle -->
+	<div class="border-t border-border/40 p-3 flex items-center justify-center flex-shrink-0">
 		<ThemeToggle />
 	</div>
 </aside>
@@ -184,17 +189,18 @@
 		position: absolute;
 		left: 8px;
 		top: 0;
-		background: hsl(var(--primary) / 0.1);
-		border-radius: 8px;
+		background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.1));
+		border-radius: 12px;
 		pointer-events: none;
 		z-index: 0;
 		width: 0;
-		height: 44px;
+		height: 48px;
 		overflow: hidden;
+		box-shadow: 0 4px 12px -4px hsl(var(--primary) / 0.2);
 		transition:
-			transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-			width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-			height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+			transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+			width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+			height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
 			opacity 0.15s ease;
 	}
 
