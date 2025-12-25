@@ -19,6 +19,10 @@ build-static/
 # Playwright test artifacts (regenerated each run)
 playwright-report/
 test-results/
+**/*-snapshots/
+
+# Local data directories (SQLite, archives)
+**/data/
 .sandboxes/
 docs/PLAN_CRITICISM_PRODUCTION_SPRINT.md
 docs/CRITICAL_GAP_ANALYSIS.md
