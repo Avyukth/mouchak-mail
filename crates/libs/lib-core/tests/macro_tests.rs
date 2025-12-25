@@ -318,7 +318,8 @@ async fn test_list_registered_macros() {
     for macro_def in &all_macros {
         assert!(macro_def.id > 0, "Macro ID should be positive");
         assert_eq!(
-            macro_def.project_id, project_id.get(),
+            macro_def.project_id,
+            project_id.get(),
             "Macro should belong to correct project"
         );
         assert!(!macro_def.name.is_empty(), "Macro name should not be empty");

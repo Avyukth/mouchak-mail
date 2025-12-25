@@ -4,6 +4,17 @@ use crate::model::ModelManager;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
+/// A high-level product grouping for projects.
+///
+/// Products allow grouping multiple projects (services/modules) under a single
+/// umbrella for organizational and billing purposes.
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `product_uid` - Unique product identifier (e.g., "prod_123")
+/// - `name` - Display name
+/// - `created_at` - Creation timestamp
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Product {
     pub id: i64,
@@ -12,6 +23,7 @@ pub struct Product {
     pub created_at: NaiveDateTime,
 }
 
+/// Join table linking products to projects.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductProjectLink {
     pub id: i64,
@@ -20,12 +32,14 @@ pub struct ProductProjectLink {
     pub created_at: NaiveDateTime,
 }
 
+/// Input to create a new product.
 #[derive(Debug, Clone)]
 pub struct ProductForCreate {
     pub product_uid: String,
     pub name: String,
 }
 
+/// Product details with associated project list.
 #[derive(Debug, Clone, Serialize)]
 pub struct ProductWithProjects {
     pub id: i64,

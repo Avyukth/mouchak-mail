@@ -174,9 +174,10 @@ async fn test_list_pending_requests() {
         .expect("Failed to request contact");
 
     // Agent B checks pending requests
-    let pending = AgentLinkBmc::list_pending_requests(&tc.ctx, &tc.mm, project_id.get(), agent_b_id)
-        .await
-        .expect("Failed to list pending requests");
+    let pending =
+        AgentLinkBmc::list_pending_requests(&tc.ctx, &tc.mm, project_id.get(), agent_b_id)
+            .await
+            .expect("Failed to list pending requests");
 
     assert_eq!(pending.len(), 1, "Agent B should have 1 pending request");
     assert_eq!(pending[0].status, "pending");
@@ -275,9 +276,10 @@ async fn test_multiple_pending_requests() {
     }
 
     // Target should have 3 pending requests
-    let pending = AgentLinkBmc::list_pending_requests(&tc.ctx, &tc.mm, project_id.get(), target_id.into())
-        .await
-        .expect("Failed to list pending requests");
+    let pending =
+        AgentLinkBmc::list_pending_requests(&tc.ctx, &tc.mm, project_id.get(), target_id.into())
+            .await
+            .expect("Failed to list pending requests");
 
     assert_eq!(pending.len(), 3, "Target should have 3 pending requests");
 }

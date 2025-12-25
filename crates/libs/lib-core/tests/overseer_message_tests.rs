@@ -16,7 +16,7 @@ use crate::common::TestContext;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::overseer_message::{OverseerMessageBmc, OverseerMessageForCreate};
 use lib_core::model::project::ProjectBmc;
-use lib_core::types::{ProjectId, AgentId};
+use lib_core::types::{AgentId, ProjectId};
 use lib_core::utils::slugify;
 
 /// Helper to set up a project with an agent

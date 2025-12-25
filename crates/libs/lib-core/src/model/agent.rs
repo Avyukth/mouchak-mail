@@ -344,7 +344,7 @@ impl AgentBmc {
 
     /// Check if an active reviewer agent exists for a project.
     ///
-    /// Used by workers to determine if they should send [COMPLETION] to a reviewer
+    /// Used by workers to determine if they should send \[COMPLETION\] to a reviewer
     /// or directly to a human (self-review mode).
     ///
     /// An agent is considered "active" if its `last_active_ts` is within the

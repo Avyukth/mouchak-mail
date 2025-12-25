@@ -29,6 +29,19 @@ pub const DEFAULT_CAPABILITIES: &[&str] = &[
     CAP_ACKNOWLEDGE_MESSAGE,
 ];
 
+/// A capability granted to an agent.
+///
+/// Capabilities control what actions an agent can perform in the system.
+/// Most capabilities are granted at creation time.
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `agent_id` - Agent holding the capability
+/// - `capability` - Capability string (e.g., "send_message")
+/// - `granted_at` - When it was granted
+/// - `granted_by` - Agent ID who granted it (None = system)
+/// - `expires_at` - Optional expiration time
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCapability {
     pub id: i64,
@@ -39,6 +52,14 @@ pub struct AgentCapability {
     pub expires_at: Option<NaiveDateTime>,
 }
 
+/// Input to grant a new capability.
+///
+/// # Fields
+///
+/// - `agent_id` - Target agent
+/// - `capability` - Capability string
+/// - `granted_by` - Granting agent ID (optional)
+/// - `expires_at` - Expiration (optional)
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AgentCapabilityForCreate {
     pub agent_id: i64,

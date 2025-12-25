@@ -5,6 +5,20 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// A defined workflow macro (sequence of tools).
+///
+/// Macros allow agents to execute common patterns (like "check inbox" or
+/// "create feature") in a single step.
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `project_id` - Project context
+/// - `name` - Unique macro name within project
+/// - `description` - Human readable description
+/// - `steps` - JSON array of tool calls or actions
+/// - `created_ts` - Creation timestamp
+/// - `updated_ts` - Last update timestamp
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MacroDef {
     pub id: i64,
@@ -16,6 +30,14 @@ pub struct MacroDef {
     pub updated_ts: NaiveDateTime,
 }
 
+/// Input data for creating a new macro.
+///
+/// # Fields
+///
+/// - `project_id` - Project to attach macro to
+/// - `name` - Macro name (must be unique in project)
+/// - `description` - What the macro does
+/// - `steps` - Worklow steps (tool calls)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MacroDefForCreate {
     pub project_id: i64,

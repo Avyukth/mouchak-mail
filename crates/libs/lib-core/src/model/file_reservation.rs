@@ -6,6 +6,22 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 
+/// A file reservation (lock) for coordinating agent work.
+///
+/// Reservations prevent agents from conflicting when editing the same files.
+/// They can be exclusive (write lock) or shared (read lock).
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `project_id` - Project context
+/// - `agent_id` - Agent holding the reservation
+/// - `path_pattern` - Glob pattern for reserved files
+/// - `exclusive` - True = Write Lock, False = Read Lock
+/// - `reason` - Why the reservation was taken
+/// - `created_ts` - When the lock was acquired
+/// - `expires_ts` - When the lock auto-releases (TTL)
+/// - `released_ts` - When it was manually released (if applicable)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileReservation {
     pub id: i64,
@@ -19,6 +35,16 @@ pub struct FileReservation {
     pub released_ts: Option<NaiveDateTime>,
 }
 
+/// Input data to request a file reservation.
+///
+/// # Fields
+///
+/// - `project_id` - Project context
+/// - `agent_id` - Requesting agent
+/// - `path_pattern` - Files to lock (glob)
+/// - `exclusive` - True for write access
+/// - `reason` - Justification for lock
+/// - `expires_ts` - Requested expiration time
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileReservationForCreate {
     pub project_id: ProjectId,

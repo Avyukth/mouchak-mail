@@ -4,6 +4,23 @@ use crate::model::ModelManager;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
+/// A contact link between two agents (potentially across projects).
+///
+/// Links allow agents to communicate and are established via a handshake
+/// mechanism (request -> accept).
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `a_project_id` - Project of initiating agent
+/// - `a_agent_id` - Initiating agent
+/// - `b_project_id` - Project of target agent
+/// - `b_agent_id` - Target agent
+/// - `status` - "pending", "accepted", "rejected"
+/// - `reason` - Justification for the contact
+/// - `created_ts` - When the request was made
+/// - `updated_ts` - Last status change
+/// - `expires_ts` - Optional expiration of the link
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentLink {
     pub id: i64,
@@ -18,6 +35,15 @@ pub struct AgentLink {
     pub expires_ts: Option<NaiveDateTime>,
 }
 
+/// Input to request a new contact link.
+///
+/// # Fields
+///
+/// - `a_project_id` - Initiating project
+/// - `a_agent_id` - Initiating agent
+/// - `b_project_id` - Target project
+/// - `b_agent_id` - Target agent
+/// - `reason` - Message explaining why contact is needed
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentLinkForCreate {
     pub a_project_id: i64,

@@ -172,8 +172,7 @@ async fn test_adopt_project() {
     // Check Agent
     let agent = AgentBmc::get(&tc.ctx, &tc.mm, agent_id).await.unwrap();
     assert_eq!(
-        agent.project_id,
-        dest_id,
+        agent.project_id, dest_id,
         "Agent should be moved to dest project"
     );
 
@@ -182,7 +181,8 @@ async fn test_adopt_project() {
         .await
         .unwrap();
     assert_eq!(
-        msg.project_id, dest_id.get(),
+        msg.project_id,
+        dest_id.get(),
         "Message should be moved to dest project"
     );
 }

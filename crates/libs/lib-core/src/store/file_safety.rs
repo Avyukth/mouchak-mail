@@ -58,12 +58,12 @@
 //!
 //! ## 3. Use RAII Guards for Resources
 //!
-//! See [`super::archive_lock::LockGuard`] for an example of RAII pattern
+//! See [`crate::store::archive_lock::LockGuard`] for an example of RAII pattern
 //! that ensures cleanup even on panic.
 //!
 //! ## 4. Use LRU Caching for Expensive Resources
 //!
-//! See [`super::repo_cache::RepoCache`] which limits open repositories
+//! See [`crate::store::repo_cache::RepoCache`] which limits open repositories
 //! to prevent file descriptor exhaustion.
 //!
 //! # Git2 Repository Handles

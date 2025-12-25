@@ -131,10 +131,9 @@ async fn test_list_active_file_reservations() {
             .expect("Failed to create reservation");
     }
 
-    let active =
-        FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
-            .await
-            .expect("Failed to list active reservations");
+    let active = FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
+        .await
+        .expect("Failed to list active reservations");
 
     assert_eq!(active.len(), 3, "Should have 3 active reservations");
 }
@@ -178,10 +177,9 @@ async fn test_release_file_reservation() {
     );
 
     // Active list should be empty
-    let active =
-        FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
-            .await
-            .expect("Failed to list active reservations");
+    let active = FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
+        .await
+        .expect("Failed to list active reservations");
 
     assert_eq!(
         active.len(),
@@ -215,10 +213,15 @@ async fn test_release_by_path() {
         .expect("Failed to create reservation");
 
     // Release by path
-    let released_id =
-        FileReservationBmc::release_by_path(&tc.ctx, &tc.mm, project_id.get(), agent_id, path_pattern)
-            .await
-            .expect("Failed to release by path");
+    let released_id = FileReservationBmc::release_by_path(
+        &tc.ctx,
+        &tc.mm,
+        project_id.get(),
+        agent_id,
+        path_pattern,
+    )
+    .await
+    .expect("Failed to release by path");
 
     assert_eq!(
         released_id,
@@ -359,10 +362,9 @@ async fn test_list_all_for_project() {
     );
 
     // list_active should return only 1
-    let active =
-        FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
-            .await
-            .expect("Failed to list active reservations");
+    let active = FileReservationBmc::list_active_for_project(&tc.ctx, &tc.mm, project_id)
+        .await
+        .expect("Failed to list active reservations");
 
     assert_eq!(active.len(), 1, "Should have 1 active reservation");
 }

@@ -4,6 +4,21 @@ use crate::model::ModelManager;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
+/// A high-priority message for the human overseer.
+///
+/// These messages circumvent the normal inbox and are highlighted
+/// to ensure immediate attention (e.g., for critical errors or approval).
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `project_id` - Project context
+/// - `sender_id` - Reporting agent
+/// - `subject` - Urgent subject line
+/// - `body_md` - Detailed explanation in Markdown
+/// - `importance` - "critical" or "high"
+/// - `created_ts` - When it was sent
+/// - `read_ts` - When the overseer opened it
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverseerMessage {
     pub id: i64,
@@ -16,6 +31,15 @@ pub struct OverseerMessage {
     pub read_ts: Option<NaiveDateTime>,
 }
 
+/// Input to create an overseer message.
+///
+/// # Fields
+///
+/// - `project_id` - Project context
+/// - `sender_id` - Reporting agent
+/// - `subject` - Concise summary
+/// - `body_md` - Full report
+/// - `importance` - "critical" or "high"
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OverseerMessageForCreate {
     pub project_id: i64,

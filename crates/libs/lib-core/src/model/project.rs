@@ -495,24 +495,15 @@ impl ProjectBmc {
 
         // 2. Export Mailbox (JSON)
         // reuse ExportBmc logic but specifically for archive
-        let messages = crate::model::message::MessageBmc::list_recent(
-            ctx,
-            mm,
-            project_id,
-            1000,
-        )
-        .await?; // reasonable limit for archive?
+        let messages =
+            crate::model::message::MessageBmc::list_recent(ctx, mm, project_id, 1000).await?; // reasonable limit for archive?
         let mailbox_json = serde_json::to_string_pretty(&messages)?;
         let mailbox_path = project_root.join("mailbox.json");
         std::fs::write(&mailbox_path, mailbox_json)?;
 
         // 3. Export Agents (JSON)
-        let agents = crate::model::agent::AgentBmc::list_all_for_project(
-            ctx,
-            mm,
-            project_id,
-        )
-        .await?;
+        let agents =
+            crate::model::agent::AgentBmc::list_all_for_project(ctx, mm, project_id).await?;
         let agents_json = serde_json::to_string_pretty(&agents)?;
         let agents_path = project_root.join("agents.json");
         std::fs::write(&agents_path, agents_json)?;
@@ -595,9 +586,7 @@ impl ProjectBmc {
         let project_slug = project.slug.clone();
 
         // Get all agent IDs for this project (needed for message_recipients cleanup)
-        let agents =
-            super::agent::AgentBmc::list_all_for_project(ctx, mm, project_id)
-                .await?;
+        let agents = super::agent::AgentBmc::list_all_for_project(ctx, mm, project_id).await?;
         let agent_ids: Vec<i64> = agents.iter().map(|a| a.id.get()).collect();
 
         // 1. Delete message_recipients for messages in this project

@@ -211,10 +211,9 @@ async fn test_single_agent_fallback_no_reviewer() {
     let worker_id = create_agent(&tc, project_id, "worker-solo", "worker").await;
     let human_id = create_agent(&tc, project_id, "human-solo", "human").await;
 
-    let reviewer_exists =
-        AgentBmc::get_by_name(&tc.ctx, &tc.mm, project_id, "reviewer")
-            .await
-            .is_ok();
+    let reviewer_exists = AgentBmc::get_by_name(&tc.ctx, &tc.mm, project_id, "reviewer")
+        .await
+        .is_ok();
     assert!(!reviewer_exists, "Reviewer should not exist in this test");
 
     let thread_id = "TASK-solo-001".to_string();
@@ -524,9 +523,10 @@ async fn test_cc_audit_trail_preserved() {
     )
     .await;
 
-    let human_inbox = MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project_id.get(), human_id, 10)
-        .await
-        .expect("Failed to list human inbox");
+    let human_inbox =
+        MessageBmc::list_inbox_for_agent(&tc.ctx, &tc.mm, project_id.get(), human_id, 10)
+            .await
+            .expect("Failed to list human inbox");
 
     assert!(
         !human_inbox.is_empty(),

@@ -19,7 +19,7 @@ use lib_core::Result;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};
 use lib_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
 use lib_core::model::project::ProjectBmc;
-use lib_core::types::{ProjectId, AgentId};
+use lib_core::types::{AgentId, ProjectId};
 use serial_test::serial;
 use std::path::PathBuf;
 use tempfile::TempDir;

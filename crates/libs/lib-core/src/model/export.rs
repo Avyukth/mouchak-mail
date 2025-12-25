@@ -10,11 +10,18 @@ use crate::model::project::ProjectBmc;
 use serde::{Deserialize, Serialize};
 
 /// Export format options
+/// Export format options.
+///
+/// Supported formats for mailbox export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExportFormat {
+    /// Render as a standalone HTML page
     Html,
+    /// Raw message data in JSON
     Json,
+    /// Markdown document (suitable for LLM contexts)
     Markdown,
+    /// Comma-separated values
     Csv,
 }
 
@@ -32,6 +39,9 @@ impl std::str::FromStr for ExportFormat {
 }
 
 /// Exported mailbox data
+/// Exported mailbox data container.
+///
+/// Contains the rendered content and metadata about the export.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportedMailbox {
     pub project_slug: String,
@@ -46,11 +56,17 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 /// Scrubbing mode for privacy protection
+/// Scrubbing mode for privacy protection.
+///
+/// Controls how sensitive data is redacted from exports.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ScrubMode {
+    /// No scrubbing (full fidelity)
     #[default]
     None,
+    /// Scrub PII (email, phone) and secrets (API keys)
     Standard,
+    /// Scrub PII, secrets, and financial info (CC, SSN)
     Aggressive,
 }
 
@@ -66,6 +82,9 @@ impl std::str::FromStr for ScrubMode {
     }
 }
 
+/// Service for redacting sensitive information from text.
+///
+/// Uses regex patterns to identify and replace PII and secrets.
 pub struct Scrubber {
     mode: ScrubMode,
 }
@@ -422,6 +441,9 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand_core::OsRng;
 
 /// Export manifest with optional signature for integrity verification
+/// Export manifest with optional signature for integrity verification.
+///
+/// Used to verify that an export hasn't been tampered with.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportManifest {
     /// Version of the manifest format

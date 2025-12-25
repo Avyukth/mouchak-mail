@@ -77,6 +77,24 @@ impl ImportanceFilter {
     }
 }
 
+/// A stored message in the system.
+///
+/// Messages are the primary communication unit between agents. They support
+/// threading, markdown bodies, and attachments.
+///
+/// # Fields
+///
+/// - `id` - Database primary key
+/// - `project_id` - Project context
+/// - `sender_id` - Sending agent ID
+/// - `thread_id` - Conversation thread UUID
+/// - `subject` - Message subject line
+/// - `body_md` - Message body in Markdown
+/// - `importance` - "normal" or "high"
+/// - `ack_required` - If true, recipients must acknowledge receipt
+/// - `created_ts` - Creation timestamp
+/// - `attachments` - Attached file metadata
+/// - `sender_name` - Denormalized sender name for UI query optimization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub id: i64,
@@ -92,7 +110,10 @@ pub struct Message {
     pub sender_name: String,     // Added sender_name for inbox display
 }
 
-/// Unified inbox item with project slug for display
+/// Unified inbox item with project slug for display.
+///
+/// Optimized view model for the "Unified Inbox" UI, combining message data
+/// with project context to avoid N+1 queries.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnifiedInboxItem {
     pub id: i64,
@@ -108,6 +129,20 @@ pub struct UnifiedInboxItem {
     pub created_ts: NaiveDateTime,
 }
 
+/// Input data for creating a new message.
+///
+/// # Fields
+///
+/// - `project_id` - Context project
+/// - `sender_id` - Sending agent
+/// - `recipient_ids` - Primary recipients
+/// - `cc_ids` - Carbon copy recipients
+/// - `bcc_ids` - Blind carbon copy recipients
+/// - `subject` - Subject line
+/// - `body_md` - Body in Markdown
+/// - `thread_id` - Optional thread ID (generates new UUID if None)
+/// - `importance` - "normal" (default) or "high"
+/// - `ack_required` - Request read receipt
 #[derive(Deserialize, Serialize)]
 pub struct MessageForCreate {
     pub project_id: i64,
@@ -124,7 +159,9 @@ pub struct MessageForCreate {
     pub ack_required: bool,
 }
 
-/// Raw row from list_pending_reviews query with all nested data
+/// Raw row from list_pending_reviews query with all nested data.
+///
+/// Used for constructing `UnifiedInboxItem` from complex joins.
 #[derive(Debug, Clone, Serialize)]
 pub struct PendingReviewRow {
     pub message_id: i64,
@@ -149,7 +186,9 @@ pub struct PendingReviewRow {
 /// threading, and full-text search.
 pub struct MessageBmc;
 
-/// Summary of an overdue message for escalation
+/// Summary of an overdue message for escalation.
+///
+/// Used by the `list_overdue_acks` query.
 #[derive(Debug, Clone, Serialize)]
 pub struct OverdueMessage {
     pub message_id: i64,

@@ -127,7 +127,7 @@ impl QualityGateResults {
     }
 }
 
-/// Standardized completion report for [COMPLETION] mails.
+/// Standardized completion report for \[COMPLETION\] mails.
 /// Used by agents to report task completion in a structured format.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompletionReport {
@@ -167,7 +167,7 @@ impl CompletionReport {
         }
     }
 
-    /// Generate markdown format suitable for [COMPLETION] messages
+    /// Generate markdown format suitable for \[COMPLETION\] messages
     pub fn to_markdown(&self) -> String {
         let mut md = String::new();
 
