@@ -12,8 +12,8 @@
 use lib_common::config::AppConfig;
 use lib_core::{Ctx, ModelManager, Result};
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use tempfile::TempDir;
 
 /// Global counter for unique database names
