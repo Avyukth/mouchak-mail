@@ -23,9 +23,11 @@ exclude_re = [
     "examples/",
     "\\.beads",
     "data/",
-    "replace run_stdio",
-    "replace run_sse", 
-    "replace shutdown_signal",
+    # Infrastructure functions - require I/O, signals, hard to test
+    "run_stdio",
+    "run_sse", 
+    "shutdown_signal",
+    # Trivial Default implementations
     "with Ok\\(Default::default\\(\\)\\)",
     "with Default::default\\(\\)",
 ]
