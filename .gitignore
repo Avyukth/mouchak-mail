@@ -58,11 +58,24 @@ llms.txt
 
 # bv (beads viewer) local config and caches
 .bv/
-web-transform*.md
-AGENTS copy.md
 *.startlock
 .codex/
+
+# Mutation testing
 mutants.out/
 mutants.out.old/
 mutants-*.log
 mutants_run.log
+
+# Generated/temporary markdown files
+web-transform*.md
+init-new.md
+init-tools.md
+AGENTS copy.md
+AGENTS-compressed.md
+README-QUICK.md
+INSTRUCTIONS.md
+
+# Lockfiles (use package.json for deps)
+bun.lockb
+**/bun.lockb
