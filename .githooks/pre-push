@@ -1,0 +1,26 @@
+#!/bin/bash
+# Pre-push hook: Prevent direct pushes to main/master
+# Install: git config core.hooksPath .githooks
+
+protected_branches=("main" "master")
+current_branch=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+
+for branch in "${protected_branches[@]}"; do
+    if [ "$current_branch" = "$branch" ]; then
+        echo "🚫 Direct push to '$branch' is not allowed!"
+        echo ""
+        echo "Please use a feature branch and create a PR:"
+        echo "  git checkout -b feature/your-feature"
+        echo "  git push -u origin feature/your-feature"
+        echo "  gh pr create"
+        echo ""
+        echo "To bypass (emergency only): git push --no-verify"
+        exit 1
+    fi
+done
+
+# Run tests before pushing (optional - comment out if too slow)
+# echo "Running tests before push..."
+# cargo test --lib --quiet || exit 1
+
+exit 0

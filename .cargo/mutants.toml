@@ -1,0 +1,33 @@
+# cargo-mutants configuration
+# https://mutants.rs/configuration.html
+
+# Timeout multiplier relative to baseline test time
+timeout_multiplier = 3.0
+
+# Copy gitignored files
+gitignore = true
+
+# Don't copy .git directory
+copy_vcs = false
+
+# Skip calls to logging/debug functions (no behavior to test)
+skip_calls = [
+    "tracing::*",
+    "log::*",
+    "dbg!",
+    "println!",
+    "eprintln!",
+]
+
+# Exclude patterns matching mutation descriptions (NOT file paths!)
+# These match against the mutation description text from `cargo mutants --list`
+exclude_re = [
+    # Infrastructure functions - require I/O, signals, hard to unit test
+    "replace run_stdio",
+    "replace run_sse",
+    "replace shutdown_signal",
+    "replace main with",
+    # CLI argument parsing - tested at integration level
+    "replace Cli::",
+    "replace Args::",
+]

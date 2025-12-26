@@ -56,7 +56,7 @@ fn parse_resource_uri(uri: &url::Url, query: &std::collections::HashMap<String, 
                 None,
             ));
         }
-        (host.to_string(), segments[0].to_string(), segments.get(1).map(|s| s.to_string()))
+        (host.to_string(), segments[0].to_string(), segments.get(1).map(|s| (*s).to_string()))
     } else {
         let resource_type = uri.host_str().ok_or(McpError::invalid_params(
             "URI missing resource type".to_string(),
@@ -66,7 +66,7 @@ fn parse_resource_uri(uri: &url::Url, query: &std::collections::HashMap<String, 
             .path_segments()
             .ok_or(McpError::invalid_params("Invalid URI path".to_string(), None))?
             .collect();
-        let resource_id = segments.first().map(|s| s.to_string());
+        let resource_id = segments.first().map(|s| (*s).to_string());
         let slug = project_slug_param.map(|s| s.to_string()).unwrap_or_default();
         (slug, resource_type.to_string(), resource_id)
     };

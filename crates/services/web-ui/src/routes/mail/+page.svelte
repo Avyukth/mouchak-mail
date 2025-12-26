@@ -47,6 +47,8 @@
 	import X from 'lucide-svelte/icons/x';
 	import CheckSquare from 'lucide-svelte/icons/check-square';
 	import Mail from 'lucide-svelte/icons/mail';
+	import MailOpen from 'lucide-svelte/icons/mail-open';
+	import Inbox from 'lucide-svelte/icons/inbox';
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -461,8 +463,8 @@
 
 				{#if $filteredMessages.length === 0}
 					<div class="p-8 text-center text-sm text-muted-foreground">
-						<p class="text-4xl">📭</p>
-						<p class="mt-2 font-medium">No messages match this view.</p>
+						<Inbox class="h-12 w-12 mx-auto text-muted-foreground/50" />
+						<p class="mt-4 font-medium">No messages match this view.</p>
 						<p class="mt-1">Try adjusting filters or wait for new mail.</p>
 					</div>
 				{:else}
@@ -579,8 +581,8 @@
 					</div>
 				{:else}
 					<div data-testid="mail-empty-detail" class="text-center text-sm text-muted-foreground py-12">
-						<p class="text-4xl">✉️</p>
-						<p class="mt-2 font-medium">Select a message to see details.</p>
+						<MailOpen class="h-12 w-12 mx-auto text-muted-foreground/50" />
+						<p class="mt-4 font-medium">Select a message to see details.</p>
 						<p class="mt-1">Use <kbd class="px-1 py-0.5 bg-muted rounded text-2xs">j</kbd>/<kbd class="px-1 py-0.5 bg-muted rounded text-2xs">k</kbd> to move through the list.</p>
 					</div>
 				{/if}
