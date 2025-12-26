@@ -47,5 +47,6 @@ docs/api-quality-audit-report.md
 web-transform*.md
 AGENTS copy.md
 *.startlock
-.codexmutants.out/
+.codex/
+mutants.out/
 mutants.out.old/
