@@ -163,6 +163,75 @@ struct Config {
     duration_secs: u64,
 }
 
+/// Parse command line arguments
+fn parse_args() -> Option<(u16, usize, u64)> {
+    let args: Vec<String> = std::env::args().collect();
+    let mut port = 8765u16;
+    let mut agents = 100usize;
+    let mut duration = 10u64;
+
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--port" => {
+                if let Some(p) = args.get(i + 1) {
+                    port = p.parse().unwrap_or(8765);
+                }
+                i += 2;
+            }
+            "--agents" => {
+                if let Some(a) = args.get(i + 1) {
+                    agents = a.parse().unwrap_or(100);
+                }
+                i += 2;
+            }
+            "--duration" => {
+                if let Some(d) = args.get(i + 1) {
+                    duration = d.parse().unwrap_or(10);
+                }
+                i += 2;
+            }
+            "--help" | "-h" => {
+                println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
+                return None;
+            }
+            _ => i += 1,
+        }
+    }
+    Some((port, agents, duration))
+}
+
+/// Wait for server to become ready
+async fn wait_for_server(client: &Client, base_url: &str) -> Result<()> {
+    println!("Waiting for server to be ready...");
+    for _ in 0..60 {
+        if let Ok(res) = client
+            .get(format!("{}/health", base_url))
+            .send()
+            .await
+            && res.status().is_success()
+        {
+            println!("Server is ready!");
+            return Ok(());
+        }
+        sleep(Duration::from_secs(1)).await;
+    }
+    anyhow::bail!("Server did not become ready at {}", base_url)
+}
+
+/// Write result to file
+fn write_result(file: &mut std::fs::File, stats: &BenchmarkStats) -> std::io::Result<()> {
+    writeln!(
+        file,
+        "| {} | {:.0} | {:.1}% | {}ms | {} |",
+        stats.label,
+        stats.actual_rate,
+        stats.success_rate,
+        stats.p99_latency_ms,
+        stats.result_status
+    )
+}
+
 // --- Benchmark Logic ---
 
 async fn run_load_test(
@@ -289,40 +358,10 @@ async fn run_load_test(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 1. Parse Arguments (Manual parsing to match typical cli or keeping simple)
-    let args: Vec<String> = std::env::args().collect();
-    let mut port = 8765;
-    let mut agents = 100;
-    let mut duration = 10;
-
-    let mut i = 1;
-    while i < args.len() {
-        match args[i].as_str() {
-            "--port" => {
-                if let Some(p) = args.get(i + 1) {
-                    port = p.parse().unwrap_or(8765);
-                }
-                i += 2;
-            }
-            "--agents" => {
-                if let Some(a) = args.get(i + 1) {
-                    agents = a.parse().unwrap_or(100);
-                }
-                i += 2;
-            }
-            "--duration" => {
-                if let Some(d) = args.get(i + 1) {
-                    duration = d.parse().unwrap_or(10);
-                }
-                i += 2;
-            }
-            "--help" | "-h" => {
-                println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
-                return Ok(());
-            }
-            _ => i += 1,
-        }
-    }
+    // 1. Parse Arguments
+    let Some((port, agents, duration)) = parse_args() else {
+        return Ok(());
+    };
 
     let config = Config {
         base_url: format!("http://127.0.0.1:{}", port),
@@ -339,30 +378,11 @@ async fn main() -> Result<()> {
 
     let client = Client::builder()
         .timeout(Duration::from_secs(30))
-        .pool_max_idle_per_host(agents + 10) // Ensure large enough pool
+        .pool_max_idle_per_host(agents + 10)
         .build()?;
 
     // 2. Wait for Server
-    println!("Waiting for server to be ready...");
-    let mut ready = false;
-    for _ in 0..60 {
-        // 60 attempts
-        if let Ok(res) = client
-            .get(format!("{}/health", config.base_url))
-            .send()
-            .await
-            && res.status().is_success()
-        {
-            ready = true;
-            break;
-        }
-        sleep(Duration::from_secs(1)).await;
-    }
-
-    if !ready {
-        anyhow::bail!("Server did not become ready at {}", config.base_url);
-    }
-    println!("Server is ready!");
+    wait_for_server(&client, &config.base_url).await?;
 
     // 3. Prepare Reporting
     let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
@@ -382,14 +402,8 @@ async fn main() -> Result<()> {
     writeln!(file)?;
     writeln!(file, "## Results")?;
     writeln!(file)?;
-    writeln!(
-        file,
-        "| Test | Rate (req/s) | Success | P99 Latency | Result |"
-    )?;
-    writeln!(
-        file,
-        "|------|--------------|---------|-------------|--------|"
-    )?;
+    writeln!(file, "| Test | Rate (req/s) | Success | P99 Latency | Result |")?;
+    writeln!(file, "|------|--------------|---------|-------------|--------|")?;
 
     let mut results = Vec::new();
 
@@ -419,15 +433,7 @@ async fn main() -> Result<()> {
     ];
     for r in rates {
         let stats = run_load_test(&config, &client, "/health", r, task_liveness.clone()).await?;
-        writeln!(
-            file,
-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
-            stats.label,
-            stats.actual_rate,
-            stats.success_rate,
-            stats.p99_latency_ms,
-            stats.result_status
-        )?;
+        write_result(&mut file, &stats)?;
         results.push(stats);
     }
 
@@ -448,15 +454,7 @@ async fn main() -> Result<()> {
     let rates_db = [None, Some(2000), Some(1600), Some(1000)];
     for r in rates_db {
         let stats = run_load_test(&config, &client, "/ready", r, task_readiness.clone()).await?;
-        writeln!(
-            file,
-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
-            stats.label,
-            stats.actual_rate,
-            stats.success_rate,
-            stats.p99_latency_ms,
-            stats.result_status
-        )?;
+        write_result(&mut file, &stats)?;
         results.push(stats);
     }
 
@@ -496,15 +494,7 @@ async fn main() -> Result<()> {
             None => "MCP Tool Call (Full Speed)",
         };
         let stats = run_load_test(&config, &client, label, r, task_mcp.clone()).await?;
-        writeln!(
-            file,
-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
-            stats.label,
-            stats.actual_rate,
-            stats.success_rate,
-            stats.p99_latency_ms,
-            stats.result_status
-        )?;
+        write_result(&mut file, &stats)?;
         results.push(stats);
     }
 
@@ -583,15 +573,7 @@ async fn main() -> Result<()> {
             task_msg,
         )
         .await?;
-        writeln!(
-            file,
-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
-            stats.label,
-            stats.actual_rate,
-            stats.success_rate,
-            stats.p99_latency_ms,
-            stats.result_status
-        )?;
+        write_result(&mut file, &stats)?;
     } else {
         println!("Skipping Phase 4: Could not create project.");
     }

@@ -1,4 +1,0 @@
-benches/concurrent_agents.rs:110:9: replace AtomicStats::finalize -> BenchmarkStats with Default::default()
-benches/concurrent_agents.rs:179:5: replace run_load_test -> Result<BenchmarkStats> with Ok(Default::default())
-benches/concurrent_agents.rs:245:31: replace += with *= in run_load_test
-benches/concurrent_agents.rs:354:13: replace && with || in main
