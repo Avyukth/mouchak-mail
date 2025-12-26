@@ -31,16 +31,30 @@ docs/CRITICAL_GAP_ANALYSIS.md
 benchmark_results/
 benchmark_*.md
 output.wav
+
+# Video/media files (use external hosting)
 recordings/
-agent_mail_final.mp4defect-report-*.json
-docs/mcp-agent-mail-python-tree.md
-docs/mcp-agent-mail-python-beads-diff.md
-docs/PYTHON_PORT_PLAN_v2.md.tmp/
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# Generated reports and outputs
+defect-report-*.json
+beads_report_*.md
+compiler_output.txt
+cov_output.txt
+cov_summary.txt
+pmat_final.txt
+pmat_report.json
+llms.txt
+
+# Temp files
 .tmp/
+*.tmp
+
+# Claude memory (user-specific)
 .claude/memory/
-docs/LEPTOS_PARITY_CHECKLIST.md
-docs/Completed_task.md
-docs/api-quality-audit-report.md
 
 # bv (beads viewer) local config and caches
 .bv/
