@@ -121,3 +121,171 @@ mod service_worktrees_config {
         );
     }
 }
+
+mod tool_alias_resolution {
+    use super::*;
+
+    #[test]
+    fn fetch_inbox_resolves_to_list_inbox() {
+        let resolved = AgentMailService::resolve_tool_alias("fetch_inbox");
+        assert_eq!(resolved, Some("list_inbox"));
+    }
+
+    #[test]
+    fn check_inbox_resolves_to_list_inbox() {
+        let resolved = AgentMailService::resolve_tool_alias("check_inbox");
+        assert_eq!(resolved, Some("list_inbox"));
+    }
+
+    #[test]
+    fn release_file_reservations_resolves() {
+        let resolved = AgentMailService::resolve_tool_alias("release_file_reservations");
+        assert_eq!(resolved, Some("release_reservation"));
+    }
+
+    #[test]
+    fn renew_file_reservations_resolves() {
+        let resolved = AgentMailService::resolve_tool_alias("renew_file_reservations");
+        assert_eq!(resolved, Some("renew_file_reservation"));
+    }
+
+    #[test]
+    fn list_project_agents_resolves() {
+        let resolved = AgentMailService::resolve_tool_alias("list_project_agents");
+        assert_eq!(resolved, Some("list_agents"));
+    }
+
+    #[test]
+    fn unknown_tool_returns_none() {
+        let resolved = AgentMailService::resolve_tool_alias("send_message");
+        assert_eq!(resolved, None);
+
+        let resolved = AgentMailService::resolve_tool_alias("nonexistent_tool");
+        assert_eq!(resolved, None);
+    }
+}
+
+mod server_handler_list_tools {
+    use super::*;
+
+    #[tokio::test]
+    async fn excludes_build_slot_tools_when_worktrees_disabled() {
+        let mm = Arc::new(
+            ModelManager::new(Arc::new(AppConfig::default()))
+                .await
+                .expect("Failed to create ModelManager"),
+        );
+        let service = AgentMailService::new_with_mm(mm, false);
+
+        let tools = service.list_tools_filtered();
+        let tool_names: Vec<&str> = tools.iter().map(|t| &*t.name).collect();
+
+        for build_slot_tool in BUILD_SLOT_TOOLS {
+            assert!(
+                !tool_names.contains(build_slot_tool),
+                "list_tools_filtered should exclude '{}' when worktrees disabled, found in: {:?}",
+                build_slot_tool,
+                tool_names
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn includes_build_slot_tools_when_worktrees_enabled() {
+        let mm = Arc::new(
+            ModelManager::new(Arc::new(AppConfig::default()))
+                .await
+                .expect("Failed to create ModelManager"),
+        );
+        let service = AgentMailService::new_with_mm(mm, true);
+
+        let tools = service.list_tools_filtered();
+        let tool_names: Vec<&str> = tools.iter().map(|t| &*t.name).collect();
+
+        for build_slot_tool in BUILD_SLOT_TOOLS {
+            assert!(
+                tool_names.contains(build_slot_tool),
+                "list_tools_filtered should include '{}' when worktrees enabled, not found in: {:?}",
+                build_slot_tool,
+                tool_names
+            );
+        }
+    }
+}
+
+mod build_slot_rejection {
+    use super::*;
+
+    #[tokio::test]
+    async fn rejects_build_slot_tools_when_worktrees_disabled() {
+        let mm = Arc::new(
+            ModelManager::new(Arc::new(AppConfig::default()))
+                .await
+                .expect("Failed to create ModelManager"),
+        );
+        let service = AgentMailService::new_with_mm(mm, false);
+
+        for build_slot_tool in BUILD_SLOT_TOOLS {
+            let rejection = service.check_build_slot_rejection(build_slot_tool);
+            assert!(
+                rejection.is_some(),
+                "Tool '{}' should be rejected when worktrees disabled",
+                build_slot_tool
+            );
+
+            let err_msg = rejection.unwrap();
+            assert!(
+                err_msg.contains("WORKTREES_ENABLED"),
+                "Error for '{}' should mention WORKTREES_ENABLED, got: {}",
+                build_slot_tool,
+                err_msg
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn allows_build_slot_tools_when_worktrees_enabled() {
+        let mm = Arc::new(
+            ModelManager::new(Arc::new(AppConfig::default()))
+                .await
+                .expect("Failed to create ModelManager"),
+        );
+        let service = AgentMailService::new_with_mm(mm, true);
+
+        for build_slot_tool in BUILD_SLOT_TOOLS {
+            let rejection = service.check_build_slot_rejection(build_slot_tool);
+            assert!(
+                rejection.is_none(),
+                "Tool '{}' should NOT be rejected when worktrees enabled, got: {:?}",
+                build_slot_tool,
+                rejection
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn allows_non_build_slot_tools_regardless_of_worktrees() {
+        let mm = Arc::new(
+            ModelManager::new(Arc::new(AppConfig::default()))
+                .await
+                .expect("Failed to create ModelManager"),
+        );
+        let service_disabled = AgentMailService::new_with_mm(mm.clone(), false);
+        let service_enabled = AgentMailService::new_with_mm(mm, true);
+
+        let non_build_tools = ["send_message", "list_inbox", "register_agent"];
+
+        for tool in non_build_tools {
+            assert!(
+                service_disabled.check_build_slot_rejection(tool).is_none(),
+                "Tool '{}' should not be rejected when worktrees disabled",
+                tool
+            );
+            assert!(
+                service_enabled.check_build_slot_rejection(tool).is_none(),
+                "Tool '{}' should not be rejected when worktrees enabled",
+                tool
+            );
+        }
+    }
+}

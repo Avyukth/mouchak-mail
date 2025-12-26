@@ -508,6 +508,47 @@ impl AgentMailService {
     ) -> Result<CallToolResult, McpError> {
         self.summarize_thread_product(params).await
     }
+
+    /// Resolve a tool name alias to its canonical name.
+    /// Returns Some(canonical_name) if it's an alias, None otherwise.
+    /// Public for testing alias resolution logic.
+    pub fn resolve_tool_alias(tool_name: &str) -> Option<&'static str> {
+        match tool_name {
+            "fetch_inbox" | "check_inbox" => Some("list_inbox"),
+            "release_file_reservations" => Some("release_reservation"),
+            "renew_file_reservations" => Some("renew_file_reservation"),
+            "list_project_agents" => Some("list_agents"),
+            _ => None,
+        }
+    }
+
+    /// Check if a build slot tool call would be rejected due to worktrees being disabled.
+    /// Returns Some(error_message) if rejected, None if allowed.
+    /// Public for testing build slot rejection logic.
+    pub fn check_build_slot_rejection(&self, tool_name: &str) -> Option<String> {
+        if !self.worktrees_enabled && BUILD_SLOT_TOOLS.contains(&tool_name) {
+            Some(format!(
+                "Tool '{}' is not available. Build slot tools require WORKTREES_ENABLED=true.",
+                tool_name
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// List tools with worktree filtering applied.
+    /// Public for testing ServerHandler::list_tools filtering logic.
+    pub fn list_tools_filtered(&self) -> Vec<rmcp::model::Tool> {
+        let all_tools = self.tool_router.list_all();
+        if self.worktrees_enabled {
+            all_tools
+        } else {
+            all_tools
+                .into_iter()
+                .filter(|tool| !BUILD_SLOT_TOOLS.contains(&&*tool.name))
+                .collect()
+        }
+    }
 }
 
 #[allow(clippy::manual_async_fn)]
@@ -518,20 +559,8 @@ impl ServerHandler for AgentMailService {
         _context: RequestContext<RoleServer>,
     ) -> impl std::future::Future<Output = Result<ListToolsResult, McpError>> + Send + '_ {
         async move {
-            let all_tools = self.tool_router.list_all();
-
-            // Filter out build slot tools when worktrees is disabled
-            let tools = if self.worktrees_enabled {
-                all_tools
-            } else {
-                all_tools
-                    .into_iter()
-                    .filter(|tool| !BUILD_SLOT_TOOLS.contains(&&*tool.name))
-                    .collect()
-            };
-
             Ok(ListToolsResult {
-                tools,
+                tools: self.list_tools_filtered(),
                 next_cursor: None,
                 meta: None,
             })
@@ -548,13 +577,7 @@ impl ServerHandler for AgentMailService {
             let original_name = request.name.clone();
             let args = request.arguments.clone();
 
-            let resolved_name: Option<&str> = match &*original_name {
-                "fetch_inbox" | "check_inbox" => Some("list_inbox"),
-                "release_file_reservations" => Some("release_reservation"),
-                "renew_file_reservations" => Some("renew_file_reservation"),
-                "list_project_agents" => Some("list_agents"),
-                _ => None,
-            };
+            let resolved_name = Self::resolve_tool_alias(&original_name);
 
             let request = if let Some(new_name) = resolved_name {
                 tracing::debug!(
