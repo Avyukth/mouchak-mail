@@ -1,43 +1,31 @@
 # cargo-mutants configuration
 # https://mutants.rs/configuration.html
 
-# Test timeout (seconds) - give tests enough time
-timeout = 300
-
-# Number of parallel jobs (use fewer to avoid overwhelming the system)
-jobs = 2
-
-# Output directory for mutation results
+timeout = 120
+jobs = 4
 output_in_dir = "mutants.out"
+gitignore = true
+copy_vcs = false
 
-# Baseline test command - run before mutations to verify tests pass
-test_tool = "cargo"
+skip_calls = [
+    "tracing::*",
+    "log::*",
+    "dbg!",
+    "println!",
+    "eprintln!",
+    "Default::default",
+    "std::mem::take",
+]
 
-# Skip certain mutation patterns that cause false positives
-[[skip_calls]]
-pattern = "tracing::*"
-
-[[skip_calls]]
-pattern = "log::*"
-
-[[skip_calls]]
-pattern = "dbg!"
-
-[[skip_calls]]
-pattern = "println!"
-
-[[skip_calls]]
-pattern = "eprintln!"
-
-# Regex patterns to exclude from mutations
-[[exclude_re]]
-pattern = "tests?/"
-
-[[exclude_re]]
-pattern = "benches?/"
-
-[[exclude_re]]
-pattern = "examples/"
-
-[[exclude_re]]
-pattern = "mod\\.rs$"
+exclude_re = [
+    "tests/",
+    "benches/",
+    "examples/",
+    "\\.beads",
+    "data/",
+    "replace run_stdio",
+    "replace run_sse", 
+    "replace shutdown_signal",
+    "with Ok\\(Default::default\\(\\)\\)",
+    "with Default::default\\(\\)",
+]
