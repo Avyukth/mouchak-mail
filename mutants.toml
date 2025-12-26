@@ -1,9 +1,8 @@
-# cargo-mutants configuration
-# https://mutants.rs/configuration.html
+# cargo-mutants configuration (legacy location)
+# Primary config is in .cargo/mutants.toml
+# See: https://mutants.rs/configuration.html
 
-timeout = 120
-jobs = 4
-output_in_dir = "mutants.out"
+timeout_multiplier = 3.0
 gitignore = true
 copy_vcs = false
 
@@ -13,21 +12,13 @@ skip_calls = [
     "dbg!",
     "println!",
     "eprintln!",
-    "Default::default",
-    "std::mem::take",
 ]
 
 exclude_re = [
-    "tests/",
-    "benches/",
-    "examples/",
-    "\\.beads",
-    "data/",
-    # Infrastructure functions - require I/O, signals, hard to test
-    "run_stdio",
-    "run_sse", 
-    "shutdown_signal",
-    # Trivial Default implementations
-    "with Ok\\(Default::default\\(\\)\\)",
-    "with Default::default\\(\\)",
+    "replace run_stdio",
+    "replace run_sse",
+    "replace shutdown_signal",
+    "replace main with",
+    "replace Cli::",
+    "replace Args::",
 ]

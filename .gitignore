@@ -51,3 +51,4 @@ AGENTS copy.md
 mutants.out/
 mutants.out.old/
 mutants-*.log
+mutants_run.log
