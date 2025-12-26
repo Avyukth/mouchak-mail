@@ -71,15 +71,15 @@ async fn setup_project_and_message(mm: &Arc<ModelManager>) -> (i64, i64, String)
         project_id: project_id.get(),
         sender_id: sender_id.get(),
         recipient_ids: vec![receiver_id.get()],
-        cc_ids: vec![],
-        bcc_ids: vec![],
+        cc_ids: None,
+        bcc_ids: None,
         subject: "Test message".to_string(),
         body_md: "Test body".to_string(),
         thread_id: None,
-        importance: "normal".to_string(),
+        importance: Some("normal".to_string()),
         ack_required: false,
     };
-    let message_id = MessageBmc::send(&ctx, mm, msg_c).await.unwrap();
+    let message_id = MessageBmc::create(&ctx, mm, msg_c).await.unwrap();
 
     (project_id.into(), message_id, project_slug)
 }
