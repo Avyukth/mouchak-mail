@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace += with -= in main
+@@ -309,17 +309,17 @@
+                     agents = a.parse().unwrap_or(100);
+                 }
+                 i += 2;
+             }
+             "--duration" => {
+                 if let Some(d) = args.get(i + 1) {
+                     duration = d.parse().unwrap_or(10);
+                 }
+-                i += 2;
++                i -= /* ~ changed by cargo-mutants ~ */ 2;
+             }
+             "--help" | "-h" => {
+                 println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
+                 return Ok(());
+             }
+             _ => i += 1,
+         }
+     }

@@ -1,0 +1,1922 @@
+[
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::record",
+      "return_type": "",
+      "span": {
+        "start": {
+          "line": 91,
+          "column": 5
+        },
+        "end": {
+          "line": 102,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 92,
+        "column": 9
+      },
+      "end": {
+        "line": 101,
+        "column": 10
+      }
+    },
+    "replacement": "()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 110,
+        "column": 9
+      },
+      "end": {
+        "line": 153,
+        "column": 10
+      }
+    },
+    "replacement": "Default::default()",
+    "genre": "FnValue"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 112,
+        "column": 32
+      },
+      "end": {
+        "line": 112,
+        "column": 33
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 112,
+        "column": 32
+      },
+      "end": {
+        "line": 112,
+        "column": 33
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 114,
+        "column": 37
+      },
+      "end": {
+        "line": 114,
+        "column": 38
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 114,
+        "column": 37
+      },
+      "end": {
+        "line": 114,
+        "column": 38
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 114,
+        "column": 37
+      },
+      "end": {
+        "line": 114,
+        "column": 38
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 115,
+        "column": 48
+      },
+      "end": {
+        "line": 115,
+        "column": 49
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 115,
+        "column": 48
+      },
+      "end": {
+        "line": 115,
+        "column": 49
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 115,
+        "column": 32
+      },
+      "end": {
+        "line": 115,
+        "column": 33
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 115,
+        "column": 32
+      },
+      "end": {
+        "line": 115,
+        "column": 33
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 124,
+        "column": 22
+      },
+      "end": {
+        "line": 124,
+        "column": 23
+      }
+    },
+    "replacement": "",
+    "genre": "UnaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 125,
+        "column": 47
+      },
+      "end": {
+        "line": 125,
+        "column": 48
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 125,
+        "column": 47
+      },
+      "end": {
+        "line": 125,
+        "column": 48
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 126,
+        "column": 47
+      },
+      "end": {
+        "line": 126,
+        "column": 48
+      }
+    },
+    "replacement": "+",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 126,
+        "column": 47
+      },
+      "end": {
+        "line": 126,
+        "column": 48
+      }
+    },
+    "replacement": "/",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 132,
+        "column": 44
+      },
+      "end": {
+        "line": 132,
+        "column": 45
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 132,
+        "column": 44
+      },
+      "end": {
+        "line": 132,
+        "column": 45
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 132,
+        "column": 44
+      },
+      "end": {
+        "line": 132,
+        "column": 45
+      }
+    },
+    "replacement": ">=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 133,
+        "column": 26
+      },
+      "end": {
+        "line": 133,
+        "column": 27
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 133,
+        "column": 26
+      },
+      "end": {
+        "line": 133,
+        "column": 27
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 138,
+        "column": 45
+      },
+      "end": {
+        "line": 138,
+        "column": 47
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "AtomicStats::finalize",
+      "return_type": "-> BenchmarkStats",
+      "span": {
+        "start": {
+          "line": 104,
+          "column": 5
+        },
+        "end": {
+          "line": 154,
+          "column": 6
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 140,
+        "column": 32
+      },
+      "end": {
+        "line": 140,
+        "column": 34
+      }
+    },
+    "replacement": "<",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 179,
+        "column": 5
+      },
+      "end": {
+        "line": 287,
+        "column": 15
+      }
+    },
+    "replacement": "Ok(Default::default())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 192,
+        "column": 17
+      },
+      "end": {
+        "line": 192,
+        "column": 19
+      }
+    },
+    "replacement": "!=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 195,
+        "column": 43
+      },
+      "end": {
+        "line": 195,
+        "column": 44
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 195,
+        "column": 43
+      },
+      "end": {
+        "line": 195,
+        "column": 44
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 196,
+        "column": 28
+      },
+      "end": {
+        "line": 196,
+        "column": 30
+      }
+    },
+    "replacement": ">",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 199,
+        "column": 50
+      },
+      "end": {
+        "line": 199,
+        "column": 51
+      }
+    },
+    "replacement": "%",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 199,
+        "column": 50
+      },
+      "end": {
+        "line": 199,
+        "column": 51
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 242,
+        "column": 28
+      },
+      "end": {
+        "line": 242,
+        "column": 29
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 242,
+        "column": 28
+      },
+      "end": {
+        "line": 242,
+        "column": 29
+      }
+    },
+    "replacement": ">",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 242,
+        "column": 28
+      },
+      "end": {
+        "line": 242,
+        "column": 29
+      }
+    },
+    "replacement": "<=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 245,
+        "column": 31
+      },
+      "end": {
+        "line": 245,
+        "column": 33
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 245,
+        "column": 31
+      },
+      "end": {
+        "line": 245,
+        "column": 33
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 270,
+        "column": 9
+      },
+      "end": {
+        "line": 270,
+        "column": 30
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 271,
+        "column": 9
+      },
+      "end": {
+        "line": 271,
+        "column": 32
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "run_load_test",
+      "return_type": "-> Result<BenchmarkStats>",
+      "span": {
+        "start": {
+          "line": 168,
+          "column": 1
+        },
+        "end": {
+          "line": 288,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 272,
+        "column": 9
+      },
+      "end": {
+        "line": 272,
+        "column": 32
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 293,
+        "column": 5
+      },
+      "end": {
+        "line": 611,
+        "column": 11
+      }
+    },
+    "replacement": "Ok(())",
+    "genre": "FnValue"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 299,
+        "column": 13
+      },
+      "end": {
+        "line": 299,
+        "column": 14
+      }
+    },
+    "replacement": "==",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 299,
+        "column": 13
+      },
+      "end": {
+        "line": 299,
+        "column": 14
+      }
+    },
+    "replacement": ">",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 299,
+        "column": 13
+      },
+      "end": {
+        "line": 299,
+        "column": 14
+      }
+    },
+    "replacement": "<=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 301,
+        "column": 13
+      },
+      "end": {
+        "line": 306,
+        "column": 14
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 307,
+        "column": 13
+      },
+      "end": {
+        "line": 312,
+        "column": 14
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 313,
+        "column": 13
+      },
+      "end": {
+        "line": 318,
+        "column": 14
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 319,
+        "column": 13
+      },
+      "end": {
+        "line": 322,
+        "column": 14
+      }
+    },
+    "replacement": "",
+    "genre": "MatchArm"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 302,
+        "column": 45
+      },
+      "end": {
+        "line": 302,
+        "column": 46
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 302,
+        "column": 45
+      },
+      "end": {
+        "line": 302,
+        "column": 46
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 305,
+        "column": 19
+      },
+      "end": {
+        "line": 305,
+        "column": 21
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 305,
+        "column": 19
+      },
+      "end": {
+        "line": 305,
+        "column": 21
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 308,
+        "column": 45
+      },
+      "end": {
+        "line": 308,
+        "column": 46
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 308,
+        "column": 45
+      },
+      "end": {
+        "line": 308,
+        "column": 46
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 311,
+        "column": 19
+      },
+      "end": {
+        "line": 311,
+        "column": 21
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 311,
+        "column": 19
+      },
+      "end": {
+        "line": 311,
+        "column": 21
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 314,
+        "column": 45
+      },
+      "end": {
+        "line": 314,
+        "column": 46
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 314,
+        "column": 45
+      },
+      "end": {
+        "line": 314,
+        "column": 46
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 317,
+        "column": 19
+      },
+      "end": {
+        "line": 317,
+        "column": 21
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 317,
+        "column": 19
+      },
+      "end": {
+        "line": 317,
+        "column": 21
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 323,
+        "column": 20
+      },
+      "end": {
+        "line": 323,
+        "column": 22
+      }
+    },
+    "replacement": "-=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 323,
+        "column": 20
+      },
+      "end": {
+        "line": 323,
+        "column": 22
+      }
+    },
+    "replacement": "*=",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 342,
+        "column": 40
+      },
+      "end": {
+        "line": 342,
+        "column": 41
+      }
+    },
+    "replacement": "-",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 342,
+        "column": 40
+      },
+      "end": {
+        "line": 342,
+        "column": 41
+      }
+    },
+    "replacement": "*",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 354,
+        "column": 13
+      },
+      "end": {
+        "line": 354,
+        "column": 15
+      }
+    },
+    "replacement": "||",
+    "genre": "BinaryOperator"
+  },
+  {
+    "package": "mcp-agent-mail-benches",
+    "file": "benches/concurrent_agents.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> Result<()>",
+      "span": {
+        "start": {
+          "line": 290,
+          "column": 1
+        },
+        "end": {
+          "line": 612,
+          "column": 2
+        }
+      }
+    },
+    "span": {
+      "start": {
+        "line": 362,
+        "column": 8
+      },
+      "end": {
+        "line": 362,
+        "column": 9
+      }
+    },
+    "replacement": "",
+    "genre": "UnaryOperator"
+  }
+]

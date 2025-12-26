@@ -1,0 +1,332 @@
+--- benches/concurrent_agents.rs
++++ replace main -> Result<()> with Ok(())
+@@ -285,328 +285,10 @@
+     );
+ 
+     Ok(result)
+ }
+ 
+ #[tokio::main]
+ async fn main() -> Result<()> {
+     // 1. Parse Arguments (Manual parsing to match typical cli or keeping simple)
+-    let args: Vec<String> = std::env::args().collect();
+-    let mut port = 8765;
+-    let mut agents = 100;
+-    let mut duration = 10;
+-
+-    let mut i = 1;
+-    while i < args.len() {
+-        match args[i].as_str() {
+-            "--port" => {
+-                if let Some(p) = args.get(i + 1) {
+-                    port = p.parse().unwrap_or(8765);
+-                }
+-                i += 2;
+-            }
+-            "--agents" => {
+-                if let Some(a) = args.get(i + 1) {
+-                    agents = a.parse().unwrap_or(100);
+-                }
+-                i += 2;
+-            }
+-            "--duration" => {
+-                if let Some(d) = args.get(i + 1) {
+-                    duration = d.parse().unwrap_or(10);
+-                }
+-                i += 2;
+-            }
+-            "--help" | "-h" => {
+-                println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
+-                return Ok(());
+-            }
+-            _ => i += 1,
+-        }
+-    }
+-
+-    let config = Config {
+-        base_url: format!("http://127.0.0.1:{}", port),
+-        agents,
+-        duration_secs: duration,
+-    };
+-
+-    println!("==============================================");
+-    println!("MCP Agent Mail Benchmark - {} Concurrent Agents", agents);
+-    println!("==============================================");
+-    println!("Target: {}", config.base_url);
+-    println!("Duration per test: {}s", duration);
+-    println!();
+-
+-    let client = Client::builder()
+-        .timeout(Duration::from_secs(30))
+-        .pool_max_idle_per_host(agents + 10) // Ensure large enough pool
+-        .build()?;
+-
+-    // 2. Wait for Server
+-    println!("Waiting for server to be ready...");
+-    let mut ready = false;
+-    for _ in 0..60 {
+-        // 60 attempts
+-        if let Ok(res) = client
+-            .get(format!("{}/health", config.base_url))
+-            .send()
+-            .await
+-            && res.status().is_success()
+-        {
+-            ready = true;
+-            break;
+-        }
+-        sleep(Duration::from_secs(1)).await;
+-    }
+-
+-    if !ready {
+-        anyhow::bail!("Server did not become ready at {}", config.base_url);
+-    }
+-    println!("Server is ready!");
+-
+-    // 3. Prepare Reporting
+-    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+-    let report_file = format!("benchmark_results_{}.md", timestamp);
+-    let mut file = OpenOptions::new()
+-        .create(true)
+-        .write(true)
+-        .truncate(true)
+-        .open(&report_file)?;
+-
+-    writeln!(file, "# Benchmark Results: {} Concurrent Agents", agents)?;
+-    writeln!(file)?;
+-    writeln!(file, "**Date**: {}", chrono::Local::now())?;
+-    writeln!(file, "**Target**: {}", config.base_url)?;
+-    writeln!(file, "**Duration**: {}s per test", duration)?;
+-    writeln!(file, "**Concurrency**: {} agents", agents)?;
+-    writeln!(file)?;
+-    writeln!(file, "## Results")?;
+-    writeln!(file)?;
+-    writeln!(
+-        file,
+-        "| Test | Rate (req/s) | Success | P99 Latency | Result |"
+-    )?;
+-    writeln!(
+-        file,
+-        "|------|--------------|---------|-------------|--------|"
+-    )?;
+-
+-    let mut results = Vec::new();
+-
+-    // 4. Phase 1: Health Liveness
+-    println!("\n=== Phase 1: Health Endpoint (Raw HTTP throughput) ===");
+-    let url_liveness = format!("{}/health", config.base_url);
+-    let task_liveness = move |_, c: Client, s: Arc<AtomicStats>| {
+-        let u = url_liveness.clone();
+-        tokio::spawn(async move {
+-            let start = Instant::now();
+-            let res = c.get(&u).send().await;
+-            let lat = start.elapsed().as_millis() as u64;
+-            let success = matches!(res, Ok(r) if r.status().is_success());
+-            s.record(lat, success).await;
+-        })
+-    };
+-
+-    let rates = [
+-        None,
+-        Some(5000),
+-        Some(3000),
+-        Some(2000),
+-        Some(1800),
+-        Some(1600),
+-        Some(1500),
+-        Some(1000),
+-    ];
+-    for r in rates {
+-        let stats = run_load_test(&config, &client, "/health", r, task_liveness.clone()).await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-        results.push(stats);
+-    }
+-
+-    // 5. Phase 2: Readiness (DB)
+-    println!("\n=== Phase 2: Readiness Endpoint (DB connection test) ===");
+-    let url_readiness = format!("{}/ready", config.base_url);
+-    let task_readiness = move |_, c: Client, s: Arc<AtomicStats>| {
+-        let u = url_readiness.clone();
+-        tokio::spawn(async move {
+-            let start = Instant::now();
+-            let res = c.get(&u).send().await;
+-            let lat = start.elapsed().as_millis() as u64;
+-            let success = matches!(res, Ok(r) if r.status().is_success());
+-            s.record(lat, success).await;
+-        })
+-    };
+-
+-    let rates_db = [None, Some(2000), Some(1600), Some(1000)];
+-    for r in rates_db {
+-        let stats = run_load_test(&config, &client, "/ready", r, task_readiness.clone()).await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-        results.push(stats);
+-    }
+-
+-    // 6. Phase 3: MCP Tool Call
+-    println!("\n=== Phase 3: MCP Tool Calls (Realistic agent workload) ===");
+-    let url_mcp = format!("{}/mcp", config.base_url);
+-    let task_mcp = move |_, c: Client, s: Arc<AtomicStats>| {
+-        let u = url_mcp.clone();
+-        tokio::spawn(async move {
+-            let body = JsonRpcRequest {
+-                jsonrpc: "2.0".to_string(),
+-                method: "initialize".to_string(),
+-                params: serde_json::json!({
+-                    "protocolVersion": "2024-11-05",
+-                    "capabilities": {},
+-                    "clientInfo": {"name": "bench", "version": "1.0"}
+-                }),
+-                id: 1,
+-            };
+-            let start = Instant::now();
+-            let res = c
+-                .post(&u)
+-                .header("Accept", "application/json, text/event-stream")
+-                .json(&body)
+-                .send()
+-                .await;
+-            let lat = start.elapsed().as_millis() as u64;
+-            let success = matches!(res, Ok(r) if r.status().is_success());
+-            s.record(lat, success).await;
+-        })
+-    };
+-
+-    let rates_mcp = [None, Some(2000), Some(1600), Some(1000), Some(500)];
+-    for r in rates_mcp {
+-        let label = match r {
+-            Some(_) => "MCP Tool Call",
+-            None => "MCP Tool Call (Full Speed)",
+-        };
+-        let stats = run_load_test(&config, &client, label, r, task_mcp.clone()).await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-        results.push(stats);
+-    }
+-
+-    // 7. Phase 4: Full Agent Message Flow (Bonus/Verification)
+-    println!("\n=== Phase 4: Full Agent Message Flow (Bonus) ===");
+-    // Setup: Create project and agents first
+-    let human_key = format!("bench-rust-{}", chrono::Utc::now().timestamp());
+-    let ensure_resp = client
+-        .post(format!("{}/api/project/ensure", config.base_url))
+-        .json(&EnsureProjectRequest { human_key })
+-        .send()
+-        .await?;
+-
+-    if ensure_resp.status().is_success() {
+-        let project: EnsureProjectResponse = ensure_resp.json().await?;
+-        let slug = project.slug;
+-
+-        // Register agents
+-        print!("Registering {} agents...", agents);
+-        // Do this in parallel to be fast
+-        let mut reg_futs = Vec::new();
+-        for i in 0..agents {
+-            let c = client.clone();
+-            let u = config.base_url.clone();
+-            let s = slug.clone();
+-            let name = format!("agent-{:03}", i);
+-            reg_futs.push(tokio::spawn(async move {
+-                c.post(format!("{}/api/agent/register", u))
+-                    .json(&RegisterAgentRequest {
+-                        project_slug: s,
+-                        name,
+-                        program: "bench".into(),
+-                        model: "bench".into(),
+-                    })
+-                    .send()
+-                    .await
+-            }));
+-        }
+-        for f in reg_futs {
+-            let _ = f.await;
+-        }
+-        println!(" Done.");
+-
+-        // Msg Task
+-        let url_send = format!("{}/api/message/send", config.base_url);
+-        let task_msg = move |idx, c: Client, s: Arc<AtomicStats>| {
+-            let u = url_send.clone();
+-            let p_slug = slug.clone();
+-            let sender = format!("agent-{:03}", idx); // Current agent is sender
+-            let recipient = format!("agent-{:03}", (idx + 1) % agents); // Next is receiver
+-
+-            tokio::spawn(async move {
+-                let body = SendMessageRequest {
+-                    project_slug: p_slug,
+-                    sender_name: sender,
+-                    recipient_names: vec![recipient],
+-                    subject: "Bench".into(),
+-                    body_md: "Benchmark".into(),
+-                    thread_id: None,
+-                    importance: Some("normal".into()),
+-                };
+-                let start = Instant::now();
+-                let res = c.post(&u).json(&body).send().await;
+-                let lat = start.elapsed().as_millis() as u64;
+-                let success = matches!(res, Ok(r) if r.status().is_success());
+-                s.record(lat, success).await;
+-            })
+-        };
+-
+-        // Run message bench
+-        let stats = run_load_test(
+-            &config,
+-            &client,
+-            "Full Agent Message (Full Speed)",
+-            None,
+-            task_msg,
+-        )
+-        .await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-    } else {
+-        println!("Skipping Phase 4: Could not create project.");
+-    }
+-
+-    writeln!(file)?;
+-    writeln!(file, "## Analysis")?;
+-    writeln!(
+-        file,
+-        "See `scripts/benchmark_concurrent_agents.sh` for interpretation."
+-    )?;
+-
+-    println!("\n==============================================");
+-    println!("Benchmark Complete!");
+-    println!("==============================================");
+-    println!("Results saved to: {}", report_file);
+-
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }

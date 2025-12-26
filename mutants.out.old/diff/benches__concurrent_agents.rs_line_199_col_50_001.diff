@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace / with * in run_load_test
+@@ -191,17 +191,17 @@
+     let interval_per_agent = if let Some(rate) = target_rate {
+         if rate == 0 {
+             None
+         } else {
+             let r_per_agent = rate as f64 / config.agents as f64;
+             if r_per_agent <= 0.0 {
+                 None
+             } else {
+-                Some(Duration::from_secs_f64(1.0 / r_per_agent))
++                Some(Duration::from_secs_f64(1.0 * /* ~ changed by cargo-mutants ~ */ r_per_agent))
+             }
+         }
+     } else {
+         None
+     };
+ 
+     // We run for a fixed duration.
+     // We can't just spawn N loops that check time, because we need to act like 'hey'.

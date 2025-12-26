@@ -12,12 +12,12 @@ use lib_core::model::{
     file_reservation::FileReservationBmc,
     project::ProjectBmc,
 };
-use lib_mcp::tools::{files, precommit};
 use lib_mcp::tools::{
-    FileReservationParams, ForceReleaseReservationParams, InstallPrecommitGuardParams,
-    ListReservationsParams, ReleaseReservationParams, RenewFileReservationParams,
-    UninstallPrecommitGuardParams, FileReservationPathsParams,
+    FileReservationParams, FileReservationPathsParams, ForceReleaseReservationParams,
+    InstallPrecommitGuardParams, ListReservationsParams, ReleaseReservationParams,
+    RenewFileReservationParams, UninstallPrecommitGuardParams,
 };
+use lib_mcp::tools::{files, precommit};
 use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -159,7 +159,9 @@ async fn test_uninstall_precommit_guard_impl_success() {
         project_slug,
         target_repo_path: repo_path.to_string_lossy().to_string(),
     };
-    precommit::install_precommit_guard_impl(&ctx, &mm, install_params).await.unwrap();
+    precommit::install_precommit_guard_impl(&ctx, &mm, install_params)
+        .await
+        .unwrap();
 
     // Now uninstall
     let params = UninstallPrecommitGuardParams {
@@ -345,9 +347,7 @@ async fn test_list_reservations_impl_empty() {
     let ctx = Ctx::root_ctx();
     let (_, _, project_slug) = setup_project_and_agent_with_capability(&mm).await;
 
-    let params = ListReservationsParams {
-        project_slug,
-    };
+    let params = ListReservationsParams { project_slug };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;
     assert!(result.is_ok());
@@ -368,12 +368,12 @@ async fn test_list_reservations_impl_with_reservations() {
         exclusive: Some(true),
         reason: Some("Testing".to_string()),
     };
-    files::reserve_file_impl(&ctx, &mm, reserve_params).await.unwrap();
+    files::reserve_file_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
 
     // Now list
-    let params = ListReservationsParams {
-        project_slug,
-    };
+    let params = ListReservationsParams { project_slug };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;
     assert!(result.is_ok());
@@ -397,7 +397,9 @@ async fn test_release_reservation_impl_success() {
         exclusive: Some(true),
         reason: Some("To be released".to_string()),
     };
-    files::reserve_file_impl(&ctx, &mm, reserve_params).await.unwrap();
+    files::reserve_file_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
 
     // Get the reservation ID from the database
     let reservations = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id.into())
@@ -429,7 +431,9 @@ async fn test_renew_file_reservation_impl_success() {
         exclusive: Some(true),
         reason: Some("To be renewed".to_string()),
     };
-    files::reserve_file_impl(&ctx, &mm, reserve_params).await.unwrap();
+    files::reserve_file_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
 
     // Get the reservation ID from the database
     let reservations = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id.into())
@@ -462,7 +466,9 @@ async fn test_force_release_reservation_impl_success() {
         exclusive: Some(true),
         reason: Some("To be force released".to_string()),
     };
-    files::reserve_file_impl(&ctx, &mm, reserve_params).await.unwrap();
+    files::reserve_file_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
 
     // Get the reservation ID from the database
     let reservations = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id.into())

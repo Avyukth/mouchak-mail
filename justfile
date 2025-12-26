@@ -71,6 +71,26 @@ check:
     cargo clippy --workspace --all-targets -- -D warnings
 
 # ============================================================================
+# Mutation Testing
+# ============================================================================
+
+# Install cargo-mutants
+install-mutants:
+    cargo install cargo-mutants
+
+# Run mutation testing on lib-mcp
+mutate:
+    cargo mutants --package lib-mcp
+
+# Run mutation testing (verbose)
+mutate-verbose:
+    cargo mutants --package lib-mcp -vV
+
+# Run mutation testing on lib-core
+mutate-core:
+    cargo mutants --package lib-core
+
+# ============================================================================
 # Utilities
 # ============================================================================
 

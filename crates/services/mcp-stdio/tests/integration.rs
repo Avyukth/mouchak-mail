@@ -347,9 +347,10 @@ mod tools_tests {
         assert!(i64::from(link_id) > 0);
 
         // Check pending requests for Agent B
-        let pending = AgentLinkBmc::list_pending_requests(&ctx, &mm, project_b_id.into(), agent_b_id.into())
-            .await
-            .expect("Failed to list pending requests");
+        let pending =
+            AgentLinkBmc::list_pending_requests(&ctx, &mm, project_b_id.into(), agent_b_id.into())
+                .await
+                .expect("Failed to list pending requests");
         assert_eq!(pending.len(), 1);
         assert_eq!(pending[0].status, "pending");
 
@@ -359,9 +360,10 @@ mod tools_tests {
             .expect("Failed to accept contact");
 
         // Verify accepted - check contacts list
-        let contacts = AgentLinkBmc::list_contacts(&ctx, &mm, project_a_id.into(), agent_a_id.into())
-            .await
-            .expect("Failed to list contacts");
+        let contacts =
+            AgentLinkBmc::list_contacts(&ctx, &mm, project_a_id.into(), agent_a_id.into())
+                .await
+                .expect("Failed to list contacts");
         assert_eq!(contacts.len(), 1);
         assert_eq!(contacts[0].status, "accepted");
     }

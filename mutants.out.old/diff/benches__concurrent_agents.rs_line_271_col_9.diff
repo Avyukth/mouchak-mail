@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ delete match arm "EDGE" in run_load_test
+@@ -263,17 +263,17 @@
+     let actual_duration = start_time.elapsed();
+     let result = stats
+         .finalize(actual_duration, label, &target_rate_str)
+         .await;
+ 
+     // Print inline result
+     let color_code = match result.result_status.as_str() {
+         "OK" => "\x1b[0;32m",   // Green
+-        "EDGE" => "\x1b[1;33m", // Yellow
++         /* ~ changed by cargo-mutants ~ */ // Yellow
+         "FAIL" => "\x1b[0;31m", // Red
+         _ => "\x1b[0m",
+     };
+     let reset = "\x1b[0m";
+ 
+     println!(
+         "  Rate: {:.0} req/s | Success: {:.1}% | P99: {}ms | {}{}{}",
+         result.actual_rate,

@@ -1,0 +1,129 @@
+--- benches/concurrent_agents.rs
++++ replace run_load_test -> Result<BenchmarkStats> with Ok(Default::default())
+@@ -171,125 +171,17 @@
+     label: &str,
+     target_rate: Option<u64>,
+     task_fn: impl Fn(usize, Client, Arc<AtomicStats>) -> tokio::task::JoinHandle<()>
+     + Send
+     + Sync
+     + Clone
+     + 'static,
+ ) -> Result<BenchmarkStats> {
+-    let target_rate_str = target_rate
+-        .map(|r| format!("{} req/s", r))
+-        .unwrap_or_else(|| "Full Speed".to_string());
+-    println!("\nTesting: {} (rate: {})", label, target_rate_str);
+-    println!("----------------------------------------");
+-
+-    let stats = Arc::new(AtomicStats::new());
+-
+-    // Rate setup
+-    // If target_rate is set, we need to throttle.
+-    // simplistic approach: rate per agent = target_rate / agents.
+-    // Interval between requests = 1 / rate_per_agent.
+-    let interval_per_agent = if let Some(rate) = target_rate {
+-        if rate == 0 {
+-            None
+-        } else {
+-            let r_per_agent = rate as f64 / config.agents as f64;
+-            if r_per_agent <= 0.0 {
+-                None
+-            } else {
+-                Some(Duration::from_secs_f64(1.0 / r_per_agent))
+-            }
+-        }
+-    } else {
+-        None
+-    };
+-
+-    // We run for a fixed duration.
+-    // We can't just spawn N loops that check time, because we need to act like 'hey'.
+-    // 'hey' spawns N workers and they run until duration expires.
+-
+-    let start_time = Instant::now();
+-    let duration_secs = config.duration_secs; // Extract Copy type to move into spawn
+-
+-    // Shared flag for stopping
+-    let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
+-    let r_clone = running.clone();
+-
+-    tokio::spawn(async move {
+-        sleep(Duration::from_secs(duration_secs)).await;
+-        r_clone.store(false, Ordering::Relaxed);
+-    });
+-
+-    let mut handles = Vec::new();
+-    let semaphore = Arc::new(Semaphore::new(config.agents));
+-
+-    // For the "Logic" function, we need to pass a generator that respects the interval
+-
+-    for i in 0..config.agents {
+-        let client_clone = client.clone();
+-        let stats_clone = stats.clone();
+-        let running_clone = running.clone();
+-        let task_fn_clone = task_fn.clone();
+-        let _permit = semaphore.clone().acquire_owned().await?;
+-
+-        // Wrapper to enforce loop and interval
+-        let h = tokio::spawn(async move {
+-            let mut tick_next = Instant::now();
+-
+-            while running_clone.load(Ordering::Relaxed) {
+-                // Throttle
+-                if let Some(interval) = interval_per_agent {
+-                    let now = Instant::now();
+-                    if now < tick_next {
+-                        tokio::time::sleep_until(tokio::time::Instant::from_std(tick_next)).await;
+-                    }
+-                    tick_next += interval;
+-                }
+-
+-                // Execute ONE iteration of the task
+-                let inner_h = task_fn_clone(i, client_clone.clone(), stats_clone.clone());
+-                inner_h.await.unwrap();
+-            }
+-            drop(_permit);
+-        });
+-        handles.push(h);
+-    }
+-
+-    // Wait for all to finish
+-    // actually, they finish when time keeps up.
+-    for h in handles {
+-        let _ = h.await;
+-    }
+-
+-    let actual_duration = start_time.elapsed();
+-    let result = stats
+-        .finalize(actual_duration, label, &target_rate_str)
+-        .await;
+-
+-    // Print inline result
+-    let color_code = match result.result_status.as_str() {
+-        "OK" => "\x1b[0;32m",   // Green
+-        "EDGE" => "\x1b[1;33m", // Yellow
+-        "FAIL" => "\x1b[0;31m", // Red
+-        _ => "\x1b[0m",
+-    };
+-    let reset = "\x1b[0m";
+-
+-    println!(
+-        "  Rate: {:.0} req/s | Success: {:.1}% | P99: {}ms | {}{}{}",
+-        result.actual_rate,
+-        result.success_rate,
+-        result.p99_latency_ms,
+-        color_code,
+-        result.result_status,
+-        reset
+-    );
+-
+-    Ok(result)
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[tokio::main]
+ async fn main() -> Result<()> {
+     // 1. Parse Arguments (Manual parsing to match typical cli or keeping simple)
+     let args: Vec<String> = std::env::args().collect();
+     let mut port = 8765;
+     let mut agents = 100;

@@ -194,6 +194,40 @@ audit:
 	cargo deny check
 	@echo "✅ Security audits passed"
 
+# ============================================================================
+# Mutation Testing
+# ============================================================================
+
+## Install cargo-mutants
+install-mutants:
+	@echo "📦 Installing cargo-mutants..."
+	cargo install cargo-mutants
+	@echo "✅ cargo-mutants installed"
+
+## Run mutation testing on lib-mcp tools
+mutate:
+	@echo "🧬 Running mutation testing..."
+	cargo mutants --package lib-mcp
+	@echo "✅ Mutation testing complete"
+
+## Run mutation testing with detailed output
+mutate-verbose:
+	@echo "🧬 Running mutation testing (verbose)..."
+	cargo mutants --package lib-mcp -vV
+	@echo "✅ Mutation testing complete"
+
+## Run mutation testing on lib-core models
+mutate-core:
+	@echo "🧬 Running mutation testing on lib-core..."
+	cargo mutants --package lib-core
+	@echo "✅ Mutation testing complete"
+
+## Run mutation testing with threshold check (85% kill rate)
+mutate-check:
+	@echo "🧬 Running mutation testing with threshold..."
+	cargo mutants --package lib-mcp --minimum-test-timeout 60
+	@echo "✅ Mutation testing complete"
+
 ## Run all quality gates
 quality-gate:
 	@echo "🎯 Running quality gates..."
@@ -382,6 +416,13 @@ help:
 	@echo "  lint         Run clippy lints"
 	@echo "  fmt          Format code"
 	@echo "  quality-gate Run all quality gates"
+	@echo ""
+	@echo "Mutation Testing:"
+	@echo "  install-mutants Install cargo-mutants"
+	@echo "  mutate         Run mutation testing on lib-mcp"
+	@echo "  mutate-verbose Run mutation testing with detailed output"
+	@echo "  mutate-core    Run mutation testing on lib-core"
+	@echo "  mutate-check   Run mutation testing with threshold check"
 	@echo ""
 	@echo "Git Hooks:"
 	@echo "  install-hooks  Install pre-commit hooks via cargo-husky"

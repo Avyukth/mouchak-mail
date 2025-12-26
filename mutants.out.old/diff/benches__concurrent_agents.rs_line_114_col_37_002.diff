@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace > with >= in AtomicStats::finalize
+@@ -106,17 +106,17 @@
+         duration: Duration,
+         label: &str,
+         target_rate_str: &str,
+     ) -> BenchmarkStats {
+         let successful = self.successful.load(Ordering::Relaxed);
+         let failed = self.failed.load(Ordering::Relaxed);
+         let total = successful + failed;
+ 
+-        let success_rate = if total > 0 {
++        let success_rate = if total >= /* ~ changed by cargo-mutants ~ */ 0 {
+             (successful as f64 / total as f64) * 100.0
+         } else {
+             0.0
+         };
+ 
+         let mut latencies = self.latencies.lock().await;
+         latencies.sort_unstable();
+ 

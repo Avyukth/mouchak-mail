@@ -90,7 +90,9 @@ mod tests {
         ToolMetricBmc::create(&ctx, &mm, metric).await.unwrap();
 
         // 5. Query Activity
-        let activities = ActivityBmc::list_recent(&ctx, &mm, pid.into(), 10).await.unwrap();
+        let activities = ActivityBmc::list_recent(&ctx, &mm, pid.into(), 10)
+            .await
+            .unwrap();
 
         // Verify count
         assert_eq!(activities.len(), 3);

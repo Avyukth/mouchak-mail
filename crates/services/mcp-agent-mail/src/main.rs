@@ -1552,9 +1552,7 @@ async fn push_directory_to_gh_pages(
             .map_err(|e| anyhow::anyhow!("Failed to get relative path: {}", e))?;
 
         // Convert to forward slashes for GitHub (even on Windows)
-        let github_path = relative_path
-            .to_string_lossy()
-            .replace('\\', "/");
+        let github_path = relative_path.to_string_lossy().replace('\\', "/");
 
         // Read file contents
         let mut file = std::fs::File::open(path)?;

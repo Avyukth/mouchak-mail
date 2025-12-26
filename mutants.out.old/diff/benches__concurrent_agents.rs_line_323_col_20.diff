@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace += with -= in main
+@@ -315,17 +315,17 @@
+                     duration = d.parse().unwrap_or(10);
+                 }
+                 i += 2;
+             }
+             "--help" | "-h" => {
+                 println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
+                 return Ok(());
+             }
+-            _ => i += 1,
++            _ => i -= /* ~ changed by cargo-mutants ~ */ 1,
+         }
+     }
+ 
+     let config = Config {
+         base_url: format!("http://127.0.0.1:{}", port),
+         agents,
+         duration_secs: duration,
+     };

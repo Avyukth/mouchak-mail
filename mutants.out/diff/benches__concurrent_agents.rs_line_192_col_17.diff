@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace == with != in run_load_test
+@@ -184,17 +184,17 @@
+ 
+     let stats = Arc::new(AtomicStats::new());
+ 
+     // Rate setup
+     // If target_rate is set, we need to throttle.
+     // simplistic approach: rate per agent = target_rate / agents.
+     // Interval between requests = 1 / rate_per_agent.
+     let interval_per_agent = if let Some(rate) = target_rate {
+-        if rate == 0 {
++        if rate != /* ~ changed by cargo-mutants ~ */ 0 {
+             None
+         } else {
+             let r_per_agent = rate as f64 / config.agents as f64;
+             if r_per_agent <= 0.0 {
+                 None
+             } else {
+                 Some(Duration::from_secs_f64(1.0 / r_per_agent))
+             }

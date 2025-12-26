@@ -11,10 +11,8 @@ use lib_core::model::{
     message::{MessageBmc, MessageForCreate},
     project::ProjectBmc,
 };
+use lib_mcp::tools::{ClaimReviewParams, ExportMailboxParams, GetReviewStateParams};
 use lib_mcp::tools::{export, reviews};
-use lib_mcp::tools::{
-    ClaimReviewParams, ExportMailboxParams, GetReviewStateParams,
-};
 use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -83,7 +81,12 @@ async fn setup_project_with_messages(mm: &Arc<ModelManager>) -> (i64, i64, i64, 
     };
     MessageBmc::create(&ctx, mm, msg).await.unwrap();
 
-    (project_id.into(), agent1_id.into(), agent2_id.into(), project_slug.to_string())
+    (
+        project_id.into(),
+        agent1_id.into(),
+        agent2_id.into(),
+        project_slug.to_string(),
+    )
 }
 
 // ==============================================================================
@@ -325,7 +328,9 @@ async fn test_claim_review_impl_already_claimed() {
         message_id: msg_id.into(),
         reviewer_name: "receiver_agent".to_string(),
     };
-    reviews::claim_review_impl(&ctx, &mm, params1).await.unwrap();
+    reviews::claim_review_impl(&ctx, &mm, params1)
+        .await
+        .unwrap();
 
     // Try to claim again
     let params2 = ClaimReviewParams {

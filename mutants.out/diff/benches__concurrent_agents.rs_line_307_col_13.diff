@@ -1,0 +1,26 @@
+--- benches/concurrent_agents.rs
++++ delete match arm "--agents" in main
+@@ -299,22 +299,17 @@
+     while i < args.len() {
+         match args[i].as_str() {
+             "--port" => {
+                 if let Some(p) = args.get(i + 1) {
+                     port = p.parse().unwrap_or(8765);
+                 }
+                 i += 2;
+             }
+-            "--agents" => {
+-                if let Some(a) = args.get(i + 1) {
+-                    agents = a.parse().unwrap_or(100);
+-                }
+-                i += 2;
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "--duration" => {
+                 if let Some(d) = args.get(i + 1) {
+                     duration = d.parse().unwrap_or(10);
+                 }
+                 i += 2;
+             }
+             "--help" | "-h" => {
+                 println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");

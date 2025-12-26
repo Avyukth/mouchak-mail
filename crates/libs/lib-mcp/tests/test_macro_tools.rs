@@ -62,7 +62,9 @@ async fn test_unregister_macro_removes_from_database() {
     let _macro_id = MacroDefBmc::create(&ctx, &mm, macro_c).await.unwrap();
 
     // Verify macro exists (along with 5 built-in macros = 6 total)
-    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into()).await.unwrap();
+    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into())
+        .await
+        .unwrap();
     assert_eq!(macros.len(), 6, "Should have 5 built-in + 1 test macro");
 
     // GREEN: Call MacroDefBmc::delete directly
@@ -72,7 +74,9 @@ async fn test_unregister_macro_removes_from_database() {
     assert!(deleted, "delete should return true");
 
     // Verify custom macro is gone (5 built-in macros remain)
-    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into()).await.unwrap();
+    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into())
+        .await
+        .unwrap();
     assert_eq!(
         macros.len(),
         5,
@@ -125,7 +129,9 @@ async fn test_list_returns_correct_macros() {
     MacroDefBmc::create(&ctx, &mm, macro2).await.unwrap();
 
     // Use lib-core list method directly (5 built-in + 2 custom = 7)
-    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into()).await.unwrap();
+    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into())
+        .await
+        .unwrap();
 
     assert_eq!(macros.len(), 7, "Should have 5 built-in + 2 custom macros");
     assert!(macros.iter().any(|m| m.name == "workflow-1"));

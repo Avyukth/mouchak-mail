@@ -1591,9 +1591,10 @@ mod tests {
         // We can't access mm.db().
         // BUT we can use `list_inbox` for each agent to verify delivery!
 
-        let inbox_recv = MessageBmc::list_inbox_for_agent(&ctx, &mm, pid.into(), recv_id.into(), 10)
-            .await
-            .unwrap();
+        let inbox_recv =
+            MessageBmc::list_inbox_for_agent(&ctx, &mm, pid.into(), recv_id.into(), 10)
+                .await
+                .unwrap();
         assert_eq!(inbox_recv.len(), 1);
 
         // Correct verification of CC/BCC delivery:

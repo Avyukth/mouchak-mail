@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace + with - in main
+@@ -334,17 +334,17 @@
+     println!("MCP Agent Mail Benchmark - {} Concurrent Agents", agents);
+     println!("==============================================");
+     println!("Target: {}", config.base_url);
+     println!("Duration per test: {}s", duration);
+     println!();
+ 
+     let client = Client::builder()
+         .timeout(Duration::from_secs(30))
+-        .pool_max_idle_per_host(agents + 10) // Ensure large enough pool
++        .pool_max_idle_per_host(agents - /* ~ changed by cargo-mutants ~ */ 10) // Ensure large enough pool
+         .build()?;
+ 
+     // 2. Wait for Server
+     println!("Waiting for server to be ready...");
+     let mut ready = false;
+     for _ in 0..60 {
+         // 60 attempts
+         if let Ok(res) = client

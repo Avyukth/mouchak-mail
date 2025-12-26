@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace += with -= in run_load_test
+@@ -237,17 +237,17 @@
+ 
+             while running_clone.load(Ordering::Relaxed) {
+                 // Throttle
+                 if let Some(interval) = interval_per_agent {
+                     let now = Instant::now();
+                     if now < tick_next {
+                         tokio::time::sleep_until(tokio::time::Instant::from_std(tick_next)).await;
+                     }
+-                    tick_next += interval;
++                    tick_next -= /* ~ changed by cargo-mutants ~ */ interval;
+                 }
+ 
+                 // Execute ONE iteration of the task
+                 let inner_h = task_fn_clone(i, client_clone.clone(), stats_clone.clone());
+                 inner_h.await.unwrap();
+             }
+             drop(_permit);
+         });

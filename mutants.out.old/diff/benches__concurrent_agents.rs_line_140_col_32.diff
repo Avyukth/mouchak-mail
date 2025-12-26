@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ replace >= with < in AtomicStats::finalize
+@@ -132,17 +132,17 @@
+         let actual_rate = if duration_secs > 0.0 {
+             total as f64 / duration_secs
+         } else {
+             0.0
+         };
+ 
+         let result_status = if success_rate >= 100.0 {
+             "OK".to_string()
+-        } else if success_rate >= 98.0 {
++        } else if success_rate < /* ~ changed by cargo-mutants ~ */ 98.0 {
+             "EDGE".to_string()
+         } else {
+             "FAIL".to_string()
+         };
+ 
+         BenchmarkStats {
+             label: label.to_string(),
+             target_rate_str: target_rate_str.to_string(),

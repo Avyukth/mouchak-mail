@@ -92,8 +92,11 @@ base64 = "0.22.1"
 [workspace.lints.rust]
 # Safety
 unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "warn"  # Require unsafe blocks in unsafe fns
 # Correctness
 unused_must_use = "deny"
+# Visibility
+unreachable_pub = "warn"  # Flag unnecessarily pub items
 
 [workspace.lints.clippy]
 # Production safety - deny unwrap() to prevent panics in production code
@@ -103,6 +106,7 @@ expect_used = "warn"        # expect() is OK with justification message
 # panic = "warn"            # TODO: Enable after auditing panic! macro usage
 # Code quality
 unnecessary_wraps = "warn"
+checked_conversions = "warn"  # Prefer checked arithmetic conversions
 # Performance
 inefficient_to_string = "deny"  # Easy to fix, prevents performance issues
 # Style consistency

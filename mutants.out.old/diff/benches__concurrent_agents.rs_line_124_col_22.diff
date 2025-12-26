@@ -1,0 +1,21 @@
+--- benches/concurrent_agents.rs
++++ delete ! in AtomicStats::finalize
+@@ -116,17 +116,17 @@
+         } else {
+             0.0
+         };
+ 
+         let mut latencies = self.latencies.lock().await;
+         latencies.sort_unstable();
+ 
+         // P99
+-        let p99 = if !latencies.is_empty() {
++        let p99 = if  /* ~ changed by cargo-mutants ~ */latencies.is_empty() {
+             let idx = (latencies.len() as f64 * 0.99) as usize;
+             latencies[idx.min(latencies.len() - 1)]
+         } else {
+             0
+         };
+ 
+         let duration_secs = duration.as_secs_f64();
+         let actual_rate = if duration_secs > 0.0 {

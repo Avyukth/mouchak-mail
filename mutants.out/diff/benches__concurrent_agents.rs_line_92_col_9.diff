@@ -1,0 +1,30 @@
+--- benches/concurrent_agents.rs
++++ replace AtomicStats::record with ()
+@@ -84,26 +84,17 @@
+         Self {
+             successful: AtomicU64::new(0),
+             failed: AtomicU64::new(0),
+             latencies: tokio::sync::Mutex::new(Vec::with_capacity(10000)),
+         }
+     }
+ 
+     async fn record(&self, latency_ms: u64, success: bool) {
+-        if success {
+-            self.successful.fetch_add(1, Ordering::Relaxed);
+-            // Optimization: Don't lock for every single request in ultra-high throughput if not needed,
+-            // but for P99 we need samples. storing all might be heavy.
+-            // For now, store all.
+-            let mut l = self.latencies.lock().await;
+-            l.push(latency_ms);
+-        } else {
+-            self.failed.fetch_add(1, Ordering::Relaxed);
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     async fn finalize(
+         &self,
+         duration: Duration,
+         label: &str,
+         target_rate_str: &str,
+     ) -> BenchmarkStats {

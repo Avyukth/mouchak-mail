@@ -1,0 +1,26 @@
+--- benches/concurrent_agents.rs
++++ delete match arm "--duration" in main
+@@ -305,22 +305,17 @@
+                 i += 2;
+             }
+             "--agents" => {
+                 if let Some(a) = args.get(i + 1) {
+                     agents = a.parse().unwrap_or(100);
+                 }
+                 i += 2;
+             }
+-            "--duration" => {
+-                if let Some(d) = args.get(i + 1) {
+-                    duration = d.parse().unwrap_or(10);
+-                }
+-                i += 2;
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             "--help" | "-h" => {
+                 println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
+                 return Ok(());
+             }
+             _ => i += 1,
+         }
+     }
+ 

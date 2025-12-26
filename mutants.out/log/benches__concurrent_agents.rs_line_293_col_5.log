@@ -1,0 +1,740 @@
+
+*** benches/concurrent_agents.rs:293:5: replace main -> Result<()> with Ok(())
+
+*** mutation diff:
+--- benches/concurrent_agents.rs
++++ replace main -> Result<()> with Ok(())
+@@ -285,328 +285,10 @@
+     );
+ 
+     Ok(result)
+ }
+ 
+ #[tokio::main]
+ async fn main() -> Result<()> {
+     // 1. Parse Arguments (Manual parsing to match typical cli or keeping simple)
+-    let args: Vec<String> = std::env::args().collect();
+-    let mut port = 8765;
+-    let mut agents = 100;
+-    let mut duration = 10;
+-
+-    let mut i = 1;
+-    while i < args.len() {
+-        match args[i].as_str() {
+-            "--port" => {
+-                if let Some(p) = args.get(i + 1) {
+-                    port = p.parse().unwrap_or(8765);
+-                }
+-                i += 2;
+-            }
+-            "--agents" => {
+-                if let Some(a) = args.get(i + 1) {
+-                    agents = a.parse().unwrap_or(100);
+-                }
+-                i += 2;
+-            }
+-            "--duration" => {
+-                if let Some(d) = args.get(i + 1) {
+-                    duration = d.parse().unwrap_or(10);
+-                }
+-                i += 2;
+-            }
+-            "--help" | "-h" => {
+-                println!("Usage: concurrent-agents-bench [--port P] [--agents N] [--duration S]");
+-                return Ok(());
+-            }
+-            _ => i += 1,
+-        }
+-    }
+-
+-    let config = Config {
+-        base_url: format!("http://127.0.0.1:{}", port),
+-        agents,
+-        duration_secs: duration,
+-    };
+-
+-    println!("==============================================");
+-    println!("MCP Agent Mail Benchmark - {} Concurrent Agents", agents);
+-    println!("==============================================");
+-    println!("Target: {}", config.base_url);
+-    println!("Duration per test: {}s", duration);
+-    println!();
+-
+-    let client = Client::builder()
+-        .timeout(Duration::from_secs(30))
+-        .pool_max_idle_per_host(agents + 10) // Ensure large enough pool
+-        .build()?;
+-
+-    // 2. Wait for Server
+-    println!("Waiting for server to be ready...");
+-    let mut ready = false;
+-    for _ in 0..60 {
+-        // 60 attempts
+-        if let Ok(res) = client
+-            .get(format!("{}/health", config.base_url))
+-            .send()
+-            .await
+-            && res.status().is_success()
+-        {
+-            ready = true;
+-            break;
+-        }
+-        sleep(Duration::from_secs(1)).await;
+-    }
+-
+-    if !ready {
+-        anyhow::bail!("Server did not become ready at {}", config.base_url);
+-    }
+-    println!("Server is ready!");
+-
+-    // 3. Prepare Reporting
+-    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
+-    let report_file = format!("benchmark_results_{}.md", timestamp);
+-    let mut file = OpenOptions::new()
+-        .create(true)
+-        .write(true)
+-        .truncate(true)
+-        .open(&report_file)?;
+-
+-    writeln!(file, "# Benchmark Results: {} Concurrent Agents", agents)?;
+-    writeln!(file)?;
+-    writeln!(file, "**Date**: {}", chrono::Local::now())?;
+-    writeln!(file, "**Target**: {}", config.base_url)?;
+-    writeln!(file, "**Duration**: {}s per test", duration)?;
+-    writeln!(file, "**Concurrency**: {} agents", agents)?;
+-    writeln!(file)?;
+-    writeln!(file, "## Results")?;
+-    writeln!(file)?;
+-    writeln!(
+-        file,
+-        "| Test | Rate (req/s) | Success | P99 Latency | Result |"
+-    )?;
+-    writeln!(
+-        file,
+-        "|------|--------------|---------|-------------|--------|"
+-    )?;
+-
+-    let mut results = Vec::new();
+-
+-    // 4. Phase 1: Health Liveness
+-    println!("\n=== Phase 1: Health Endpoint (Raw HTTP throughput) ===");
+-    let url_liveness = format!("{}/health", config.base_url);
+-    let task_liveness = move |_, c: Client, s: Arc<AtomicStats>| {
+-        let u = url_liveness.clone();
+-        tokio::spawn(async move {
+-            let start = Instant::now();
+-            let res = c.get(&u).send().await;
+-            let lat = start.elapsed().as_millis() as u64;
+-            let success = matches!(res, Ok(r) if r.status().is_success());
+-            s.record(lat, success).await;
+-        })
+-    };
+-
+-    let rates = [
+-        None,
+-        Some(5000),
+-        Some(3000),
+-        Some(2000),
+-        Some(1800),
+-        Some(1600),
+-        Some(1500),
+-        Some(1000),
+-    ];
+-    for r in rates {
+-        let stats = run_load_test(&config, &client, "/health", r, task_liveness.clone()).await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-        results.push(stats);
+-    }
+-
+-    // 5. Phase 2: Readiness (DB)
+-    println!("\n=== Phase 2: Readiness Endpoint (DB connection test) ===");
+-    let url_readiness = format!("{}/ready", config.base_url);
+-    let task_readiness = move |_, c: Client, s: Arc<AtomicStats>| {
+-        let u = url_readiness.clone();
+-        tokio::spawn(async move {
+-            let start = Instant::now();
+-            let res = c.get(&u).send().await;
+-            let lat = start.elapsed().as_millis() as u64;
+-            let success = matches!(res, Ok(r) if r.status().is_success());
+-            s.record(lat, success).await;
+-        })
+-    };
+-
+-    let rates_db = [None, Some(2000), Some(1600), Some(1000)];
+-    for r in rates_db {
+-        let stats = run_load_test(&config, &client, "/ready", r, task_readiness.clone()).await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-        results.push(stats);
+-    }
+-
+-    // 6. Phase 3: MCP Tool Call
+-    println!("\n=== Phase 3: MCP Tool Calls (Realistic agent workload) ===");
+-    let url_mcp = format!("{}/mcp", config.base_url);
+-    let task_mcp = move |_, c: Client, s: Arc<AtomicStats>| {
+-        let u = url_mcp.clone();
+-        tokio::spawn(async move {
+-            let body = JsonRpcRequest {
+-                jsonrpc: "2.0".to_string(),
+-                method: "initialize".to_string(),
+-                params: serde_json::json!({
+-                    "protocolVersion": "2024-11-05",
+-                    "capabilities": {},
+-                    "clientInfo": {"name": "bench", "version": "1.0"}
+-                }),
+-                id: 1,
+-            };
+-            let start = Instant::now();
+-            let res = c
+-                .post(&u)
+-                .header("Accept", "application/json, text/event-stream")
+-                .json(&body)
+-                .send()
+-                .await;
+-            let lat = start.elapsed().as_millis() as u64;
+-            let success = matches!(res, Ok(r) if r.status().is_success());
+-            s.record(lat, success).await;
+-        })
+-    };
+-
+-    let rates_mcp = [None, Some(2000), Some(1600), Some(1000), Some(500)];
+-    for r in rates_mcp {
+-        let label = match r {
+-            Some(_) => "MCP Tool Call",
+-            None => "MCP Tool Call (Full Speed)",
+-        };
+-        let stats = run_load_test(&config, &client, label, r, task_mcp.clone()).await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-        results.push(stats);
+-    }
+-
+-    // 7. Phase 4: Full Agent Message Flow (Bonus/Verification)
+-    println!("\n=== Phase 4: Full Agent Message Flow (Bonus) ===");
+-    // Setup: Create project and agents first
+-    let human_key = format!("bench-rust-{}", chrono::Utc::now().timestamp());
+-    let ensure_resp = client
+-        .post(format!("{}/api/project/ensure", config.base_url))
+-        .json(&EnsureProjectRequest { human_key })
+-        .send()
+-        .await?;
+-
+-    if ensure_resp.status().is_success() {
+-        let project: EnsureProjectResponse = ensure_resp.json().await?;
+-        let slug = project.slug;
+-
+-        // Register agents
+-        print!("Registering {} agents...", agents);
+-        // Do this in parallel to be fast
+-        let mut reg_futs = Vec::new();
+-        for i in 0..agents {
+-            let c = client.clone();
+-            let u = config.base_url.clone();
+-            let s = slug.clone();
+-            let name = format!("agent-{:03}", i);
+-            reg_futs.push(tokio::spawn(async move {
+-                c.post(format!("{}/api/agent/register", u))
+-                    .json(&RegisterAgentRequest {
+-                        project_slug: s,
+-                        name,
+-                        program: "bench".into(),
+-                        model: "bench".into(),
+-                    })
+-                    .send()
+-                    .await
+-            }));
+-        }
+-        for f in reg_futs {
+-            let _ = f.await;
+-        }
+-        println!(" Done.");
+-
+-        // Msg Task
+-        let url_send = format!("{}/api/message/send", config.base_url);
+-        let task_msg = move |idx, c: Client, s: Arc<AtomicStats>| {
+-            let u = url_send.clone();
+-            let p_slug = slug.clone();
+-            let sender = format!("agent-{:03}", idx); // Current agent is sender
+-            let recipient = format!("agent-{:03}", (idx + 1) % agents); // Next is receiver
+-
+-            tokio::spawn(async move {
+-                let body = SendMessageRequest {
+-                    project_slug: p_slug,
+-                    sender_name: sender,
+-                    recipient_names: vec![recipient],
+-                    subject: "Bench".into(),
+-                    body_md: "Benchmark".into(),
+-                    thread_id: None,
+-                    importance: Some("normal".into()),
+-                };
+-                let start = Instant::now();
+-                let res = c.post(&u).json(&body).send().await;
+-                let lat = start.elapsed().as_millis() as u64;
+-                let success = matches!(res, Ok(r) if r.status().is_success());
+-                s.record(lat, success).await;
+-            })
+-        };
+-
+-        // Run message bench
+-        let stats = run_load_test(
+-            &config,
+-            &client,
+-            "Full Agent Message (Full Speed)",
+-            None,
+-            task_msg,
+-        )
+-        .await?;
+-        writeln!(
+-            file,
+-            "| {} | {:.0} | {:.1}% | {}ms | {} |",
+-            stats.label,
+-            stats.actual_rate,
+-            stats.success_rate,
+-            stats.p99_latency_ms,
+-            stats.result_status
+-        )?;
+-    } else {
+-        println!("Skipping Phase 4: Could not create project.");
+-    }
+-
+-    writeln!(file)?;
+-    writeln!(file, "## Analysis")?;
+-    writeln!(
+-        file,
+-        "See `scripts/benchmark_concurrent_agents.sh` for interpretation."
+-    )?;
+-
+-    println!("\n==============================================");
+-    println!("Benchmark Complete!");
+-    println!("==============================================");
+-    println!("Results saved to: {}", report_file);
+-
+-    Ok(())
++    Ok(()) /* ~ changed by cargo-mutants ~ */
+ }
+
+
+*** /Users/amrit/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo test --no-run --verbose --package=mcp-agent-mail-benches@0.1.0
+warning: /private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/Cargo.toml: file `/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/benches/concurrent_agents.rs` found to be present in multiple build targets:
+  * `bin` target `concurrent-agents-bench`
+  * `bench` target `concurrent_agents`
+       Fresh unicode-ident v1.0.22
+       Fresh stable_deref_trait v1.2.1
+       Fresh smallvec v1.15.1
+       Fresh cfg-if v1.0.4
+       Fresh bytes v1.11.0
+       Fresh pin-project-lite v0.2.16
+       Fresh itoa v1.0.16
+       Fresh find-msvc-tools v0.1.5
+       Fresh futures-core v0.3.31
+       Fresh proc-macro2 v1.0.103
+       Fresh shlex v1.3.0
+       Fresh scopeguard v1.2.0
+       Fresh writeable v0.6.2
+       Fresh litemap v0.8.1
+       Fresh http v1.4.0
+       Fresh once_cell v1.21.3
+       Fresh quote v1.0.42
+       Fresh libc v0.2.178
+       Fresh cc v1.2.50
+       Fresh lock_api v0.4.14
+       Fresh pin-utils v0.1.0
+       Fresh zeroize v1.8.2
+       Fresh http-body v1.0.1
+       Fresh percent-encoding v2.3.2
+       Fresh futures-task v0.3.31
+       Fresh syn v2.0.111
+       Fresh errno v0.3.14
+       Fresh parking_lot_core v0.9.12
+       Fresh socket2 v0.6.1
+       Fresh mio v1.1.1
+       Fresh rustls-pki-types v1.13.2
+       Fresh serde_core v1.0.228
+       Fresh getrandom v0.2.16
+       Fresh untrusted v0.9.0
+       Fresh futures-util v0.3.31
+       Fresh icu_properties_data v2.1.2
+       Fresh synstructure v0.13.2
+       Fresh zerovec-derive v0.11.2
+       Fresh displaydoc v0.2.5
+       Fresh signal-hook-registry v1.4.8
+       Fresh tokio-macros v2.6.0
+       Fresh parking_lot v0.12.5
+       Fresh serde_derive v1.0.228
+       Fresh icu_normalizer_data v2.1.1
+       Fresh tower-service v0.3.3
+       Fresh zerofrom-derive v0.1.6
+       Fresh yoke-derive v0.8.1
+       Fresh tokio v1.48.0
+       Fresh ring v0.17.14
+       Fresh try-lock v0.2.5
+       Fresh httparse v1.10.1
+       Fresh serde v1.0.228
+       Fresh tracing-core v0.1.36
+       Fresh futures-channel v0.3.31
+       Fresh atomic-waker v1.1.2
+       Fresh subtle v2.6.1
+       Fresh autocfg v1.5.0
+       Fresh zerofrom v0.1.6
+       Fresh want v0.3.1
+       Fresh rustls-webpki v0.103.8
+       Fresh tracing v0.1.44
+       Fresh form_urlencoded v1.2.2
+       Fresh sync_wrapper v1.0.2
+       Fresh tower-layer v0.3.3
+       Fresh ipnet v2.11.0
+       Fresh base64 v0.22.1
+       Fresh utf8_iter v1.0.4
+       Fresh webpki-roots v1.0.4
+       Fresh yoke v0.8.1
+       Fresh rustls v0.23.35
+       Fresh hyper v1.8.1
+       Fresh tower v0.5.2
+       Fresh iri-string v0.7.9
+       Fresh memchr v2.7.6
+       Fresh ryu v1.0.21
+       Fresh zmij v0.1.9
+       Fresh core-foundation-sys v0.8.7
+       Fresh bitflags v2.10.0
+       Fresh zerovec v0.11.5
+       Fresh zerotrie v0.2.3
+       Fresh hyper-util v0.1.19
+       Fresh tokio-rustls v0.26.4
+       Fresh iana-time-zone v0.1.64
+       Fresh tower-http v0.6.8
+       Fresh serde_json v1.0.147
+       Fresh num-traits v0.2.19
+       Fresh serde_urlencoded v0.7.1
+       Fresh http-body-util v0.1.3
+       Fresh log v0.4.29
+       Fresh tinystr v0.8.2
+       Fresh potential_utf v0.1.4
+       Fresh hyper-rustls v0.27.7
+       Fresh chrono v0.4.42
+       Fresh anyhow v1.0.100
+       Fresh icu_locale_core v2.1.1
+       Fresh icu_collections v2.1.1
+       Fresh icu_provider v2.1.1
+       Fresh icu_properties v2.1.2
+       Fresh icu_normalizer v2.1.1
+       Fresh idna_adapter v1.2.1
+       Fresh idna v1.1.0
+       Fresh url v2.5.7
+       Fresh reqwest v0.12.28
+       Dirty mcp-agent-mail-benches v0.1.0 (/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp): the file `benches/concurrent_agents.rs` has changed (1766711181.352340501s, 1s after last build at 1766711180.452964136s)
+   Compiling mcp-agent-mail-benches v0.1.0 (/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp)
+     Running `/Users/amrit/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc --crate-name concurrent_agents_bench --edition=2024 benches/concurrent_agents.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--deny=clippy::unwrap_used' --deny=unused_must_use --deny=unsafe_code '--warn=clippy::unnecessary_wraps' '--deny=clippy::inefficient_to_string' '--warn=clippy::expect_used' '--warn=clippy::enum_glob_use' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=45508de8bcbb3039 -C extra-filename=-56d57ba20e00a201 --out-dir /private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps -C incremental=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/incremental -L dependency=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps --extern anyhow=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/libanyhow-e50ef13e17777fe1.rlib --extern chrono=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/libchrono-2357696f8636278d.rlib --extern reqwest=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/libreqwest-3269f7e7abe68db5.rlib --extern serde=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/libserde-66e2146edaf8db6a.rlib --extern serde_json=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/libserde_json-e287e2d4c3b930a4.rlib --extern tokio=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/libtokio-07c371a7186f07fe.rlib -L native=/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/build/ring-9fad27d1a6f59c8a/out`
+warning: unused import: `std::fs::OpenOptions`
+  --> benches/concurrent_agents.rs:12:5
+   |
+12 | use std::fs::OpenOptions;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::io::Write`
+  --> benches/concurrent_agents.rs:13:5
+   |
+13 | use std::io::Write;
+   |     ^^^^^^^^^^^^^^
+
+warning: struct `JsonRpcRequest` is never constructed
+  --> benches/concurrent_agents.rs:27:8
+   |
+27 | struct JsonRpcRequest {
+   |        ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `EnsureProjectRequest` is never constructed
+  --> benches/concurrent_agents.rs:35:8
+   |
+35 | struct EnsureProjectRequest {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `RegisterAgentRequest` is never constructed
+  --> benches/concurrent_agents.rs:40:8
+   |
+40 | struct RegisterAgentRequest {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `SendMessageRequest` is never constructed
+  --> benches/concurrent_agents.rs:48:8
+   |
+48 | struct SendMessageRequest {
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: struct `EnsureProjectResponse` is never constructed
+  --> benches/concurrent_agents.rs:59:8
+   |
+59 | struct EnsureProjectResponse {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `BenchmarkStats` is never constructed
+  --> benches/concurrent_agents.rs:66:8
+   |
+66 | struct BenchmarkStats {
+   |        ^^^^^^^^^^^^^^
+
+warning: struct `AtomicStats` is never constructed
+  --> benches/concurrent_agents.rs:76:8
+   |
+76 | struct AtomicStats {
+   |        ^^^^^^^^^^^
+
+warning: associated items `new`, `record`, and `finalize` are never used
+   --> benches/concurrent_agents.rs:83:8
+    |
+ 82 | impl AtomicStats {
+    | ---------------- associated items in this implementation
+ 83 |     fn new() -> Self {
+    |        ^^^
+...
+ 91 |     async fn record(&self, latency_ms: u64, success: bool) {
+    |              ^^^^^^
+...
+104 |     async fn finalize(
+    |              ^^^^^^^^
+
+warning: struct `Config` is never constructed
+   --> benches/concurrent_agents.rs:160:8
+    |
+160 | struct Config {
+    |        ^^^^^^
+
+warning: function `run_load_test` is never used
+   --> benches/concurrent_agents.rs:168:10
+    |
+168 | async fn run_load_test(
+    |          ^^^^^^^^^^^^^
+
+warning: `mcp-agent-mail-benches` (bin "concurrent-agents-bench" test) generated 12 warnings (run `cargo fix --bin "concurrent-agents-bench" --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+  Executable `/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/concurrent_agents_bench-56d57ba20e00a201`
+
+*** result: Success
+
+*** /Users/amrit/.rustup/toolchains/stable-aarch64-apple-darwin/bin/cargo test --verbose --package=mcp-agent-mail-benches@0.1.0
+warning: /private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/Cargo.toml: file `/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/benches/concurrent_agents.rs` found to be present in multiple build targets:
+  * `bin` target `concurrent-agents-bench`
+  * `bench` target `concurrent_agents`
+       Fresh unicode-ident v1.0.22
+       Fresh cfg-if v1.0.4
+       Fresh stable_deref_trait v1.2.1
+       Fresh smallvec v1.15.1
+       Fresh bytes v1.11.0
+       Fresh pin-project-lite v0.2.16
+       Fresh scopeguard v1.2.0
+       Fresh find-msvc-tools v0.1.5
+       Fresh itoa v1.0.16
+       Fresh proc-macro2 v1.0.103
+       Fresh shlex v1.3.0
+       Fresh futures-core v0.3.31
+       Fresh lock_api v0.4.14
+       Fresh writeable v0.6.2
+       Fresh litemap v0.8.1
+       Fresh http v1.4.0
+       Fresh quote v1.0.42
+       Fresh libc v0.2.178
+       Fresh cc v1.2.50
+       Fresh once_cell v1.21.3
+       Fresh pin-utils v0.1.0
+       Fresh zeroize v1.8.2
+       Fresh http-body v1.0.1
+       Fresh percent-encoding v2.3.2
+       Fresh futures-task v0.3.31
+       Fresh untrusted v0.9.0
+       Fresh syn v2.0.111
+       Fresh errno v0.3.14
+       Fresh parking_lot_core v0.9.12
+       Fresh mio v1.1.1
+       Fresh socket2 v0.6.1
+       Fresh rustls-pki-types v1.13.2
+       Fresh serde_core v1.0.228
+       Fresh getrandom v0.2.16
+       Fresh icu_normalizer_data v2.1.1
+       Fresh icu_properties_data v2.1.2
+       Fresh synstructure v0.13.2
+       Fresh zerovec-derive v0.11.2
+       Fresh displaydoc v0.2.5
+       Fresh signal-hook-registry v1.4.8
+       Fresh tokio-macros v2.6.0
+       Fresh parking_lot v0.12.5
+       Fresh serde_derive v1.0.228
+       Fresh futures-util v0.3.31
+       Fresh tower-service v0.3.3
+       Fresh try-lock v0.2.5
+       Fresh zerofrom-derive v0.1.6
+       Fresh yoke-derive v0.8.1
+       Fresh tokio v1.48.0
+       Fresh ring v0.17.14
+       Fresh httparse v1.10.1
+       Fresh serde v1.0.228
+       Fresh want v0.3.1
+       Fresh tracing-core v0.1.36
+       Fresh futures-channel v0.3.31
+       Fresh atomic-waker v1.1.2
+       Fresh autocfg v1.5.0
+       Fresh subtle v2.6.1
+       Fresh zerofrom v0.1.6
+       Fresh rustls-webpki v0.103.8
+       Fresh hyper v1.8.1
+       Fresh tracing v0.1.44
+       Fresh form_urlencoded v1.2.2
+       Fresh sync_wrapper v1.0.2
+       Fresh utf8_iter v1.0.4
+       Fresh ipnet v2.11.0
+       Fresh base64 v0.22.1
+       Fresh tower-layer v0.3.3
+       Fresh yoke v0.8.1
+       Fresh rustls v0.23.35
+       Fresh hyper-util v0.1.19
+       Fresh tower v0.5.2
+       Fresh webpki-roots v1.0.4
+       Fresh memchr v2.7.6
+       Fresh core-foundation-sys v0.8.7
+       Fresh iri-string v0.7.9
+       Fresh bitflags v2.10.0
+       Fresh zmij v0.1.9
+       Fresh zerovec v0.11.5
+       Fresh zerotrie v0.2.3
+       Fresh tokio-rustls v0.26.4
+       Fresh ryu v1.0.21
+       Fresh iana-time-zone v0.1.64
+       Fresh serde_json v1.0.147
+       Fresh tower-http v0.6.8
+       Fresh num-traits v0.2.19
+       Fresh http-body-util v0.1.3
+       Fresh log v0.4.29
+       Fresh tinystr v0.8.2
+       Fresh potential_utf v0.1.4
+       Fresh hyper-rustls v0.27.7
+       Fresh serde_urlencoded v0.7.1
+       Fresh anyhow v1.0.100
+       Fresh chrono v0.4.42
+       Fresh icu_locale_core v2.1.1
+       Fresh icu_collections v2.1.1
+       Fresh icu_provider v2.1.1
+       Fresh icu_properties v2.1.2
+       Fresh icu_normalizer v2.1.1
+       Fresh idna_adapter v1.2.1
+       Fresh idna v1.1.0
+       Fresh url v2.5.7
+       Fresh reqwest v0.12.28
+       Fresh mcp-agent-mail-benches v0.1.0 (/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp)
+warning: unused import: `std::fs::OpenOptions`
+  --> benches/concurrent_agents.rs:12:5
+   |
+12 | use std::fs::OpenOptions;
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::io::Write`
+  --> benches/concurrent_agents.rs:13:5
+   |
+13 | use std::io::Write;
+   |     ^^^^^^^^^^^^^^
+
+warning: struct `JsonRpcRequest` is never constructed
+  --> benches/concurrent_agents.rs:27:8
+   |
+27 | struct JsonRpcRequest {
+   |        ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: struct `EnsureProjectRequest` is never constructed
+  --> benches/concurrent_agents.rs:35:8
+   |
+35 | struct EnsureProjectRequest {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `RegisterAgentRequest` is never constructed
+  --> benches/concurrent_agents.rs:40:8
+   |
+40 | struct RegisterAgentRequest {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `SendMessageRequest` is never constructed
+  --> benches/concurrent_agents.rs:48:8
+   |
+48 | struct SendMessageRequest {
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: struct `EnsureProjectResponse` is never constructed
+  --> benches/concurrent_agents.rs:59:8
+   |
+59 | struct EnsureProjectResponse {
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `BenchmarkStats` is never constructed
+  --> benches/concurrent_agents.rs:66:8
+   |
+66 | struct BenchmarkStats {
+   |        ^^^^^^^^^^^^^^
+
+warning: struct `AtomicStats` is never constructed
+  --> benches/concurrent_agents.rs:76:8
+   |
+76 | struct AtomicStats {
+   |        ^^^^^^^^^^^
+
+warning: associated items `new`, `record`, and `finalize` are never used
+   --> benches/concurrent_agents.rs:83:8
+    |
+ 82 | impl AtomicStats {
+    | ---------------- associated items in this implementation
+ 83 |     fn new() -> Self {
+    |        ^^^
+...
+ 91 |     async fn record(&self, latency_ms: u64, success: bool) {
+    |              ^^^^^^
+...
+104 |     async fn finalize(
+    |              ^^^^^^^^
+
+warning: struct `Config` is never constructed
+   --> benches/concurrent_agents.rs:160:8
+    |
+160 | struct Config {
+    |        ^^^^^^
+
+warning: function `run_load_test` is never used
+   --> benches/concurrent_agents.rs:168:10
+    |
+168 | async fn run_load_test(
+    |          ^^^^^^^^^^^^^
+
+warning: `mcp-agent-mail-benches` (bin "concurrent-agents-bench" test) generated 12 warnings (run `cargo fix --bin "concurrent-agents-bench" --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running `/private/var/folders/fy/b42gn4m17s5f5_1pbnt4kg3m0000gn/T/cargo-mutants-mcp-agent-mail-rs-oyqacw.tmp/target/debug/deps/concurrent_agents_bench-56d57ba20e00a201`
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+*** result: Success

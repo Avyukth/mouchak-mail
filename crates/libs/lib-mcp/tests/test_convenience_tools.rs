@@ -56,7 +56,9 @@ async fn test_list_builtin_workflows_returns_5_workflows() {
     // RED: This should list the 5 built-in workflow names
     // We're testing the CONTENT, not the tool (tool will call this logic)
     use lib_core::model::macro_def::MacroDefBmc;
-    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into()).await.unwrap();
+    let macros = MacroDefBmc::list(&ctx, &mm, project_id.into())
+        .await
+        .unwrap();
 
     // Should have exactly 5 built-ins
     assert_eq!(macros.len(), 5, "Should have 5 built-in workflows");

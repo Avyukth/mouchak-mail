@@ -12,11 +12,10 @@ use lib_core::model::{
 };
 use lib_mcp::tools::macros;
 use lib_mcp::tools::{
-    InvokeMacroParams, ListBuiltinWorkflowsParams, ListMacrosParams,
-    MacroContactHandshakeParams, MacroFileReservationCycleParams,
-    MacroPrepareThreadParams, MacroStartSessionParams, QuickHandoffWorkflowParams,
-    QuickReviewWorkflowParams, QuickStandupWorkflowParams, RegisterMacroParams,
-    UnregisterMacroParams,
+    InvokeMacroParams, ListBuiltinWorkflowsParams, ListMacrosParams, MacroContactHandshakeParams,
+    MacroFileReservationCycleParams, MacroPrepareThreadParams, MacroStartSessionParams,
+    QuickHandoffWorkflowParams, QuickReviewWorkflowParams, QuickStandupWorkflowParams,
+    RegisterMacroParams, UnregisterMacroParams,
 };
 use libsql::Builder;
 use std::sync::Arc;
@@ -86,8 +85,10 @@ async fn test_list_macros_impl_returns_builtin_macros() {
     let text = format!("{:?}", call_result);
 
     // Should contain built-in macros
-    assert!(text.contains("start_session") || text.contains("5"),
-        "Should list built-in macros");
+    assert!(
+        text.contains("start_session") || text.contains("5"),
+        "Should list built-in macros"
+    );
 }
 
 #[tokio::test]
@@ -144,7 +145,9 @@ async fn test_unregister_macro_impl_success() {
         description: "Macro to delete".to_string(),
         steps: vec![serde_json::json!({"action": "delete"})],
     };
-    macros::register_macro_impl(&ctx, &mm, register_params).await.unwrap();
+    macros::register_macro_impl(&ctx, &mm, register_params)
+        .await
+        .unwrap();
 
     // Now unregister it
     let params = UnregisterMacroParams {
