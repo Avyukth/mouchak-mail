@@ -1,0 +1,19 @@
+# PMAT Configuration
+#
+# Note: quality-gate doesn't read this file yet.
+# Use --exclude flags with individual analyze commands:
+#   pmat analyze satd --path . --exclude "**/build-static/**" --exclude "**/web-ui/build/**"
+#
+# Or skip duplicates check in quality-gate:
+#   pmat quality-gate --checks complexity,dead-code,satd,entropy,security,coverage,sections,provability
+
+[analysis]
+exclude_patterns = [
+    "**/target/**",
+    "**/node_modules/**",
+    "**/web-ui/build-static/**",
+    "**/build-static/**",
+    "**/web-ui/build/**",
+    "**/workbox-*.js",
+]
+skip_vendor = true
