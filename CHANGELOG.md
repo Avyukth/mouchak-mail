@@ -1,183 +1,599 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to MCP Agent Mail will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-- **Testing Infrastructure**
-  - Archive and attachments tool tests (archive_tests.rs, attachments_tests.rs)
-  - Comprehensive tests for macros, export, reviews, files, precommit modules
-  - TDD tests for macro tools (test_macro_tools.rs)
-  - Schema auto-generation tests for MCP tools
-  - Cargo-mutants configuration for mutation testing
+### Bug Fixes
 
-- **Web UI Enhancements**
-  - GitHub Pages static deployment support with git-based workflow
-  - Factory.ai design system adoption with spotlight effects
-  - Bulk selection and actions for projects
-  - Sorting controls for project and agent list views
-  - Content-aware loading skeleton screens
-  - Reusable EmptyState component with consistent CTAs
-  - Delete UI for agents with dropdown menu and confirmation
-  - Export button in bulk action bar
+- **web-ui**: Replace emoji with Lucide icons in mail page by @Avyukth
+- **lib-mcp**: Correct MessageForCreate API usage in attachments tests by @Avyukth
+- Disable autobenches to prevent duplicate target warning by @Avyukth
+- **mcp**: Add NTM compatibility alias schemas by @Avyukth
+- **tests**: Add .into() for newtype ID conversions across test files by @Avyukth
+- **deploy**: Add .nojekyll to prevent Jekyll from ignoring _app folder by @Avyukth
+- **deploy**: Use build:static script for correct output dir by @Avyukth
+- **web-ui**: Implement seamless sticky toolbar across all viewports by @Avyukth
+- **web-ui**: Improve button and project card layout by @Avyukth
+- **web-ui**: Use mode.current for Svelte 5 runes compatibility by @Avyukth
+- **lib-core**: Complete newtype migration for ProjectBmc methods by @Avyukth
+- **web-ui**: Add @types/node for Playwright test type checking (mcpmail-azf3) by @Avyukth
+- **web-ui**: Close dropdown menu before opening delete confirmation dialog by @Avyukth
+- **web-ui**: Update DropdownMenu.Trigger to Svelte 5 snippet pattern by @Avyukth
+- **web-ui**: Move Mail to second position in navigation by @Avyukth
+- **web-ui**: Improve button layout and dashboard design by @Avyukth
+- **web-ui**: Remove UUID slugs from Dashboard Recent Projects by @Avyukth
+- **web-ui**: Hide UUIDs from user-facing UI components by @Avyukth
+- **lib-mcp**: Add input validation guards to MCP tool handlers by @Avyukth
+- **tests**: Use scoped threads to ensure join (UBS P0 fix) by @Avyukth
+- **web-ui**: Replace UUID displays with human-readable names (P0) by @Avyukth
+- **mail**: Add body_md/excerpt to unified inbox and enable list scroll by @Avyukth
+- **api**: Wrap unified-inbox response in expected format by @Avyukth
+- **web-ui**: Align sidebar and header heights to h-14 by @Avyukth
+- **web-ui**: Remove unused FileText import from CommandPalette by @Avyukth
+- **web-ui**: Resolve conflict markers in +layout.svelte by @Avyukth
+- **web-ui**: Replace emoji icons with Lucide icons by @Avyukth
+- **capability**: List_for_agent() now filters expired capabilities by @Avyukth
+- **build**: Resolve SvelteKit build issues and fix clippy warnings by @Avyukth
+- **capability**: Check() now validates expires_at + add edge case tests by @Avyukth
+- **web-ui**: Correct duration assertion in button transition test by @Avyukth
+- **lib-mcp**: Add clippy allow attributes for test files by @Avyukth
+- **guard**: Extract pattern matching into testable function with unit tests by @Avyukth
+- **guard**: Add --project flag, fix agent_name display, add HTTP timeout by @Avyukth
+- **clippy**: Resolve inefficient_to_string warning in summarize command by @Avyukth
+- **routes**: Update axum route params to new {param} syntax by @Avyukth
+- Resolve clippy warnings and update ModelManager::new_for_test signature by @Avyukth
+- **e2e-tests**: Fix clippy warnings in mail_viewer tests by @Avyukth
+- **web-ui**: Comprehensive responsive layout and a11y improvements by @Avyukth
+- **web-ui**: Apply proper shadcn-ui Badge and Button patterns by @Avyukth
+- **lib-mcp**: Add include_bodies=true to resource_tests inbox check by @Avyukth
+- **lib-core**: Deterministic message ordering in list_by_thread by @Avyukth
+- **web-ui**: Input component with full shadcn/ui styling by @Avyukth
+- **web-ui**: Shadcn/ui audit + layout fixes for unified inbox by @Avyukth
+- Clippy lints and migration idempotency across workspace by @Avyukth
+- **lib-core**: Update Age encryption API for age 0.11 compatibility by @Avyukth
+- **web-ui**: LEPTOS-008 - display actual message recipients by @Avyukth
+- **web-ui**: Wrap project Select in reactive closure by @Avyukth
+- **web-ui**: Reviewer fixes for LEPTOS-004 by @Avyukth
+- **lib-core**: Complete ORCH-4 staleness check and ORCH-5 worktree ops by @Avyukth
+- **lib-common**: Wrap env var test ops in unsafe for Rust 2024 by @Avyukth
+- **lib-core**: ORCH-2 complete - add from_git_and_beads and fix clippy by @Avyukth
+- **review**: Integrate OverseerComposer and export from mod.rs by @Avyukth
+- **api**: Normalize unified-inbox route to /api/ prefix by @Avyukth
+- **web-ui-leptos**: Gate ParamsMap test for wasm target only by @Avyukth
+- **web-ui-leptos**: Hydrate unified inbox filters from query by @Avyukth
+- **file-reservation**: Use glob pattern matching for conflict detection by @Avyukth
+- **fts**: Escape hyphens in FTS5 search queries by @Avyukth
+- **tests**: Add clippy allow attributes for test code by @Avyukth
+- **core**: Correct case in doctest assertion (Agent name vs agent name) by @Avyukth
+- **server**: Add Image error handling to match patterns by @Avyukth
+- **guard**: Implement actual file reservation checking (P0) by @Avyukth
+- **web-ui**: Debounce search, add projects dropdown, fix toggle reactivity, auto-select by @Avyukth
+- **layout**: Wrap nav in header element for proper semantic landmarks by @Avyukth
+- **clippy**: Resolve all clippy warnings with -D warnings by @Avyukth
+- **pkpr**: Integrate ProjectCard into Projects page by @Avyukth
+- **e2e**: Align API tests with actual endpoint contracts by @Avyukth
+- **avatar**: WCAG AA color accessibility + gap tests by @Avyukth
+- **lib-core**: Resolve database path relative to workspace root by @Avyukth
+- **web-ui**: Change Back to Inbox link to unified inbox by @Avyukth
+- **lib-server**: Eliminate panic risk in static_files.rs by @Avyukth
+- **web-ui**: Replace Lucide icons with inline SVG in theme toggle by @Avyukth
+- **lib-mcp**: Remove duplicate precommit guard definitions by @Avyukth
+- **deps**: Update jugar-probar 0.1 to 0.4 to resolve wasmtime CVEs by @Avyukth
+- **security**: Update jugar-probar from 0.1 to 0.4.0 by @Avyukth
+- **p0**: Remove unsafe unwrap() calls and add quality gates by @Avyukth
+- **auth**: Add ratelimit_config to test AppState fixtures by @Avyukth
+- **ci**: Make quality gate and coverage non-blocking by @Avyukth
+- **lib-core**: Update capability tests for new struct fields by @Avyukth
+- Resolve reactive warning in inbox by using with_untracked by @Avyukth
+- Disable integrity check for trunk assets to silence chrome warning by @Avyukth
+- **mcp-cli**: Add cc_ids/bcc_ids to MessageForCreate by @Avyukth
+- **web-ui**: Resolve Svelte 5 warnings and TypeScript errors by @Avyukth
+- **mcp-server**: Update Axum route syntax for v0.8+ by @Avyukth
+- **mcp-stdio**: Update rmcp SSE transport to streamable-http-server by @Avyukth
+- Critical bugs in Phase 1 & 1.5 implementation by @Avyukth
 
-- **API & Server**
-  - Readiness probe with database connectivity check (`/api/ready`)
-  - Request body size limits for DoS protection
-  - NTM compatibility alias schemas for MCP tools
+### Build
 
-- **Code Quality**
-  - PMAT-recommended lints enabled workspace-wide
-  - Comprehensive rustdoc documentation for public APIs
-  - 4 convenience workflow tools (list_builtin_workflows, quick_standup_workflow, quick_handoff_workflow, quick_review_workflow)
-  - Pre-commit guard MCP tools (install_precommit_guard, uninstall_precommit_guard)
-  - Rust-native pre-commit hooks via cargo-husky
+- Add install-am and install-am-full Makefile targets by @Avyukth
 
-- **Documentation**
-  - GitHub Pages deployment environment variables in .env.example
-  - Improved rustdoc coverage to 90% for lib-core
+### CI/CD
 
-### Changed
-- **Type Safety**: Migrated to ProjectId/AgentId newtypes across entire codebase
-- Theme toggle button now uses inline SVG instead of Lucide icons for better reliability
-- Seamless sticky toolbar implementation across all viewports
-- Button and project card layout improvements
-- Restored 8px rounded corners for softer aesthetic
+- Add release-please for automated versioning and changelog by @Avyukth
+- Remove macOS runners to reduce costs by @Avyukth
+- Make security audit advisory (non-blocking on warnings) by @Avyukth
 
-### Fixed
-- Disabled autobenches to prevent duplicate target warning
-- MessageForCreate API usage in attachments tests (correct Option types)
-- Reduced commit_message_to_git complexity from 12 to 6
-- Eliminated panic risk in static_files.rs
-- Theme button functionality after embedding
-- Import ordering in test modules
-- Dropdown menu closes before opening delete confirmation dialog
-- .nojekyll added to prevent Jekyll from ignoring _app folder
-- Svelte 5 runes compatibility (mode.current usage)
-- Newtype ID conversions across test files
+### Documentation
 
-## [0.1.0] - 2025-12-17
+- Add essential README and documentation index by @Avyukth
+- Update CHANGELOG.md with recent changes since v0.1.0 by @Avyukth
+- Add GitHub Pages deployment env vars to .env.example by @Avyukth
+- **lib-core**: Add struct-level docs and fix rustdoc bracket escaping by @Avyukth
+- **lib-core**: Improve rustdoc coverage to 90% by @Avyukth
+- **AGENTS**: Update git workflow to use dev branch by @Avyukth
+- **init-tools**: Add dev branch to git workflow by @Avyukth
+- **agents**: Update AGENTS.md with SVELTE-022 epic tasks by @Avyukth
+- Add INSTRUCTIONS.md for AI agent coordination by @Avyukth
+- Add init-tools.md with MCP tool calling format by @Avyukth
+- **init-new**: Fix REST API calls based on workflow test by @Avyukth
+- **init-new**: Add git worktree flow and multi-agent orchestration by @Avyukth
+- Add autonomous agent initialization guide by @Avyukth
+- Add compressed AGENTS.md (15k tokens target) by @Avyukth
+- **agents**: Add CRITICAL warning - agents NEVER work on main branch by @Avyukth
+- **agents**: Add Agent Self-Discovery robot commands for AI self-learning by @Avyukth
+- **agents**: Consolidate ULTRA Pattern workflow - mandatory file reservations + worktrees + beads-sync by @Avyukth
+- **agents**: Add NTM-style beads-sync branching workflow by @Avyukth
+- **agents**: Add beads sync-branch configuration instructions by @Avyukth
+- **agents**: Update MCP Agent Mail section for Rust implementation by @Avyukth
+- **AGENTS.md**: Document MCP Resource URIs (resource://) fully by @Avyukth
+- Record completion of GAP-l8l4 and GAP-4aqw by @Avyukth
+- **lib-core**: Complete file handle leak audit and stress tests (PORT-2.3) by @Avyukth
+- **lib-core**: Complete PORT-2.3 file handle audit by @Avyukth
+- **agents**: Add UI/frontend validation to reviewer checklist by @Avyukth
+- **agents**: Add comprehensive HTTP API reference with correct curl examples by @Avyukth
+- **lib-core**: Add module docs to message.rs + update docs bead by @Avyukth
+- **lib-core**: Add rustdoc to tool_metric and build_slot modules by @Avyukth
+- **lib-core**: Add comprehensive rustdoc to core modules by @Avyukth
+- **agents**: Clarify worker fire-and-forget workflow by @Avyukth
+- **agents**: Fix MCP tool field names for messaging by @Avyukth
+- **agents**: Fix register_agent API documentation by @Avyukth
+- **agents**: Add thread-based review state tracking by @Avyukth
+- **agents**: Expand Reviewer role with detailed validation steps by @Avyukth
+- Clean up example commit message by @Avyukth
+- **agents**: Add Layer 5 Multi-Agent Orchestration workflow by @Avyukth
+- **lib-core**: Comprehensive rustdoc for remaining BMCs + module docs by @Avyukth
+- **lib-core**: Add rustdoc to BuildSlotBmc and crate-level docs by @Avyukth
+- **lib-core**: Add rustdoc to MacroDefBmc by @Avyukth
+- **lib-core**: Add rustdoc to ProjectBmc and FileReservationBmc by @Avyukth
+- **lib-core**: Add comprehensive rustdoc to AgentBmc and MessageBmc by @Avyukth
+- Add CHANGELOG.md following Keep a Changelog format by @Avyukth
+- Update MCP Agent Mail documentation with accurate 45-tool reference by @Avyukth
+- **AGENTS.md**: Align with universal template and current project state by @Avyukth
+- **README**: Add sidecar deployment documentation by @Avyukth
+- Comprehensive README update with accurate codebase analysis by @Avyukth
+- Expand Git Worktree Flow section in AGENTS.md by @Avyukth
+- Add vc, pmat, git worktree sections to AGENTS.md v1.1.0 by @Avyukth
+- Comprehensive AGENTS.md for AI coding agents by @Avyukth
+- Consolidate agent instructions and reorganize markdown files by @Avyukth
+- Add critical gap analysis of production hardening by @Avyukth
+- Add warning about not editing .beads/*.jsonl directly by @Avyukth
+- Add WALKTHROUGH.md and driver script by @Avyukth
+- Add .env.example with 30+ environment variables (1aj) by @Avyukth
+- Comprehensive gap analysis for Python parity by @Avyukth
+- **CLAUDE.md**: Add git worktree multi-agent workflow pattern by @Avyukth
+- **CLAUDE.md**: Add multi-agent workflow with cm and bd integration by @Avyukth
+- Add comprehensive README with setup and best practices by @Avyukth
+- Add CLAUDE.md with reasoning framework and workflow by @Avyukth
+- Update PROJECT_PLAN.md and llms.txt with accurate tool counts by @Avyukth
 
-### Added
-- **Core Infrastructure**
-  - Multi-agent messaging system with async coordination
-  - SQLite database with libsql for persistence
-  - Git archive integration for message storage
-  - 45 MCP tools for agent-to-agent communication
+### Features
 
-- **MCP Protocol Support**
-  - STDIO transport for Claude Desktop integration
-  - SSE transport for web-based clients
-  - JSON-RPC 2.0 protocol implementation
-  - Full MCP specification compliance
+- **web-ui**: Add git-based GitHub Pages deployment by @Avyukth
+- **web-ui**: Add GitHub Pages static deployment support by @Avyukth
+- **web-ui**: Adopt Factory.ai design system by @Avyukth
+- **web-ui**: Enhance UI components with highlight effects by @Avyukth
+- **web-ui**: Polish UI with CSS improvements and spotlight effect by @Avyukth
+- **web-ui**: Add Factory.ai sidebar spotlight and theme toggle by @Avyukth
+- **web-ui**: Add export button to bulk action bar (mcpmail-qj64) by @Avyukth
+- **lib-mcp**: Auto-generate tool schemas from JsonSchema derive by @Avyukth
+- **lib-core**: Migrate to ProjectId/AgentId newtypes in source files by @Avyukth
+- **web-ui**: Add delete UI for agents with dropdown menu and confirmation by @Avyukth
+- **web-ui**: Add content-aware loading skeleton screens by @Avyukth
+- **lib-server**: Add request body size limits for DoS protection by @Avyukth
+- **lib-server**: Add readiness probe with database connectivity check by @Avyukth
+- **web-ui**: Add reusable EmptyState component with consistent CTAs by @Avyukth
+- **web-ui**: Add bulk selection and actions for projects (mcpmail-hzry) by @Avyukth
+- **web-ui**: Add sorting controls to project and agent list views (mcpmail-3698) by @Avyukth
+- **web-ui**: Add search/filter to projects page (mcpmail-7zb1) by @Avyukth
+- **web-ui**: Add sticky toolbar to agents page for better UX by @Avyukth
+- **web-ui**: Add 'Don't show again' option to PWA install modal by @Avyukth
+- **web-ui**: Improve Create Project form with name and description by @Avyukth
+- **delete**: Add cascade delete for projects and agents by @Avyukth
+- **lib-mcp**: Add structured error codes and split tools into domain modules by @Avyukth
+- **lib-mcp**: Add file_reservation_paths_impl to files module by @Avyukth
+- **web-ui**: Dashboard overhaul with stats cards and enhanced UX by @Avyukth
+- **web-ui**: Complete P0 UI/UX improvements by @Avyukth
+- **web-ui**: Projects & agents with Dialog forms and card animations by @Avyukth
+- **web-ui**: Message detail with markdown, tabs, and thread timeline by @Avyukth
+- **web-ui**: Dashboard overhaul with MagicUI components by @Avyukth
+- **web-ui**: Add MagicUI components and mobile-first inbox by @Avyukth
+- **api**: API/MCP/BMC audit improvements (Phase 1) by @Avyukth
+- **web-ui**: Add tutorial/onboarding modal (SVELTE-014) by @Avyukth
+- **web-ui**: Add PWA install and update prompts (SVELTE-017) by @Avyukth
+- **web-ui**: Improve Dashboard error handling & accessibility (SVELTE-023) by @Avyukth
+- **web-ui**: Add Command Palette with Cmd+K shortcut (SVELTE-013) by @Avyukth
+- **web-ui**: Add AppHeader with dynamic breadcrumbs (SVELTE-022c) by @Avyukth
+- **web-ui**: Add mobile-first AppSidebar component (SVELTE-022b) by @Avyukth
+- **SVELTE-010**: Implement remaining routes by @Avyukth
+- **SVELTE-006**: Implement /thread/[id] page by @Avyukth
+- **SVELTE-007**: Implement /search page with debounced search by @Avyukth
+- **web-ui**: Add unified design system foundation (SVELTE-022a) by @Avyukth
+- **web-ui**: Add skeleton loading states and toast notifications (SVELTE-021) by @Avyukth
+- **web-ui**: Add comprehensive Playwright E2E tests (SVELTE-012) by @Avyukth
+- **web-ui**: Expand API client with all endpoints (SVELTE-008) by @Avyukth
+- **web-ui**: Add UnifiedInbox Svelte stores (SVELTE-004) by @Avyukth
+- **web-ui**: Port Magic UI components from Leptos to Svelte (SVELTE-009) by @Avyukth
+- **build**: Add SvelteKit build targets to Makefile by @Avyukth
+- **mcp**: Auto-grant default capabilities on agent registration by @Avyukth
+- **web-ui**: Initialize shadcn-svelte with Indigo theme (SVELTE-003) by @Avyukth
+- **lib-mcp**: Complete NTM compatibility layer by @Avyukth
+- **share**: Add GitHub Pages deployment wizard (mcp-agent-mail-rs-xpau) by @Avyukth
+- **robot**: Add comprehensive tests for robot-* flags (mcp-agent-mail-rs-vgs4) by @Avyukth
+- **mcp**: Expose search_messages_product and summarize_thread_product in tool schemas by @Avyukth
+- **mcp**: Add convenience macros (macro_start_session, macro_file_reservation_cycle, macro_contact_handshake) by @Avyukth
+- **cli**: Add guard check command for pre-commit integration by @Avyukth
+- **cli**: Add guard check command for pre-commit integration by @Avyukth
+- **service**: Implement service manager commands (start, stop, status, restart) by @Avyukth
+- **cli**: Add summarize command with --per-thread-limit and --no-llm by @Avyukth
+- **cli**: Add --robot-examples flag for AI-optimized example discovery by @Avyukth
+- **robot-status**: Implement --robot-status flag (mcp-agent-mail-rs-hbzz) by @Avyukth
+- **tests**: Port Python E2E tests to Rust (62 tests) by @Avyukth
+- **export**: Enhance scrubber with comprehensive secret detection patterns by @Avyukth
+- **cli**: Add config set-port/show-port commands by @Avyukth
+- **archive**: Add archive browser API and UI by @Avyukth
+- **lib-server**: Add /mail/api/locks endpoint for file reservations by @Avyukth
+- **lib-core**: Add 8 performance benchmark tests by @Avyukth
+- **e2e-tests**: Add 28 mail viewer E2E tests by @Avyukth
+- **lib-core**: Add ArchiveBrowserBmc for git history exploration by @Avyukth
+- **mcp-cli, lib-core, web-ui**: Add share preview and enhance data scrubbing & UI by @Avyukth
+- **lib-core**: Add escalation module and config improvements by @Avyukth
+- **web-ui**: 2025 Magic UI design makeover for unified inbox by @Avyukth
+- **web-ui**: Complete shadcn-ui audit with Magic UI components by @Avyukth
+- **web-ui**: Adopt Agent Mail design system with indigo primary by @Avyukth
+- **lib-mcp**: Implement search_messages_product and summarize_thread_product by @Avyukth
+- Implement MCP Resource URIs (resource://) and lazy loading by @Avyukth
+- **lib-core**: Add time travel historical snapshot API (26 tests) by @Avyukth
+- **lib-core**: PORT-4.4 add identity resolution module with 13 tests by @Avyukth
+- **lib-core**: Add query locality and resource cleanup tests (19 tests) by @Avyukth
+- **mcp-agent-mail**: Add archive CLI commands for disaster recovery by @Avyukth
+- **export**: Add Ed25519 signing for export manifests by @Avyukth
+- **web-ui-leptos**: LEPTOS-014 Accessibility Audit Automation by @Avyukth
+- **web-ui-leptos**: LEPTOS-013 Visual Regression Test Suite by @Avyukth
+- **web-ui-leptos**: LEPTOS-012 Skeleton Loading Components by @Avyukth
+- **web-ui-leptos**: LEPTOS-011 Toast Notification System by @Avyukth
+- **web-ui-leptos**: LEPTOS-010 client-side form validation by @Avyukth
+- **web-ui-leptos**: LEPTOS-009 keyboard navigation enhancements by @Avyukth
+- **lib-server**: P1 security headers - HSTS, Referrer-Policy, Permissions-Policy by @Avyukth
+- **backend**: P0 panic hook for production resilience by @Avyukth
+- **web-ui**: LEPTOS-006 - FTS5 search results page by @Avyukth
+- **web-ui**: LEPTOS-007 & LEPTOS-005 - pagination and thread view by @Avyukth
+- **web-ui**: LEPTOS-005 - add agent filter for attachments page by @Avyukth
+- **web-ui**: LEPTOS-004 - add preview modal for images/PDFs by @Avyukth
+- **web-ui**: LEPTOS-004 - Attachments Browser Page by @Avyukth
+- **web-ui**: LEPTOS-003 - Mark-Read UI Button by @Avyukth
+- **web-ui**: LEPTOS-001 & LEPTOS-002 - tailwind_fuse CVA + shadcn CSS tokens by @Avyukth
+- **orchestration**: ORCH-3 to ORCH-8 - MCP tools and BMC by @Avyukth
+- **lib-core**: ORCH-1 & ORCH-2 - OrchestrationState and CompletionReport by @Avyukth
+- **ui**: Add overseer composer component (GAP: mcp-agent-mail-rs-pq0w) by @Avyukth
+- **core**: Add newtypes and standardize Rust 2024 edition by @Avyukth
+- **web-ui-leptos**: Init unified inbox filters from query by @Avyukth
+- **core**: Implement Stale Lock Cleanup (PORT-2.2) by @Avyukth
+- **cli**: Implement GAP-4aqw Guard Status CLI command by @Avyukth
+- **cli**: Implement GAP-l8l4 Projects CLI commands and adopt logic by @Avyukth
+- **fts**: Implement PORT-5.1 and PORT-5.2 FTS5 graceful handling by @Avyukth
+- **ratelimit**: Add per-tool rate limiting with category-based limits by @Avyukth
+- **cli**: Add service commands for stop/status/restart (PORT-6.2) by @Avyukth
+- **cli**: Add port validation before server start (PORT-6.3) by @Avyukth
+- **cli**: Add 'mcp-agent-mail install alias' command for 'am' alias by @Avyukth
+- **ratelimit**: Add per-tool rate limiting with category-based limits by @Avyukth
+- **ratelimit**: Add JWT identity extraction for per-user rate limiting by @Avyukth
+- **guard**: Support custom core.hooksPath in hook installation by @Avyukth
+- **guard**: Add pre-push hook support with stdin ref handling by @Avyukth
+- **archive-lock**: Integrate ArchiveLock into ModelManager by @Avyukth
+- **repo-cache**: Integrate LRU cache into ModelManager for FD management by @Avyukth
+- **error**: Add smart suggestions to NotFound errors by @Avyukth
+- **validation**: Wire validation into MCP tools by @Avyukth
+- **mcp**: Conditional build slot tool registration based on WORKTREES_ENABLED by @Avyukth
+- **lib-core**: Add GuardMode for advisory and bypass modes (PORT-3.2) by @Avyukth
+- **lib-core**: Add WORKTREES_ENABLED gate to pre-commit guard (PORT-3.1) by @Avyukth
+- **lib-core**: Implement PORT-2.2 stale lock cleanup by @Avyukth
+- **lib-core**: Implement PORT-2.1 LRU repository cache by @Avyukth
+- **lib-common**: Implement PORT-1.4 conditional build slot config by @Avyukth
+- **lib-core**: Implement PORT-1.2 and PORT-1.3 by @Avyukth
+- **api**: Add project_slug to unified inbox response by @Avyukth
+- **web-ui**: Complete Sprint 4 accessibility and testing improvements by @Avyukth
+- **components**: Add Separator and enhance SplitViewLayout accessibility by @Avyukth
+- **dialog**: Implement Dialog component with ChildrenFn pattern by @Avyukth
+- **07pe**: Add Skeleton component for loading states by @Avyukth
+- **06ls**: Rename InfoBanner to Alert and upgrade to shadcn pattern by @Avyukth
+- **5333**: Upgrade Avatar with enum variants and role=img by @Avyukth
+- **shadcn**: Integrate Button/Input components + Select keyboard nav by @Avyukth
+- **be8s**: Add Badge component with 6 variants by @Avyukth
+- **nkcp**: Add Card compound components by @Avyukth
+- **euq7**: Add CSP security headers via tower middleware by @Avyukth
+- **yj20**: Add fluid typography and spacing scale with clamp() by @Avyukth
+- **8ike**: Add touch target enforcement and focus ring patterns by @Avyukth
+- **tkc9**: Add reduced motion support and skip link accessibility by @Avyukth
+- **xxnq**: Add Button component with CVA-style variants by @Avyukth
+- **1esg+lw2b**: Add shadcn CSS tokens and Input component by @Avyukth
+- **web-ui**: Integrate SplitViewLayout for Gmail-style unified inbox by @Avyukth
+- **web-ui**: Integrate FilterBar and AgentAvatar across frontend pages by @Avyukth
+- **pkpr**: Add ProjectCard component with status badges by @Avyukth
+- **qkpm**: Add File Reservations page with reusable components by @Avyukth
+- **message**: Add ack_required support to MessageForCreate by @Avyukth
+- **nzeq**: Add SplitViewLayout component for Gmail-style inbox by @Avyukth
+- **api**: Add list_pending_reviews API for ack-required messages by @Avyukth
+- **filter**: Add URL param persistence for FilterState by @Avyukth
+- **4980**: Add FilterBar component with search and filter dropdowns by @Avyukth
+- Integrate MessageDetailHeader and AgentAvatar into message detail page by @Avyukth
+- **zcv8**: Add MessageDetailHeader component with AgentAvatar by @Avyukth
+- **olf5**: Add AgentAvatar component with color generation by @Avyukth
+- **mcp**: Consolidate summarize_thread tools into single unified tool by @Avyukth
+- **web-ui**: Add All Mail nav link to unified inbox by @Avyukth
+- **f6w**: Add unified inbox Leptos page with importance filter by @Avyukth
+- **clippy**: Enable stricter lints for production safety (qjv) by @Avyukth
+- Add Rust-native pre-commit hooks via cargo-husky by @Avyukth
+- **mcp**: Add 4 P2 convenience workflow tools by @Avyukth
+- **mcp**: Add precommit guard MCP tools by @Avyukth
+- **Makefile**: Add sidecar build targets by @Avyukth
+- **mcp-agent-mail**: Add --with-ui/--no-ui CLI flags by @Avyukth
+- **lib-server**: Add conditional web UI fallback route by @Avyukth
+- **lib-server**: Add embedded assets and static file handler by @Avyukth
+- **lib-server**: Add with-web-ui feature flag for single-binary embedding by @Avyukth
+- **makefile**: Update web-ui to web-ui-leptos and add quality targets by @Avyukth
+- **lib-server**: Add MCP integration and architecture documentation by @Avyukth
+- **lib-core**: Add git serialization for 100-agent concurrency by @Avyukth
+- **web-ui**: Add shadcn-style Select component and fix Leptos reactivity by @Avyukth
+- **hardening**: Implement export, openapi, docker, systemd (closes tgl, 577.16, jt8, 81g) by @Avyukth
+- **hardening**: Implement rate limiting and attachment handlers (577.13, 577.14) by @Avyukth
+- Implement real LLM thread summarization (closes mcp-agent-mail-rs-17d) by @Avyukth
+- **auth**: Implement localhost bypass for bearer token auth by @Avyukth
+- **lib-server**: Implement real RBAC capabilities middleware by @Avyukth
+- Add CI/CD pipeline (GitHub Actions) (closes mcp-agent-mail-rs-577.15) by @Avyukth
+- Implement multi-agent simulation tasks (azc, y58, fw1, rkm, 4mw, if9, ctb) by @Avyukth
+- Complete 6 P1 tasks - tests, migrations, JWT auth by @Avyukth
+- Complete 5 P0 tasks - env docs, route aliases, MCP tools, integrations by @Avyukth
+- **installer**: Add curl one-liner installer script by @Avyukth
+- Unified CLI binary, hardening, and tests (closes mcp-agent-mail-rs-577) by @Avyukth
+- **cli**: Add unified mcp-agent-mail binary with library refactoring by @Avyukth
+- Merge video walkthrough automation changes by @Avyukth
+- Enable compose message in inbox and fix build by @Avyukth
+- Add systemd service, probar e2e test, and fix table scroll by @Avyukth
+- Implement recent activity api (rct) and update dependencies by @Avyukth
+- Implement tool metrics api (tlm) by @Avyukth
+- Implement outbox endpoint test and CC/BCC recipients test by @Avyukth
+- Implement jwt/jwks authentication by @Avyukth
+- Implement git archive integration by @Avyukth
+- Implement project siblings endpoints by @Avyukth
+- Integrate antigravity agent and implement rbac middleware by @Avyukth
+- **macros**: Add 5 built-in macros on project creation (4mw) by @Avyukth
+- **api**: Add CC/BCC recipient support (fw1, yyh) by @Avyukth
+- **api**: Add /api/outbox endpoint (ctb) by @Avyukth
+- **scripts**: Add integration scripts for 9 coding agents (dlf) by @Avyukth
+- **web-ui**: Switch from FontAwesome to Lucide icons with responsive design by @Avyukth
+- **web-ui-leptos**: Implement ComposeMessage modal and MessageDetail page by @Avyukth
+- **web-ui-leptos**: Implement Inbox page with cascading selects by @Avyukth
+- **web-ui-leptos**: Implement ProjectDetail page with agent registration by @Avyukth
+- **web-ui-leptos**: Implement Projects page with create form by @Avyukth
+- **web-ui-leptos**: Implement Dashboard with API integration by @Avyukth
+- **web-ui-leptos**: Create Leptos crate scaffold with Trunk by @Avyukth
+- **e2e**: Add jugar-probar E2E test framework and documentation by @Avyukth
+- **lib-core**: Add flexible project identifier lookup and auto-init git by @Avyukth
+- **web-ui**: Add PWA manifest, icons, and fix dev configuration by @Avyukth
+- Add Makefile, justfile, and dev scripts for unified workflow by @Avyukth
+- **lib-core**: Implement export_mailbox with HTML/JSON/Markdown formats by @Avyukth
+- **mcp-stdio**: Add file reservation force_release and renew tools by @Avyukth
+- **mcp-stdio**: Expose missing MCP tools in schema by @Avyukth
+- Phase 5 production hardening - tracing, metrics, health probes, Docker by @Avyukth
+- **mcp-stdio**: Complete MCP tool router with 28+ tools by @Avyukth
+- **web-ui**: Complete Phase 2 SvelteKit frontend pages by @Avyukth
+- **web-ui**: Initialize SvelteKit frontend with Tailwind by @Avyukth
+- **lib-core**: Add MessageBmc::search method using FTS5 by @Avyukth
+- Implement file_reservation_paths tool (closes mcp-agent-mail-rs-geo.2) by @Avyukth
+- Implement FileReservation model and BMC (closes mcp-agent-mail-rs-geo.1) by @Avyukth
+- Implement initial API endpoints and update to Libsql by @Avyukth
+- Initial Rust backend implementation (Phase 1 complete) by @Avyukth
 
-- **Agent Management**
-  - Agent registration and identity management
-  - Agent profiles and capabilities tracking
-  - Cross-project agent contacts
-  - Contact request/response workflow
+### Miscellaneous
 
-- **Messaging System**
-  - Send/receive messages with multiple recipients
-  - Thread-based conversation tracking
-  - Read status and acknowledgments
-  - Message search across projects
-  - Inbox/outbox management
+- Remove generated/temp files from git tracking by @Avyukth
+- Remove generated files from git tracking by @Avyukth
+- Add branch protection via local git hooks by @Avyukth
+- Remove duplicate mutants.toml (use .cargo/mutants.toml) by @Avyukth
+- Reorganize cargo-mutants config and fix clippy warnings by @Avyukth
+- Remove mutants.out directories from git tracking by @Avyukth
+- Add PMAT config with build-static exclusions by @Avyukth
+- Add mutants.out and .codex to gitignore by @Avyukth
+- Enable PMAT-recommended lints for code quality by @Avyukth
+- Add cargo-mutants configuration for mutation testing by @Avyukth
+- Gitignore data dirs and playwright snapshots by @Avyukth
+- Sync beads issues and minor cli cleanup by @Avyukth
+- Sync beads state (mcpmail-7zb1 closed) by @Avyukth
+- Add .mcp.json to gitignore by @Avyukth
+- **beads**: Add UI/UX improvement beads from design critique by @Avyukth
+- **beads**: Sync beads state by @Avyukth
+- **beads**: Track API audit follow-up tasks by @Avyukth
+- Remove unused imports (dead code cleanup) by @Avyukth
+- **mcp**: Add claude-in-chrome and magicui MCP servers by @Avyukth
+- **beads**: Resolve merge conflict from main by @Avyukth
+- **beads**: Enable sync-branch config by @Avyukth
+- **beads**: Reinitialize with mcpmail- prefix by @Avyukth
+- **beads**: Rename prefix from mcp-agent-mail-rs- to mcpmail- by @Avyukth
+- **beads**: Sync issues before prefix rename by @Avyukth
+- **beads**: Add deletions manifest from bd doctor --fix by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-0em2 - NTM-003 complete by @Avyukth
+- **beads**: Configure sync-branch in config.yaml by @Avyukth
+- **beads**: Demote RUSTSEC-2023-0071 to P4 backlog by @Avyukth
+- **beads**: Add review issues for capability auto-grant by @Avyukth
+- Compress AGENTS.md and update web-ui configs by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-h4gi - REST API workflow verified by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-kiit - MCP tools workflow verified by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-6t99, add capability limitation note by @Avyukth
+- **beads**: Add no-code workflow test bead by @Avyukth
+- **beads**: Add test bead for agent workflow validation by @Avyukth
+- **beads**: Close SVELTE-003 - shadcn-svelte initialized by @Avyukth
+- **beads**: Prioritize NTM compatibility tasks by @Avyukth
+- **beads**: Add NTM compatibility epic and tasks by @Avyukth
+- Ignore startlock files by @Avyukth
+- Add AGENTS copy.md to gitignore by @Avyukth
+- **beads**: Create SvelteKit transformation epic and tasks by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-vgs4 - robot-* tests complete by @Avyukth
+- Sync pending changes by @Avyukth
+- **beads**: Sync issues.jsonl by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-9ue (beads CLI worktree bug) by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-4xic (robot-help flag complete) by @Avyukth
+- **beads**: Prioritize CLI tasks to P0 by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-enrt (quota system already implemented) by @Avyukth
+- **beads**: Create Python-Rust parity epic with 7 tasks by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-nbj2 (robot-help flag review) by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-nv1b by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-7wu archive browser task by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-f6w - existing routes cover Python web UI by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-7j4 file locks API endpoint task by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-uu10 performance benchmark tests task by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-hq8p mail viewer E2E tests task by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-c3cr archive browser tests task by @Avyukth
+- Sync beads state by @Avyukth
+- Sync beads state by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-jfv time travel tests by @Avyukth
+- **beads**: Close 3 security header tasks (already implemented) by @Avyukth
+- **beads**: Close LEPTOS epic and all remaining tasks by @Avyukth
+- **beads**: Close mcp-agent-mail-rs-ncfl after panic hook implementation by @Avyukth
+- **beads**: Close LEPTOS-005 (mcp-agent-mail-rs-crlu) by @Avyukth
+- **beads**: Close ORCH-1 (r3a9) and ORCH-2 (q434) after review fix by @Avyukth
+- **beads**: Create 14 LEPTOS beads for UI parity work by @Avyukth
+- **beads**: Close GAP-l8l4 and GAP-4aqw after review validation by @Avyukth
+- **beads**: Close integration subtasks already implemented by @Avyukth
+- **beads**: Add security hardening tasks to epic 3gs by @Avyukth
+- **beads**: Close PORT-5.1 and PORT-5.2 after reviewer verification by @Avyukth
+- **beads**: Add Multi-Agent Orchestration subtasks (ORCH-1 to ORCH-9) by @Avyukth
+- Add FTS test file and format by @Avyukth
+- **beads**: Close P0 guard implementation bead by @Avyukth
+- Update lockfile and close tasks by @Avyukth
+- **beads**: Close PORT-2.1-INT task by @Avyukth
+- **beads**: Close PORT-2.3 file handle audit task by @Avyukth
+- **beads**: Add scaffolding notes and integration subtasks for PORT Epic by @Avyukth
+- Migrate from cargo-husky to prek by @Avyukth
+- Sync beads issues by @Avyukth
+- Formatting cleanup and beads sync by @Avyukth
+- Exclude .claude/memory/ from version control by @Avyukth
+- Format and sync beads by @Avyukth
+- Format message_detail.rs by @Avyukth
+- Sync beads tracking by @Avyukth
+- Sanitize beads paths + add skills reference by @Avyukth
+- **beads**: Add Single Binary Sidecar epic and wasmtime security fix tasks by @Avyukth
+- Production hardening - clippy fixes, deny.toml, workspace lints by @Avyukth
+- Update to Rust 2024 edition, add repo metadata, update deps by @Avyukth
+- Update lockfile by @Avyukth
+- Ignore local plan criticism docs by @Avyukth
+- **beads**: Close completed production hardening tasks by @Avyukth
+- **beads**: Close 7 P1 tasks (rkm, azc, y58, fw1, 4mw, if9, ctb) by @Avyukth
+- **beads**: Sync tracker state by @Avyukth
+- **beads**: Close 6 P1 tasks by @Avyukth
+- **beads**: Close 3 more web-ui tasks by @Avyukth
+- **beads**: Close 39 web-ui tasks (deprioritized) by @Avyukth
+- **beads**: Close 5 P0 tasks by @Avyukth
+- **beads**: Close 577.2 installer task by @Avyukth
+- **beads**: Close bd-577.1 unified CLI binary task by @Avyukth
+- Remove plan criticism from git tracking by @Avyukth
+- Fix clippy warnings and remove unused dependencies by @Avyukth
+- Add test coverage issues from code review by @Avyukth
+- Create beads tasks for all Python parity gaps by @Avyukth
+- **web-ui-leptos**: Verify Tailwind CSS build pipeline by @Avyukth
+- **beads**: Add web-ui production hardening epic and tasks by @Avyukth
+- **bd**: Update rdc.8 status to closed after implementation by @Avyukth
+- **bd**: Close Phase 7 Test Coverage Expansion epic by @Avyukth
+- **bd**: Sync beads after closing Phase 7 tasks by @Avyukth
+- **bd**: Add Phase 7 test coverage expansion epic with 8 tasks by @Avyukth
+- **bd**: Sync beads issues after Phase 6 completion by @Avyukth
+- Add beads issue tracking and multi-agent coordination docs by @Avyukth
 
-- **File Coordination**
-  - File reservation system (exclusive/shared locks)
-  - Path pattern matching with glob support
-  - TTL-based automatic expiration
-  - Force release for emergency override
-  - Reservation renewal
+### Performance
 
-- **Build Coordination**
-  - Build slot management for CI/CD isolation
-  - Concurrent build prevention
-  - Slot renewal and release
+- **lib-core**: Defer git commits to background tasks for lower latency by @Avyukth
 
-- **Workflow Automation**
-  - Macro/workflow registration and invocation
-  - Built-in workflows (start_session, prepare_thread, file_reservation_cycle, contact_handshake, broadcast_message)
-  - Custom macro definitions with JSON steps
-  - Macro listing and management
+### Refactoring
 
-- **Product Management**
-  - Multi-repo coordination via products
-  - Project-to-product linking
-  - Product-wide inbox aggregation
+- **bench**: Extract helpers to reduce main complexity by @Avyukth
+- **lib-mcp**: Extract helpers from read_resource_impl to reduce complexity by @Avyukth
+- **deploy**: Use env vars for GitHub Pages deployment by @Avyukth
+- **lib-mcp**: Delegate project/agent tools to domain modules by @Avyukth
+- **lib-mcp**: Extract macros, products, messaging to domain modules by @Avyukth
+- **web-ui**: Update Projects and Agents pages with shadcn components by @Avyukth
+- **web-ui**: Update inbox pages with shadcn components by @Avyukth
+- **web-ui**: Replace raw HTML elements with shadcn/ui components in Mail page by @Avyukth
+- **archive**: Extract handle_archive_command into focused functions by @Avyukth
+- **web-ui**: Replace emojis with Lucide icons by @Avyukth
+- **capability**: Add constants and shared grant_defaults function by @Avyukth
+- **lib-core**: Extract file_touched_in_commit helper to reduce nesting by @Avyukth
+- Remove hardcoded ports, use env vars for config by @Avyukth
+- **lib-mcp**: Extract tool implementations to domain modules by @Avyukth
+- **lib-mcp**: Phase 2 - add helpers module and migrate project lookups by @Avyukth
+- **lib-mcp**: Phase 1 - extract params to tools/params.rs by @Avyukth
+- **iwvb**: Rewrite ProjectCard to use shadcn-like components by @Avyukth
+- **lib-server**: Production hardening - complexity, security, error handling by @Avyukth
+- **lib-core**: Reduce commit_message_to_git complexity from 12 to 6 by @Avyukth
+- Reduce cyclomatic complexity across services and libs by @Avyukth
 
-- **API Endpoints**
-  - RESTful HTTP API on port 8765
-  - Health and readiness checks
-  - JWT and Bearer token authentication
-  - Rate limiting (100 req/min per token)
-  - Attachment upload/download
+### Styling
 
-- **Web UI** (Leptos WASM)
-  - Inbox viewer with agent filtering
-  - Message detail view
-  - Compose message interface
-  - Dark mode support
-  - Responsive design
+- Fix import ordering in test module by @Avyukth
+- **web-ui**: Restore 8px rounded corners for softer aesthetic by @Avyukth
+- **lib-server**: Reorder imports by @Avyukth
+- **web-ui**: Change color theme from purple to teal by @Avyukth
+- Fix cargo fmt formatting issues by @Avyukth
+- Run cargo fmt --all to fix CI formatting check by @Avyukth
 
-- **Development Tools**
-  - Unified CLI (mcp-agent-mail binary)
-  - Multiple server modes (http, mcp, stdio)
-  - Database migrations (auto-run on start)
-  - Environment-based configuration (12-factor)
+### Testing
 
-- **Performance**
-  - 44.6x throughput vs Python reference (15,200 vs 341 req/s)
-  - Sub-10ms P99 latency for MCP calls
-  - 62,316 req/s for health endpoint
-  - Supports 100+ concurrent agents
+- **lib-mcp**: Add tool dispatch tests for mutation coverage by @Avyukth
+- **lib-mcp**: Add docs tests and fix mutants.toml config by @Avyukth
+- **lib-mcp**: Add archive and attachments tool tests by @Avyukth
+- **lib-mcp**: Add comprehensive tests for macros, export, reviews, files, precommit by @Avyukth
+- **lib-mcp**: Add TDD tests for schema auto-generation by @Avyukth
+- **lib-core**: Fix remaining test files for ProjectId/AgentId newtypes by @Avyukth
+- **lib-core**: Migrate precommit_guard_tests to ProjectId newtypes by @Avyukth
+- **lib-core**: Migrate performance_benchmarks to ProjectId/AgentId newtypes by @Avyukth
+- **lib-core**: Migrate tool_metric_tests to ProjectId/AgentId newtypes by @Avyukth
+- **lib-core**: Migrate overseer_message_tests to ProjectId/AgentId newtypes by @Avyukth
+- **lib-core**: Migrate 12 test files to ProjectId/AgentId newtypes by @Avyukth
+- **lib-core**: Add comprehensive escalation tests by @Avyukth
+- **lib-mcp**: Phase 4 - add domain module tests by @Avyukth
+- **lib-core**: PORT-4.3 complete 39 share/export security tests by @Avyukth
+- **lib-server**: PORT-4.2 HTTP Transport & Rate Limit Infrastructure Tests by @Avyukth
+- **lib-core**: Add ORCH-9 multi-agent orchestration integration tests by @Avyukth
+- **core**: Add comprehensive verification for Guard System (Epic 3) by @Avyukth
+- **lib-core**: Add PORT-7.3 image edge case validation and tests by @Avyukth
+- **lib-core**: Add PORT-7.1 concurrency tests (12 tests) by @Avyukth
+- **lib-core**: Add PORT-7.2 worktree tests using git2 (Rust-native) by @Avyukth
+- **lib-core**: Add T6 integration tests for list_pending_reviews by @Avyukth
+- **zcv8**: Add comprehensive tests for MessageDetailHeader by @Avyukth
+- **xss**: Add gap test cases for attachment, markdown, protocol, unicode by @Avyukth
+- **1fka**: Add XSS Security Test Corpus by @Avyukth
+- **lib-core**: Add commit_archive tests to export_tests by @Avyukth
+- **lib-core**: Add 42 tests for 5 remaining BMC modules by @Avyukth
+- **lib-core**: Add 31 tests for file_reservation, build_slot, tool_metric, activity BMCs by @Avyukth
+- **lib-core**: Add 13 TDD tests for message archival helpers by @Avyukth
+- **lib-mcp**: Add comprehensive TDD tests for macro tools by @Avyukth
+- **lib-core**: Add batch recipient tests for MessageBmc::create by @Avyukth
+- Add navigation-only walkthrough script by @Avyukth
+- **mcp-server**: Add JWT authentication tests with mock JWKS by @Avyukth
+- **web-ui**: Add Playwright E2E tests for messaging and projects by @Avyukth
+- **mcp-stdio**: Add product workflow test (closes rdc.6) by @Avyukth
+- **lib-core**: Add thread listing test (closes rdc.4) by @Avyukth
+- **mcp-stdio**: Add file reservation conflict test (closes rdc.5) by @Avyukth
+- **lib-core**: Add mark_read and acknowledge tests (closes rdc.7) by @Avyukth
+- **lib-core**: Add FTS5 search integration test (closes rdc.1) by @Avyukth
+- **mcp-stdio**: Add integration test suite by @Avyukth
+- **lib-core**: Add integration test infrastructure by @Avyukth
 
-- **Testing**
-  - Integration tests for all BMC layers
-  - MCP protocol compliance tests
-  - Concurrent agent benchmarks
+### Bd
 
-- **Documentation**
-  - Architecture documentation (ARCHITECTURE.md)
-  - Walkthrough guide (WALKTHROUGH.md)
-  - Universal agent operating manual (AGENTS.md)
-  - Integration configs for Claude, Cline, Cursor
-  - MCP tool reference (45 tools)
+- Close etx (CHANGELOG.md) and j1a (rustdoc improvements) by @Avyukth
+- Create production hardening epic with 12 tasks from PMAT analysis by @Avyukth
 
-### Security
-- SQL injection prevention via parameterized queries
-- Bearer token and JWT authentication
-- Rate limiting to prevent abuse
-- File path validation for attachments
-- Git integration with safe operations
+### Beads
 
-### Performance Metrics
-- MCP Throughput: 15,200 req/s
-- MCP P99 Latency: 7.2ms
-- REST Health Endpoint: 62,316 req/s
-- Concurrent Agent Support: 100+ verified
+- Add 14 Python drop-in replacement gap analysis issues by @Avyukth
+- Add P0 pending reviews API epic and tasks (T1-T6) by @Avyukth
+- Add UI enhancement epics and tasks for Gmail-style inbox by @Avyukth
 
-### Dependencies
-- Rust 2024 edition
-- Axum 0.8 (HTTP framework)
-- libsql (SQLite driver)
-- rmcp (MCP protocol)
-- Leptos (WASM frontend)
-- tokio (async runtime)
+### Review
 
-### Known Issues
-- None
+- Approve 11 shadcn/ui component tasks by @Avyukth
 
 ---
-
-## Release Links
-- [v0.1.0](https://github.com/Avyukth/mcp-agent-mail-rs/releases/tag/v0.1.0) - Initial release
-
-## Repository
-- GitHub: https://github.com/Avyukth/mcp-agent-mail-rs
-- Issues: https://github.com/Avyukth/mcp-agent-mail-rs/issues
+*Generated by [git-cliff](https://git-cliff.org/)*
