@@ -122,6 +122,10 @@ fn compute_git_common_dir_slug(path: &str) -> Option<String> {
 mod tests {
     use super::*;
 
+    // =========================================================================
+    // Unit tests for internal helper functions
+    // =========================================================================
+
     #[test]
     fn test_short_sha1_returns_correct_length() {
         let hash = short_sha1("github.com/user/repo", 10);
@@ -259,5 +263,288 @@ mod tests {
     fn test_compute_dir_slug_safe_handles_root_path() {
         let slug = compute_dir_slug_safe("/");
         assert!(!slug.is_empty());
+    }
+
+    mod git_integration {
+        use super::*;
+        use tempfile::TempDir;
+
+        fn create_git_repo(path: &std::path::Path) -> git2::Repository {
+            git2::Repository::init(path).expect("Failed to init git repo")
+        }
+
+        fn create_initial_commit(repo: &git2::Repository) -> git2::Oid {
+            let sig = git2::Signature::now("Test", "test@test.com").unwrap();
+            let tree_id = repo.index().unwrap().write_tree().unwrap();
+            let tree = repo.find_tree(tree_id).unwrap();
+            repo.commit(Some("HEAD"), &sig, &sig, "Initial commit", &tree, &[])
+                .expect("create initial commit")
+        }
+
+        #[test]
+        fn test_git_remote_mode_returns_repo_name_with_hash() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path().join("my-project");
+            std::fs::create_dir_all(&repo_path).unwrap();
+
+            let repo = create_git_repo(&repo_path);
+            create_initial_commit(&repo);
+
+            repo.remote("origin", "https://github.com/testuser/my-awesome-repo.git")
+                .expect("create remote");
+
+            let slug = compute_project_slug(
+                repo_path.to_str().unwrap(),
+                ProjectIdentityMode::GitRemote,
+                "origin",
+            );
+
+            assert!(
+                slug.starts_with("my-awesome-repo-"),
+                "Slug should start with repo name from URL, got: {}",
+                slug
+            );
+
+            let parts: Vec<&str> = slug.rsplitn(2, '-').collect();
+            assert_eq!(parts.len(), 2, "Slug should have name-hash format");
+            assert_eq!(
+                parts[0].len(),
+                10,
+                "Hash should be 10 chars for GitRemote mode"
+            );
+            assert!(
+                parts[0].chars().all(|c| c.is_ascii_hexdigit()),
+                "Hash should be hex chars only"
+            );
+        }
+
+        #[test]
+        fn test_git_remote_mode_falls_back_to_dir_when_no_remote() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path().join("fallback-project");
+            std::fs::create_dir_all(&repo_path).unwrap();
+
+            let repo = create_git_repo(&repo_path);
+            create_initial_commit(&repo);
+
+            let slug = compute_project_slug(
+                repo_path.to_str().unwrap(),
+                ProjectIdentityMode::GitRemote,
+                "origin",
+            );
+
+            assert!(
+                slug.starts_with("fallback-project-"),
+                "Should fall back to dir mode when no remote, got: {}",
+                slug
+            );
+
+            let parts: Vec<&str> = slug.rsplitn(2, '-').collect();
+            assert_eq!(parts[0].len(), 8, "Dir mode uses 8-char hash");
+        }
+
+        #[test]
+        fn test_git_toplevel_mode_returns_workdir_name_with_hash() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path().join("toplevel-test");
+            std::fs::create_dir_all(&repo_path).unwrap();
+
+            let repo = create_git_repo(&repo_path);
+            create_initial_commit(&repo);
+
+            let slug = compute_project_slug(
+                repo_path.to_str().unwrap(),
+                ProjectIdentityMode::GitToplevel,
+                "origin",
+            );
+
+            assert!(
+                slug.starts_with("toplevel-test-"),
+                "Slug should start with workdir name, got: {}",
+                slug
+            );
+
+            let parts: Vec<&str> = slug.rsplitn(2, '-').collect();
+            assert_eq!(parts.len(), 2, "Slug should have name-hash format");
+            assert_eq!(
+                parts[0].len(),
+                10,
+                "Hash should be 10 chars for GitToplevel mode"
+            );
+        }
+
+        #[test]
+        fn test_git_toplevel_mode_falls_back_when_not_git_repo() {
+            let temp_dir = TempDir::new().unwrap();
+            let non_git_path = temp_dir.path().join("not-a-repo");
+            std::fs::create_dir_all(&non_git_path).unwrap();
+
+            let slug = compute_project_slug(
+                non_git_path.to_str().unwrap(),
+                ProjectIdentityMode::GitToplevel,
+                "origin",
+            );
+
+            assert!(
+                slug.starts_with("not-a-repo-"),
+                "Should fall back to dir mode, got: {}",
+                slug
+            );
+        }
+
+        #[test]
+        fn test_git_common_dir_mode_returns_repo_prefix_with_hash() {
+            let temp_dir = TempDir::new().unwrap();
+            let repo_path = temp_dir.path().join("common-dir-test");
+            std::fs::create_dir_all(&repo_path).unwrap();
+
+            let repo = create_git_repo(&repo_path);
+            create_initial_commit(&repo);
+
+            let slug = compute_project_slug(
+                repo_path.to_str().unwrap(),
+                ProjectIdentityMode::GitCommonDir,
+                "origin",
+            );
+
+            assert!(
+                slug.starts_with("repo-"),
+                "GitCommonDir mode should return 'repo-<hash>', got: {}",
+                slug
+            );
+
+            let parts: Vec<&str> = slug.rsplitn(2, '-').collect();
+            assert_eq!(parts[0].len(), 10, "Hash should be 10 chars");
+        }
+
+        #[test]
+        fn test_git_common_dir_mode_same_for_worktree_and_main() {
+            let temp_dir = TempDir::new().unwrap();
+            let main_repo_path = temp_dir.path().join("main-repo");
+            std::fs::create_dir_all(&main_repo_path).unwrap();
+
+            let repo = create_git_repo(&main_repo_path);
+            create_initial_commit(&repo);
+
+            let wt_path = temp_dir.path().join("worktree-1");
+            repo.worktree("wt-1", &wt_path, None)
+                .expect("create worktree");
+
+            let main_slug = compute_project_slug(
+                main_repo_path.to_str().unwrap(),
+                ProjectIdentityMode::GitCommonDir,
+                "origin",
+            );
+
+            let wt_slug = compute_project_slug(
+                wt_path.to_str().unwrap(),
+                ProjectIdentityMode::GitCommonDir,
+                "origin",
+            );
+
+            assert_eq!(
+                main_slug, wt_slug,
+                "Main repo and worktree should have same slug in GitCommonDir mode"
+            );
+        }
+
+        #[test]
+        fn test_git_common_dir_mode_falls_back_when_not_git_repo() {
+            let temp_dir = TempDir::new().unwrap();
+            let non_git_path = temp_dir.path().join("no-git-here");
+            std::fs::create_dir_all(&non_git_path).unwrap();
+
+            let slug = compute_project_slug(
+                non_git_path.to_str().unwrap(),
+                ProjectIdentityMode::GitCommonDir,
+                "origin",
+            );
+
+            assert!(
+                slug.starts_with("no-git-here-"),
+                "Should fall back to dir mode, got: {}",
+                slug
+            );
+        }
+
+        #[test]
+        fn test_git_remote_different_urls_produce_different_slugs() {
+            let temp_dir = TempDir::new().unwrap();
+
+            let repo1_path = temp_dir.path().join("repo1");
+            let repo2_path = temp_dir.path().join("repo2");
+            std::fs::create_dir_all(&repo1_path).unwrap();
+            std::fs::create_dir_all(&repo2_path).unwrap();
+
+            let repo1 = create_git_repo(&repo1_path);
+            create_initial_commit(&repo1);
+            repo1
+                .remote("origin", "https://github.com/user/project-alpha.git")
+                .unwrap();
+
+            let repo2 = create_git_repo(&repo2_path);
+            create_initial_commit(&repo2);
+            repo2
+                .remote("origin", "https://github.com/user/project-beta.git")
+                .unwrap();
+
+            let slug1 = compute_project_slug(
+                repo1_path.to_str().unwrap(),
+                ProjectIdentityMode::GitRemote,
+                "origin",
+            );
+
+            let slug2 = compute_project_slug(
+                repo2_path.to_str().unwrap(),
+                ProjectIdentityMode::GitRemote,
+                "origin",
+            );
+
+            assert_ne!(
+                slug1, slug2,
+                "Different remotes should produce different slugs"
+            );
+            assert!(slug1.starts_with("project-alpha-"));
+            assert!(slug2.starts_with("project-beta-"));
+        }
+
+        #[test]
+        fn test_git_remote_ssh_and_https_same_repo_same_hash() {
+            let temp_dir = TempDir::new().unwrap();
+
+            let repo_ssh_path = temp_dir.path().join("repo-ssh");
+            let repo_https_path = temp_dir.path().join("repo-https");
+            std::fs::create_dir_all(&repo_ssh_path).unwrap();
+            std::fs::create_dir_all(&repo_https_path).unwrap();
+
+            let repo_ssh = create_git_repo(&repo_ssh_path);
+            create_initial_commit(&repo_ssh);
+            repo_ssh
+                .remote("origin", "git@github.com:testuser/myrepo.git")
+                .unwrap();
+
+            let repo_https = create_git_repo(&repo_https_path);
+            create_initial_commit(&repo_https);
+            repo_https
+                .remote("origin", "https://github.com/testuser/myrepo.git")
+                .unwrap();
+
+            let slug_ssh = compute_project_slug(
+                repo_ssh_path.to_str().unwrap(),
+                ProjectIdentityMode::GitRemote,
+                "origin",
+            );
+
+            let slug_https = compute_project_slug(
+                repo_https_path.to_str().unwrap(),
+                ProjectIdentityMode::GitRemote,
+                "origin",
+            );
+
+            assert_eq!(
+                slug_ssh, slug_https,
+                "SSH and HTTPS URLs for same repo should produce same slug"
+            );
+        }
     }
 }
