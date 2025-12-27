@@ -7,7 +7,7 @@
 
 use lib_common::config::AppConfig;
 use lib_core::model::ModelManager;
-use lib_mcp::tools::{get_tool_schemas, AgentMailService};
+use lib_mcp::tools::{AgentMailService, get_tool_schemas};
 use std::sync::Arc;
 
 const BUILD_SLOT_TOOLS: &[&str] = &[
@@ -54,7 +54,12 @@ mod get_tool_schemas_filtering {
         let schemas_disabled = get_tool_schemas(false);
         let schemas_enabled = get_tool_schemas(true);
 
-        let common_tools = ["send_message", "list_inbox", "register_agent", "ensure_project"];
+        let common_tools = [
+            "send_message",
+            "list_inbox",
+            "register_agent",
+            "ensure_project",
+        ];
 
         for tool in common_tools {
             let found_disabled = schemas_disabled.iter().any(|s| s.name == tool);

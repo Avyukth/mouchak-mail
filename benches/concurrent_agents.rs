@@ -205,10 +205,7 @@ fn parse_args() -> Option<(u16, usize, u64)> {
 async fn wait_for_server(client: &Client, base_url: &str) -> Result<()> {
     println!("Waiting for server to be ready...");
     for _ in 0..60 {
-        if let Ok(res) = client
-            .get(format!("{}/health", base_url))
-            .send()
-            .await
+        if let Ok(res) = client.get(format!("{}/health", base_url)).send().await
             && res.status().is_success()
         {
             println!("Server is ready!");
@@ -402,8 +399,14 @@ async fn main() -> Result<()> {
     writeln!(file)?;
     writeln!(file, "## Results")?;
     writeln!(file)?;
-    writeln!(file, "| Test | Rate (req/s) | Success | P99 Latency | Result |")?;
-    writeln!(file, "|------|--------------|---------|-------------|--------|")?;
+    writeln!(
+        file,
+        "| Test | Rate (req/s) | Success | P99 Latency | Result |"
+    )?;
+    writeln!(
+        file,
+        "|------|--------------|---------|-------------|--------|"
+    )?;
 
     let mut results = Vec::new();
 

@@ -30,7 +30,10 @@ struct ResourceMessage<'a> {
 }
 
 /// Parse and validate the resource URI
-fn parse_resource_uri(uri: &url::Url, query: &std::collections::HashMap<String, String>) -> Result<(String, String, Option<String>, i64, bool), McpError> {
+fn parse_resource_uri(
+    uri: &url::Url,
+    query: &std::collections::HashMap<String, String>,
+) -> Result<(String, String, Option<String>, i64, bool), McpError> {
     let project_slug_param = query.get("project");
     let limit = query
         .get("limit")
@@ -48,7 +51,10 @@ fn parse_resource_uri(uri: &url::Url, query: &std::collections::HashMap<String, 
         ))?;
         let segments: Vec<&str> = uri
             .path_segments()
-            .ok_or(McpError::invalid_params("Invalid URI path".to_string(), None))?
+            .ok_or(McpError::invalid_params(
+                "Invalid URI path".to_string(),
+                None,
+            ))?
             .collect();
         if segments.is_empty() {
             return Err(McpError::invalid_params(
@@ -56,7 +62,11 @@ fn parse_resource_uri(uri: &url::Url, query: &std::collections::HashMap<String, 
                 None,
             ));
         }
-        (host.to_string(), segments[0].to_string(), segments.get(1).map(|s| (*s).to_string()))
+        (
+            host.to_string(),
+            segments[0].to_string(),
+            segments.get(1).map(|s| (*s).to_string()),
+        )
     } else {
         let resource_type = uri.host_str().ok_or(McpError::invalid_params(
             "URI missing resource type".to_string(),
@@ -64,21 +74,35 @@ fn parse_resource_uri(uri: &url::Url, query: &std::collections::HashMap<String, 
         ))?;
         let segments: Vec<&str> = uri
             .path_segments()
-            .ok_or(McpError::invalid_params("Invalid URI path".to_string(), None))?
+            .ok_or(McpError::invalid_params(
+                "Invalid URI path".to_string(),
+                None,
+            ))?
             .collect();
         let resource_id = segments.first().map(|s| (*s).to_string());
-        let slug = project_slug_param.map(|s| s.to_string()).unwrap_or_default();
+        let slug = project_slug_param
+            .map(|s| s.to_string())
+            .unwrap_or_default();
         (slug, resource_type.to_string(), resource_id)
     };
 
-    Ok((project_slug, resource_type, resource_id, limit, include_bodies))
+    Ok((
+        project_slug,
+        resource_type,
+        resource_id,
+        limit,
+        include_bodies,
+    ))
 }
 
 /// Handle identity resource type
 fn handle_identity_resource(uri: &url::Url, uri_str: &str) -> Result<ReadResourceResult, McpError> {
     let path = uri.path();
     if path.is_empty() {
-        return Err(McpError::invalid_params("Missing identity path".to_string(), None));
+        return Err(McpError::invalid_params(
+            "Missing identity path".to_string(),
+            None,
+        ));
     }
     let data = serde_json::json!({
         "path": path,
@@ -166,7 +190,11 @@ async fn handle_mailbox_resource(
             id: m.id,
             sender_name: &m.sender_name,
             subject: &m.subject,
-            body_md: if include_bodies { Some(&m.body_md) } else { None },
+            body_md: if include_bodies {
+                Some(&m.body_md)
+            } else {
+                None
+            },
             thread_id: m.thread_id.as_ref(),
             importance: &m.importance,
             created_ts: m.created_ts,
@@ -195,7 +223,11 @@ async fn handle_thread_resource(
             id: m.id,
             sender_name: &m.sender_name,
             subject: &m.subject,
-            body_md: if include_bodies { Some(&m.body_md) } else { None },
+            body_md: if include_bodies {
+                Some(&m.body_md)
+            } else {
+                None
+            },
             thread_id: m.thread_id.as_ref(),
             importance: &m.importance,
             created_ts: m.created_ts,
@@ -270,8 +302,16 @@ pub async fn read_resource_impl(
                 "Missing agent name".to_string(),
                 None,
             ))?;
-            handle_mailbox_resource(ctx, mm, project_id, agent_name, limit, include_bodies, false)
-                .await?
+            handle_mailbox_resource(
+                ctx,
+                mm,
+                project_id,
+                agent_name,
+                limit,
+                include_bodies,
+                false,
+            )
+            .await?
         }
         "thread" => {
             let thread_id_str = resource_id.as_deref().ok_or(McpError::invalid_params(
