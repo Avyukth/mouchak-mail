@@ -73,39 +73,51 @@ detect_cline() {
 }
 
 find_mcp_server() {
-    log_info "Locating MCP server binary..."
+    log_info "Locating MCP Agent Mail binary..."
     
-    if command -v mcp-server &> /dev/null; then
-        MCP_SERVER_PATH=$(which mcp-server)
-        log_success "Found mcp-server: $MCP_SERVER_PATH"
+    if [[ -n "${MCP_SERVER_PATH:-}" ]] && [[ -x "$MCP_SERVER_PATH" ]]; then
+        log_success "Using provided MCP_SERVER_PATH: $MCP_SERVER_PATH"
+        return 0
+    fi
+    
+    if command -v am &> /dev/null; then
+        MCP_SERVER_PATH=$(command -v am)
+        log_success "Found 'am' alias: $MCP_SERVER_PATH"
+        return 0
+    fi
+    
+    if command -v mcp-agent-mail &> /dev/null; then
+        MCP_SERVER_PATH=$(command -v mcp-agent-mail)
+        log_success "Found mcp-agent-mail: $MCP_SERVER_PATH"
         return 0
     fi
     
     local target_paths=(
-        "$PROJECT_ROOT/target/release/mcp-server"
-        "$PROJECT_ROOT/target/debug/mcp-server"
+        "$PROJECT_ROOT/target/release/mcp-agent-mail"
+        "$PROJECT_ROOT/target/debug/mcp-agent-mail"
+        "$HOME/.local/bin/am"
+        "$HOME/.cargo/bin/mcp-agent-mail"
     )
     
     for path in "${target_paths[@]}"; do
         if [[ -x "$path" ]]; then
             MCP_SERVER_PATH="$path"
-            log_success "Found mcp-server: $MCP_SERVER_PATH"
+            log_success "Found MCP Agent Mail: $MCP_SERVER_PATH"
             return 0
         fi
     done
     
-    MCP_SERVER_PATH="mcp-server"
-    log_warn "mcp-server not found, using 'mcp-server' (must be in PATH)"
-    return 0
+    log_error "MCP Agent Mail binary not found!"
+    echo "  Install with: cargo install --path crates/services/mcp-agent-mail"
+    return 1
 }
 
 generate_mcp_config() {
     cat <<EOF
 {
   "command": "$MCP_SERVER_PATH",
-  "args": ["--stdio"],
+  "args": ["serve", "mcp", "--transport", "stdio"],
   "env": {
-    "MCP_AGENT_MAIL_PORT": "$MCP_SERVER_PORT",
     "RUST_LOG": "info"
   },
   "disabled": false,
@@ -162,7 +174,7 @@ verify_installation() {
     if curl -s "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/api/health" &> /dev/null; then
         log_success "MCP Agent Mail server is running on port $MCP_SERVER_PORT"
     else
-        log_warn "MCP Agent Mail server not responding on port $MCP_SERVER_PORT"
+        log_info "Server not running (STDIO mode will start automatically)"
     fi
 }
 
@@ -174,6 +186,7 @@ print_summary() {
     echo ""
     echo "Configuration:"
     echo "  • Server: $MCP_SERVER_NAME"
+    echo "  • Binary: $MCP_SERVER_PATH"
     echo "  • Port: $MCP_SERVER_PORT"
     echo "  • Config: $CLINE_VSCODE_CONFIG"
     echo ""
@@ -223,7 +236,12 @@ main() {
     print_header
     check_dependencies
     detect_cline
-    find_mcp_server
+    
+    if ! find_mcp_server; then
+        log_error "Cannot proceed without MCP Agent Mail binary"
+        exit 1
+    fi
+    
     update_cline_config
     verify_installation
     print_summary

@@ -80,52 +80,90 @@ detect_claude_code() {
 }
 
 find_mcp_server() {
-    log_info "Locating MCP server binary..."
+    log_info "Locating MCP Agent Mail binary..."
     
-    # Check if mcp-server is in PATH
-    if command -v mcp-server &> /dev/null; then
-        MCP_SERVER_PATH=$(which mcp-server)
-        log_success "Found mcp-server: $MCP_SERVER_PATH"
+    if [[ -n "${MCP_SERVER_PATH:-}" ]] && [[ -x "$MCP_SERVER_PATH" ]]; then
+        log_success "Using provided MCP_SERVER_PATH: $MCP_SERVER_PATH"
         return 0
     fi
     
-    # Check project target directories
+    if command -v am &> /dev/null; then
+        MCP_SERVER_PATH=$(command -v am)
+        log_success "Found 'am' alias: $MCP_SERVER_PATH"
+        return 0
+    fi
+    
+    if command -v mcp-agent-mail &> /dev/null; then
+        MCP_SERVER_PATH=$(command -v mcp-agent-mail)
+        log_success "Found mcp-agent-mail: $MCP_SERVER_PATH"
+        return 0
+    fi
+    
     local target_paths=(
-        "$PROJECT_ROOT/target/release/mcp-server"
-        "$PROJECT_ROOT/target/debug/mcp-server"
+        "$PROJECT_ROOT/target/release/mcp-agent-mail"
+        "$PROJECT_ROOT/target/debug/mcp-agent-mail"
+        "$HOME/.local/bin/am"
+        "$HOME/.cargo/bin/mcp-agent-mail"
     )
     
     for path in "${target_paths[@]}"; do
         if [[ -x "$path" ]]; then
             MCP_SERVER_PATH="$path"
-            log_success "Found mcp-server: $MCP_SERVER_PATH"
+            log_success "Found MCP Agent Mail: $MCP_SERVER_PATH"
             return 0
         fi
     done
     
-    # Default to expecting it in PATH
-    MCP_SERVER_PATH="mcp-server"
-    log_warn "mcp-server not found, using 'mcp-server' (must be in PATH)"
-    return 0
+    log_error "MCP Agent Mail binary not found!"
+    echo "  Install with: cargo install --path crates/services/mcp-agent-mail"
+    echo "  Or run: make install-am"
+    return 1
+}
+
+ensure_server_running() {
+    log_info "Checking if MCP Agent Mail server is running..."
+    
+    if curl -s "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/api/health" &> /dev/null; then
+        log_success "Server is running on port $MCP_SERVER_PORT"
+        return 0
+    fi
+    
+    log_warn "Server not running on port $MCP_SERVER_PORT"
+    
+    if [[ -z "$MCP_SERVER_PATH" ]]; then
+        log_error "Cannot start server - binary not found"
+        return 1
+    fi
+    
+    log_info "Starting MCP Agent Mail server in background..."
+    nohup "$MCP_SERVER_PATH" serve http --port "$MCP_SERVER_PORT" > /dev/null 2>&1 &
+    local server_pid=$!
+    
+    sleep 2
+    
+    if curl -s "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/api/health" &> /dev/null; then
+        log_success "Server started successfully (PID: $server_pid)"
+        return 0
+    else
+        log_warn "Server may take longer to start, proceeding anyway"
+        return 0
+    fi
 }
 
 generate_mcp_config() {
     local mode="${1:-http}"
     
     if [[ "$mode" == "stdio" ]]; then
-        # STDIO mode - direct process communication
         cat <<EOF
 {
   "command": "$MCP_SERVER_PATH",
-  "args": ["--stdio"],
+  "args": ["serve", "mcp", "--transport", "stdio"],
   "env": {
-    "MCP_AGENT_MAIL_PORT": "$MCP_SERVER_PORT",
     "RUST_LOG": "info"
   }
 }
 EOF
     else
-        # HTTP mode - SSE transport
         cat <<EOF
 {
   "url": "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/sse",
@@ -195,7 +233,6 @@ setup_project_scope() {
 verify_installation() {
     log_info "Verifying installation..."
     
-    # Check if config file exists and is valid JSON
     if [[ -f "$CLAUDE_CONFIG_USER" ]]; then
         if jq -e ".mcpServers[\"$MCP_SERVER_NAME\"]" "$CLAUDE_CONFIG_USER" &> /dev/null; then
             log_success "User config verified: $CLAUDE_CONFIG_USER"
@@ -204,12 +241,11 @@ verify_installation() {
         fi
     fi
     
-    # Check if server is running
     if curl -s "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/api/health" &> /dev/null; then
         log_success "MCP Agent Mail server is running on port $MCP_SERVER_PORT"
     else
         log_warn "MCP Agent Mail server not responding on port $MCP_SERVER_PORT"
-        log_info "Start it with: cargo run -p mcp-server"
+        log_info "Start it with: am serve http"
     fi
 }
 
@@ -221,6 +257,7 @@ print_summary() {
     echo ""
     echo "Configuration:"
     echo "  • Server: $MCP_SERVER_NAME"
+    echo "  • Binary: $MCP_SERVER_PATH"
     echo "  • Mode: $MODE"
     echo "  • Port: $MCP_SERVER_PORT"
     echo ""
@@ -230,8 +267,12 @@ print_summary() {
     echo ""
     echo "Next steps:"
     echo "  1. Restart Claude Code to load the new configuration"
-    echo "  2. Ensure mcp-server is running: cargo run -p mcp-server"
-    echo "  3. In Claude Code, the MCP tools should now be available"
+    if [[ "$MODE" == "http" ]]; then
+        echo "  2. Server should already be running (or start with: am serve http)"
+    else
+        echo "  2. STDIO mode: Claude Code will spawn the server automatically"
+    fi
+    echo "  3. MCP Agent Mail tools should now be available"
     echo ""
 }
 
@@ -302,17 +343,24 @@ if [[ "$MODE" != "http" && "$MODE" != "stdio" ]]; then
     exit 1
 fi
 
-# Main execution
 main() {
     print_header
     check_dependencies
     detect_claude_code
-    find_mcp_server
+    
+    if ! find_mcp_server; then
+        log_error "Cannot proceed without MCP Agent Mail binary"
+        exit 1
+    fi
     
     if [[ "$SCOPE" == "project" ]]; then
         setup_project_scope "$PROJECT_DIR"
     else
         setup_user_scope
+    fi
+    
+    if [[ "$MODE" == "http" ]]; then
+        ensure_server_running
     fi
     
     verify_installation

@@ -13,11 +13,19 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Default configuration
+MCP_SERVER_PORT="${MCP_AGENT_MAIL_PORT:-8765}"
+MCP_SERVER_HOST="${MCP_AGENT_MAIL_HOST:-127.0.0.1}"
 
 # Track results
 declare -a DETECTED=()
 declare -a CONFIGURED=()
 declare -a FAILED=()
+
+# Server binary path (will be set by find_mcp_server)
+MCP_SERVER_PATH=""
 
 log_info() { echo -e "${BLUE}ℹ${NC} $1"; }
 log_success() { echo -e "${GREEN}✓${NC} $1"; }
@@ -43,6 +51,72 @@ check_dependencies() {
     
     log_success "Dependencies satisfied"
     echo ""
+}
+
+find_mcp_server() {
+    log_info "Locating MCP Agent Mail binary..."
+    
+    if command -v am &> /dev/null; then
+        MCP_SERVER_PATH=$(command -v am)
+        log_success "Found 'am' alias: $MCP_SERVER_PATH"
+        return 0
+    fi
+    
+    if command -v mcp-agent-mail &> /dev/null; then
+        MCP_SERVER_PATH=$(command -v mcp-agent-mail)
+        log_success "Found mcp-agent-mail: $MCP_SERVER_PATH"
+        return 0
+    fi
+    
+    local target_paths=(
+        "$PROJECT_ROOT/target/release/mcp-agent-mail"
+        "$PROJECT_ROOT/target/debug/mcp-agent-mail"
+        "$HOME/.local/bin/am"
+        "$HOME/.cargo/bin/mcp-agent-mail"
+    )
+    
+    for path in "${target_paths[@]}"; do
+        if [[ -x "$path" ]]; then
+            MCP_SERVER_PATH="$path"
+            log_success "Found MCP Agent Mail: $MCP_SERVER_PATH"
+            return 0
+        fi
+    done
+    
+    log_error "MCP Agent Mail binary not found!"
+    echo "  Install with: cargo install --path crates/services/mcp-agent-mail"
+    echo "  Or run: make install-am"
+    return 1
+}
+
+ensure_server_running() {
+    log_info "Checking if MCP Agent Mail server is running..."
+    
+    if curl -s "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/api/health" &> /dev/null; then
+        log_success "Server is running on port $MCP_SERVER_PORT"
+        return 0
+    fi
+    
+    log_warn "Server not running on port $MCP_SERVER_PORT"
+    
+    if [[ -z "$MCP_SERVER_PATH" ]]; then
+        log_error "Cannot start server - binary not found"
+        return 1
+    fi
+    
+    log_info "Starting MCP Agent Mail server..."
+    "$MCP_SERVER_PATH" serve http --port "$MCP_SERVER_PORT" &
+    local server_pid=$!
+    
+    sleep 2
+    
+    if curl -s "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/api/health" &> /dev/null; then
+        log_success "Server started successfully (PID: $server_pid)"
+        return 0
+    else
+        log_error "Failed to start server"
+        return 1
+    fi
 }
 
 # Detection functions
@@ -171,6 +245,10 @@ run_configuration() {
         "antigravity:integrate_antigravity.sh"
     )
     
+    export MCP_SERVER_PATH
+    export MCP_SERVER_PORT
+    export MCP_SERVER_HOST
+    
     for agent in "${DETECTED[@]}"; do
         for mapping in "${script_map[@]}"; do
             local key="${mapping%%:*}"
@@ -223,8 +301,12 @@ print_summary() {
     fi
     
     echo ""
+    echo "Server:"
+    echo "  • Binary: $MCP_SERVER_PATH"
+    echo "  • Port: $MCP_SERVER_PORT"
+    echo ""
     echo "Next steps:"
-    echo "  1. Start the MCP server: cargo run -p mcp-server"
+    echo "  1. Server should already be running (or start with: am serve http)"
     echo "  2. Restart your coding agents to load the new configuration"
     echo "  3. MCP Agent Mail tools should now be available"
     echo ""
@@ -289,6 +371,11 @@ main() {
     print_header
     check_dependencies
     
+    if ! find_mcp_server; then
+        log_error "Cannot proceed without MCP Agent Mail binary"
+        exit 1
+    fi
+    
     if ! run_detection; then
         exit 0
     fi
@@ -298,6 +385,8 @@ main() {
         log_info "Detection only mode - skipping configuration"
         exit 0
     fi
+    
+    ensure_server_running
     
     run_configuration "${PASSTHROUGH_ARGS[@]}"
     print_summary
