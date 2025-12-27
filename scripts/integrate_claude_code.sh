@@ -156,6 +156,7 @@ generate_mcp_config() {
     if [[ "$mode" == "stdio" ]]; then
         cat <<EOF
 {
+  "type": "stdio",
   "command": "$MCP_SERVER_PATH",
   "args": ["serve", "mcp", "--transport", "stdio"],
   "env": {
@@ -166,8 +167,8 @@ EOF
     else
         cat <<EOF
 {
-  "url": "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/sse",
-  "transport": "sse"
+  "type": "sse",
+  "url": "http://$MCP_SERVER_HOST:$MCP_SERVER_PORT/sse"
 }
 EOF
     fi
