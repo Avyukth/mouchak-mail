@@ -80,5 +80,9 @@ path = "tests/auth_rate_limit.rs"
 name = "contact_policy"
 path = "tests/contact_policy.rs"
 
+[[test]]
+name = "negative_cases"
+path = "tests/negative_cases.rs"
+
 [lints]
 workspace = true
