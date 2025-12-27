@@ -1,6 +1,6 @@
 [package]
 name = "lib-core"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Core domain logic for MCP Agent Mail"
 repository = "https://github.com/Avyukth/mcp-agent-mail-rs"

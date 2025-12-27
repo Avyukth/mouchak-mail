@@ -5,6 +5,39 @@ All notable changes to MCP Agent Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/Avyukth/mcp-agent-mail-rs/compare/v0.1.0...v0.2.0) (2025-12-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **lib-core:** Dir mode now generates {dirname}-{hash} instead of full path slug.
+
+### security
+
+* **lib-core:** make Dir mode privacy-safe by default ([e26eafe](https://github.com/Avyukth/mcp-agent-mail-rs/commit/e26eafe84c0aaf55e9809a3b3459d27c33169ce2))
+
+
+### Features
+
+* **mistake-detection:** add Unix username detection for agent names ([0b9cfc4](https://github.com/Avyukth/mcp-agent-mail-rs/commit/0b9cfc4e1295b404b158768a8b883b31de48ac86))
+* **security:** privacy-safe project slug generation ([3c13d9b](https://github.com/Avyukth/mcp-agent-mail-rs/commit/3c13d9b45b00268b1438b3971185f6e3b21ced45))
+
+
+### Bug Fixes
+
+* address PR [#8](https://github.com/Avyukth/mcp-agent-mail-rs/issues/8) review feedback from Greptile and CodeRabbit ([b2695dc](https://github.com/Avyukth/mcp-agent-mail-rs/commit/b2695dc12f445227cd99550523a6f5736b7cf4f4))
+* **archive-browser:** implement path-based commit filtering ([1e05336](https://github.com/Avyukth/mcp-agent-mail-rs/commit/1e0533652b7357b7551139c924514aac645485c8))
+* **beads:** remove issue data negation for sync-branch mode ([53c1a8e](https://github.com/Avyukth/mcp-agent-mail-rs/commit/53c1a8e58f54a20f1cf405fcccb753570bb1e785))
+* **ci:** address cargo-audit and clippy warnings for PR [#9](https://github.com/Avyukth/mcp-agent-mail-rs/issues/9) ([30e65c7](https://github.com/Avyukth/mcp-agent-mail-rs/commit/30e65c77d12c2ce497370feacc56b4e66b27a420))
+* **mcp-agent-mail:** change unreachable pub to pub(crate) ([b9156e3](https://github.com/Avyukth/mcp-agent-mail-rs/commit/b9156e32e97b5ca8a33ddfdf83c197efa60a4dc3))
+* **mcp-stdio:** use McpConfig::from_env() for project identity settings ([16e1a23](https://github.com/Avyukth/mcp-agent-mail-rs/commit/16e1a23c4cbee7775fa627aa8fb0a081bc41c247))
+* **mistake-detection:** integrate Unix username detection into register_agent ([b9c0e9a](https://github.com/Avyukth/mcp-agent-mail-rs/commit/b9c0e9a06b120a692b0ada28d91e958dce62f666))
+* replace placeholder code with actual implementations ([0c6b716](https://github.com/Avyukth/mcp-agent-mail-rs/commit/0c6b71673d4fda1d7c32d62a1f04aa96451e37b2))
+* **scripts:** update integration scripts to use am alias and correct CLI args ([ed68bdf](https://github.com/Avyukth/mcp-agent-mail-rs/commit/ed68bdf92db5d08a6a1e9ef43279c108f4974a8e))
+* **scripts:** use correct MCP config format for Claude Code ([be0cd55](https://github.com/Avyukth/mcp-agent-mail-rs/commit/be0cd55659c0b79852f1397657eb1d1c400b2876))
+* **tests:** use generic username in project_identity test ([1c89c51](https://github.com/Avyukth/mcp-agent-mail-rs/commit/1c89c51bbf0d67c3be59fd76246259f429e84d27))
+* **tests:** use pub(crate) for test utilities to fix unreachable_pub warnings ([26bbbba](https://github.com/Avyukth/mcp-agent-mail-rs/commit/26bbbbafa17f503a67bc57943a9711aea088645f))
+
 ## [Unreleased]
 
 ### Security

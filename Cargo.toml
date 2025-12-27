@@ -16,7 +16,7 @@ members = [
 # Root package for benchmarks
 [package]
 name = "mcp-agent-mail-benches"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 publish = false
 repository = "https://github.com/Avyukth/mcp-agent-mail-rs"

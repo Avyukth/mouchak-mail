@@ -1,6 +1,6 @@
 [package]
 name = "mcp-stdio"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "MCP stdio server for Agent Mail - Claude Desktop and Antigravity integration"
 repository = "https://github.com/Avyukth/mcp-agent-mail-rs"
