@@ -24,8 +24,9 @@ test-results/
 # Local data directories (SQLite, archives)
 **/data/
 .sandboxes/
-docs/PLAN_CRITICISM_PRODUCTION_SPRINT.md
-docs/CRITICAL_GAP_ANALYSIS.md
+
+# Documentation (local working docs, not tracked)
+docs/
 
 # Benchmark results (generated)
 benchmark_results/
@@ -76,9 +77,10 @@ AGENTS-compressed.md
 README-QUICK.md
 INSTRUCTIONS.md
 
-blog.md 
-docs/LEPTOS_PARITY_CHECKLIST.md 
-docs/mcp-agent-mail-python-beads-diff.md 
-docs/mcp-agent-mail-python-tree.md 
-release-macos/ 
+# Blog drafts (local)
+blog.md
 blog_v2.md
+
+# Release artifacts (local builds)
+release-macos/
+release-linux/

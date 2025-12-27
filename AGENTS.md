@@ -2490,7 +2490,7 @@ At session start, each agent type registers with ALL required fields:
 **Required Fields for `register_agent`:**
 | Field | Type | Description |
 |-------|------|-------------|
-| `project_slug` | string | Project slug (URL-safe identifier, e.g., `users-amrit-documents-projects-rust-mouchak-mcp-agent-mail-rs`) |
+| `project_slug` | string | Project slug (URL-safe identifier, e.g., `mcp-agent-mail-rs`) |
 | `name` | string | Agent name (unique within project) |
 | `program` | string | Program identifier (e.g., `claude-code`, `antigravity`) |
 | `model` | string | Model being used (e.g., `claude-opus-4`, `claude-sonnet-4`) |
