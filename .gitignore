@@ -76,6 +76,8 @@ AGENTS-compressed.md
 README-QUICK.md
 INSTRUCTIONS.md
 
-# Lockfiles (use package.json for deps)
-bun.lockb
-**/bun.lockb
+blog.md 
+docs/LEPTOS_PARITY_CHECKLIST.md 
+docs/mcp-agent-mail-python-beads-diff.md 
+docs/mcp-agent-mail-python-tree.md 
+release-macos/ 
