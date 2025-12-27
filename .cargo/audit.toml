@@ -1,0 +1,26 @@
+# Cargo Audit Configuration
+# See: https://github.com/rustsec/rustsec/blob/main/cargo-audit/audit.toml.example
+
+[advisories]
+# RUSTSEC-2023-0071: rsa crate - Marvin Attack timing sidechannel
+# Status: No fixed version available upstream
+# Impact: DEV-DEPENDENCY ONLY - used for test key generation in lib-server
+# Risk: LOW - only affects test builds, not production
+# Tracking: https://github.com/RustCrypto/RSA/issues/400
+# Review: 2025-12-27 - Remove when rsa crate releases fix
+ignore = ["RUSTSEC-2023-0071"]
+informational_warnings = ["unmaintained"]
+severity_threshold = "low"
+
+[database]
+fetch = true
+stale = false
+
+[output]
+deny = []
+format = "terminal"
+quiet = false
+
+[yanked]
+enabled = true
+update_index = true

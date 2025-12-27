@@ -95,6 +95,25 @@ impl EscalationConfig {
     }
 }
 
+/// Project identity resolution mode for slug generation.
+///
+/// Controls how project slugs are computed to ensure privacy-safe identifiers.
+/// See Python reference: `_compute_project_slug()` in mcp_agent_mail/app.py
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ProjectIdentityMode {
+    /// Default: plain slugify (backward compatible but may leak path info)
+    #[default]
+    Dir,
+    /// Use Git remote URL to derive slug: `{repo_name}-{sha1_hash[:10]}`
+    /// Most privacy-safe option - derives from remote origin URL
+    GitRemote,
+    /// Use Git repository root directory name + hash
+    GitToplevel,
+    /// Use Git common dir (for worktrees) + hash
+    GitCommonDir,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct McpConfig {
     pub transport: String,
@@ -105,6 +124,16 @@ pub struct McpConfig {
     /// Enable git identity features
     #[serde(default)]
     pub git_identity_enabled: bool,
+    /// Project identity resolution mode for slug generation
+    #[serde(default)]
+    pub project_identity_mode: ProjectIdentityMode,
+    /// Remote name to use for git-remote mode (default: "origin")
+    #[serde(default = "default_project_identity_remote")]
+    pub project_identity_remote: String,
+}
+
+fn default_project_identity_remote() -> String {
+    "origin".to_string()
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -152,6 +181,18 @@ impl McpConfig {
                 .unwrap_or(3000),
             worktrees_enabled: parse_bool_env("WORKTREES_ENABLED"),
             git_identity_enabled: parse_bool_env("GIT_IDENTITY_ENABLED"),
+            project_identity_mode: std::env::var("PROJECT_IDENTITY_MODE")
+                .ok()
+                .and_then(|m| match m.to_lowercase().as_str() {
+                    "dir" => Some(ProjectIdentityMode::Dir),
+                    "git-remote" => Some(ProjectIdentityMode::GitRemote),
+                    "git-toplevel" => Some(ProjectIdentityMode::GitToplevel),
+                    "git-common-dir" => Some(ProjectIdentityMode::GitCommonDir),
+                    _ => None,
+                })
+                .unwrap_or_default(),
+            project_identity_remote: std::env::var("PROJECT_IDENTITY_REMOTE")
+                .unwrap_or_else(|_| default_project_identity_remote()),
         }
     }
 }
@@ -177,6 +218,8 @@ impl Default for AppConfig {
                 port: 3000,
                 worktrees_enabled: false,
                 git_identity_enabled: false,
+                project_identity_mode: ProjectIdentityMode::default(),
+                project_identity_remote: default_project_identity_remote(),
             },
             escalation: EscalationConfig::default(),
             quota: QuotaConfig::default(),
@@ -203,6 +246,8 @@ impl AppConfig {
             .set_default("mcp.port", 3000)?
             .set_default("mcp.worktrees_enabled", false)?
             .set_default("mcp.git_identity_enabled", false)?
+            .set_default("mcp.project_identity_mode", "dir")?
+            .set_default("mcp.project_identity_remote", "origin")?
             .set_default("escalation.ack_ttl_enabled", false)?
             .set_default("escalation.ack_ttl_seconds", 1800_i64)?
             .set_default("escalation.escalation_enabled", false)?
@@ -264,6 +309,13 @@ impl AppConfig {
             }
         }
 
+        if let Ok(mode) = env::var("PROJECT_IDENTITY_MODE") {
+            builder = builder.set_override("mcp.project_identity_mode", mode)?;
+        }
+        if let Ok(remote) = env::var("PROJECT_IDENTITY_REMOTE") {
+            builder = builder.set_override("mcp.project_identity_remote", remote)?;
+        }
+
         builder.build()?.try_deserialize()
     }
 }
@@ -318,6 +370,8 @@ mod tests {
             port: 3000,
             worktrees_enabled: false,
             git_identity_enabled: false,
+            project_identity_mode: ProjectIdentityMode::default(),
+            project_identity_remote: "origin".into(),
         };
         assert!(!config.worktrees_active());
 

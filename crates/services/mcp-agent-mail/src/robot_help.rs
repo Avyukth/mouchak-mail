@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Clone, Serialize)]
-pub struct ExampleEntry {
+pub(crate) struct ExampleEntry {
     pub description: &'static str,
     pub target_type: &'static str,        // "flag" | "subcommand"
     pub param_type: Option<&'static str>, // "u16", "String", etc.
@@ -21,7 +21,7 @@ fn example(invocation: &str, description: &str) -> Example {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RobotStatusOutput {
+pub(crate) struct RobotStatusOutput {
     pub schema_version: String,
     pub tool: String,
     pub version: String,
@@ -32,7 +32,7 @@ pub struct RobotStatusOutput {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct CheckResult {
+pub(crate) struct CheckResult {
     pub status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
@@ -43,14 +43,14 @@ pub struct CheckResult {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct RobotExamplesOutput {
+pub(crate) struct RobotExamplesOutput {
     pub schema_version: String,
     pub target: String,
     pub target_type: String, // "flag" | "subcommand"
     pub examples: Vec<Example>,
 }
 
-pub static EXAMPLE_REGISTRY: Lazy<HashMap<&'static str, ExampleEntry>> = Lazy::new(|| {
+pub(crate) static EXAMPLE_REGISTRY: Lazy<HashMap<&'static str, ExampleEntry>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
     // ===== GLOBAL FLAGS =====

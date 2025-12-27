@@ -25,7 +25,7 @@ static HOOK_INSTALLED: AtomicBool = AtomicBool::new(false);
 ///     // ... rest of main
 /// }
 /// ```
-pub fn init_panic_hook() {
+pub(crate) fn init_panic_hook() {
     // Idempotency check - only install once
     if HOOK_INSTALLED.swap(true, Ordering::SeqCst) {
         return;

@@ -110,10 +110,9 @@ pub async fn ensure_project(
     State(app_state): State<AppState>,
     Json(payload): Json<EnsureProjectPayload>,
 ) -> crate::error::Result<Response> {
-    let ctx = Ctx::root_ctx(); // For now, use a root context
+    let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    // Call lib-core ProjectBmc to ensure project exists
     let project =
         match lib_core::model::project::ProjectBmc::get_by_human_key(&ctx, mm, &payload.human_key)
             .await
@@ -121,8 +120,12 @@ pub async fn ensure_project(
             Ok(p) => p,
             Err(e) => {
                 if let lib_core::Error::ProjectNotFound { .. } = e {
-                    // If not found, create it. Generate a slug here based on human_key.
-                    let slug = lib_core::utils::slugify(&payload.human_key);
+                    let mcp_config = lib_common::config::McpConfig::from_env();
+                    let slug = lib_core::utils::compute_project_slug(
+                        &payload.human_key,
+                        mcp_config.project_identity_mode,
+                        &mcp_config.project_identity_remote,
+                    );
                     let _id = lib_core::model::project::ProjectBmc::create(
                         &ctx,
                         mm,

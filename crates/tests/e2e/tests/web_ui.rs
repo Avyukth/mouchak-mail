@@ -86,11 +86,20 @@ fn test_fixtures_generate_unique_ids() {
 #[test]
 fn test_fixtures_create_valid_payloads() {
     let project = TestFixtures::project_payload("test-project");
-    assert!(project.get("project_slug").is_some());
+    assert!(
+        project.get("human_key").is_some(),
+        "project_payload should have human_key"
+    );
 
     let agent = TestFixtures::agent_payload("test-project", "test-agent");
-    assert!(agent.get("project_slug").is_some());
-    assert!(agent.get("agent_name").is_some());
+    assert!(
+        agent.get("project_slug").is_some(),
+        "agent_payload should have project_slug"
+    );
+    assert!(
+        agent.get("name").is_some(),
+        "agent_payload should have name (not agent_name)"
+    );
 
     let message = TestFixtures::message_payload(
         "test-project",

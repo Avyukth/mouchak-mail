@@ -1,4 +1,8 @@
 //! Page components for each route.
+//!
+//! Components are defined as `pub` in private modules and re-exported via `pub use`.
+//! This pattern triggers `unreachable_pub` lint, but is intentional for Leptos components.
+#![allow(unreachable_pub)]
 
 mod agents;
 mod archive;

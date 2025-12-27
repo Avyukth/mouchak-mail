@@ -46,17 +46,12 @@ fn setup_logging() -> Result<()> {
 async fn handle_serve(transport: String, port: u16) -> Result<()> {
     setup_logging()?;
 
+    let mut mcp_config = McpConfig::from_env();
+    mcp_config.transport = transport.clone();
+    mcp_config.port = port;
+
     let config = AppConfig {
-        mcp: McpConfig {
-            transport: transport.clone(),
-            port,
-            worktrees_enabled: std::env::var("WORKTREES_ENABLED")
-                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-                .unwrap_or(false),
-            git_identity_enabled: std::env::var("GIT_IDENTITY_ENABLED")
-                .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-                .unwrap_or(false),
-        },
+        mcp: mcp_config,
         ..Default::default()
     };
 

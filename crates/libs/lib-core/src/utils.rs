@@ -89,14 +89,10 @@ pub fn slugify(text: &str) -> String {
     slug::slugify(text)
 }
 
-/// Input validation including names, paths, and TTLs.
+pub mod image_processing;
+pub mod mistake_detection;
+pub mod pathspec;
+pub mod project_identity;
 pub mod validation;
 
-/// Agent mistake detection helpers (PORT-1.3).
-pub mod mistake_detection;
-
-/// Image processing and validation helpers (PORT-7.3).
-pub mod image_processing;
-
-/// Git pathspec matching utilities for file reservation conflict detection.
-pub mod pathspec;
+pub use project_identity::compute_project_slug;

@@ -47,14 +47,19 @@ jobs:
   audit:
     name: Security Audit (Advisory)
     runs-on: ubuntu-latest
-    # Non-blocking: known advisories are tracked in deny.toml
-    # The rustsec action fails on warnings; we use cargo deny for enforcement
+    # Skip for fork PRs: GitHub Checks API not accessible from forks
+    # This prevents "Resource not accessible by integration" errors
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Non-blocking: known advisories are tracked in .cargo/audit.toml
     continue-on-error: true
     steps:
     - uses: actions/checkout@v4
-    - uses: rustsec/audit-check@v2
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Install cargo-audit
+      run: cargo install cargo-audit --locked
+    - name: Run cargo-audit
+      run: cargo audit
 
   quality:
     name: Quality Gate (Advisory)
