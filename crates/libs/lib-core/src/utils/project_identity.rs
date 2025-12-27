@@ -141,7 +141,7 @@ mod tests {
     #[test]
     fn test_compute_project_slug_dir_mode() {
         let slug =
-            compute_project_slug("/Users/amrit/myproject", ProjectIdentityMode::Dir, "origin");
-        assert_eq!(slug, "users-amrit-myproject");
+            compute_project_slug("/Users/testuser/myproject", ProjectIdentityMode::Dir, "origin");
+        assert_eq!(slug, "users-testuser-myproject");
     }
 }
