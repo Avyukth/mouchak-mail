@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_call:
+    inputs:
+      tag_name:
+        description: 'Tag name for the release'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -81,5 +87,7 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
+        tag_name: ${{ inputs.tag_name || github.ref_name }}
         files: artifacts/**/*
-        generate_release_notes: true
+        generate_release_notes: false
+        append_body: true

@@ -23,13 +23,12 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Trigger the existing release workflow when a release is created
-  trigger-release:
+  # Build and upload binaries when a release is created
+  build-release:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Release created
-        run: |
-          echo "Release ${{ needs.release-please.outputs.tag_name }} was created"
-          echo "The release.yml workflow will be triggered by the new tag"
+    uses: ./.github/workflows/release.yml
+    with:
+      tag_name: ${{ needs.release-please.outputs.tag_name }}
+    permissions:
+      contents: write
