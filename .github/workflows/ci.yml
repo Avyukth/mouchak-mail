@@ -87,6 +87,45 @@ jobs:
         echo "::notice::Quality gate is advisory-only until violations are reduced"
         pmat quality-gate || echo "Quality gate failed - see above for details"
 
+  miri:
+    name: Miri (Memory Safety)
+    runs-on: ubuntu-latest
+    # Non-blocking: Miri detects undefined behavior in unsafe code
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust Nightly
+      uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: miri
+
+    - name: Setup Miri
+      run: cargo +nightly miri setup
+
+    - name: Run Miri on lib-core
+      run: |
+        echo "::notice::Running Miri to detect undefined behavior"
+        cargo +nightly miri test -p lib-core --lib 2>&1 | head -100 || echo "Miri completed with issues"
+
+  kani:
+    name: Kani (Formal Verification)
+    runs-on: ubuntu-latest
+    # Non-blocking: Kani proves mathematical properties of code
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Kani
+      uses: model-checking/kani-github-action@v1.1
+      with:
+        kani-version: 'latest'
+
+    - name: Run Kani Proofs
+      run: |
+        echo "::notice::Running Kani formal verification proofs"
+        cargo kani --package lib-core --output-format terse 2>&1 | head -200 || echo "Kani verification completed"
+
   coverage:
     name: Coverage (Advisory)
     runs-on: ubuntu-latest
