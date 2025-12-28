@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Contact Policy E2E Tests
 //!
 //! These tests verify cross-project messaging permission enforcement.

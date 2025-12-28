@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! API E2E Tests
 //!
 //! These tests verify the REST API endpoints work correctly.

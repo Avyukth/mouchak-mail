@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Auth & Rate Limiting E2E Tests
 //!
 //! These tests verify authentication and rate limiting functionality.

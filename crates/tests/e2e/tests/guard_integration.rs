@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Guard Integration E2E Tests (mcpmail-ifbw)
 //!
 //! Tests for pre-commit/pre-push guard functionality:

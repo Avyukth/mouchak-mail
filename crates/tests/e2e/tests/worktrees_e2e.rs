@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Worktrees Functionality E2E Tests
 //!
 //! Tests the worktree-related functionality including:

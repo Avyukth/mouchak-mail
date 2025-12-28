@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Web UI E2E Tests using jugar-probar
 //!
 //! These tests use Probar's BrowserController (Playwright parity)

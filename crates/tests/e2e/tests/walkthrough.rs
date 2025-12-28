@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Video Walkthrough - Placeholder
 //!
 //! The full automated video walkthrough is implemented in TypeScript using Playwright.

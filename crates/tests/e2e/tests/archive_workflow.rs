@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Archive Workflow E2E Tests
 //!
 //! Tests the archive save/list/restore lifecycle including:

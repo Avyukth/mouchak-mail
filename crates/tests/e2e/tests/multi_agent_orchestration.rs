@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Multi-Agent Orchestration E2E Tests (mcpmail-o05a)
 //!
 //! Tests for concurrent multi-agent scenarios:

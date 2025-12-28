@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Mailbox Share Integration E2E Tests
 //!
 //! Tests the share export functionality including:

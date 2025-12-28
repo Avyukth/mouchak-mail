@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Negative Cases & Error Paths E2E Tests
 //!
 //! These tests verify error handling and validation edge cases.

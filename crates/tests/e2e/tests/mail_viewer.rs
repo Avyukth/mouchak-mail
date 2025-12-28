@@ -1,3 +1,4 @@
+#![allow(clippy::expect_used)]
 //! Mail Viewer E2E Tests
 //!
 //! Browser-based E2E tests for the mail viewer functionality.
