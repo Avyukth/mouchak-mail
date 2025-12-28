@@ -22,7 +22,8 @@
 		toggleSelectAll,
 		clearFilters,
 		selectNextMessage,
-		selectPreviousMessage
+		selectPreviousMessage,
+		markMessagesAsRead
 	} from '$lib/stores/unifiedInbox';
 
 	// shadcn/ui components
@@ -184,15 +185,11 @@
 		);
 	}
 
-	function markSelectedRead() {
+	async function markSelectedRead() {
 		const ids = get(selectedMessages);
 		if (ids.length === 0) return;
-		allMessages.update((messages) =>
-			messages.map((message) =>
-				ids.includes(message.id) ? { ...message, is_read: true } : message
-			)
-		);
 		selectedMessages.set([]);
+		await markMessagesAsRead(ids);
 	}
 
 	function setFilter(key: 'project' | 'sender' | 'recipient' | 'importance' | 'hasThread', value: string) {

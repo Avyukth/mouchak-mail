@@ -482,5 +482,18 @@ export const staticProvider: DataProvider = {
 	async listAttachments(_projectSlug?: string): Promise<Attachment[]> {
 		// Attachments are not available in static mode
 		return [];
+	},
+
+	// ============================================================================
+	// Message Actions (not available in static mode)
+	// ============================================================================
+
+	async markMessageRead(
+		_projectSlug: string,
+		_agentName: string,
+		messageId: number
+	): Promise<{ marked: boolean; message_id: number }> {
+		// No-op in static mode - just return success without backend sync
+		return { marked: true, message_id: messageId };
 	}
 };

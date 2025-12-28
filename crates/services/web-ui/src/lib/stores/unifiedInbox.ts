@@ -189,12 +189,34 @@ export const unreadCount = derived(allMessages, ($messages) =>
 	$messages.filter((m) => !m.is_read).length
 );
 
-// Mark messages as read (updates local state, call API separately)
-export function markMessagesAsRead(ids: number[]): void {
+// Mark messages as read - updates local state and syncs with backend
+export async function markMessagesAsRead(ids: number[]): Promise<void> {
 	if (ids.length === 0) return;
-	allMessages.update((messages) =>
-		messages.map((message) =>
+
+	// Get messages to mark
+	const messages = get(allMessages);
+	const messagesToMark = messages.filter((m) => ids.includes(m.id));
+
+	// Update local state immediately for responsive UI
+	allMessages.update((msgs) =>
+		msgs.map((message) =>
 			ids.includes(message.id) ? { ...message, is_read: true } : message
 		)
 	);
+
+	// Sync with backend - dynamically import to avoid circular dependency
+	try {
+		const { dataProvider } = await import('$lib/data');
+		await Promise.allSettled(
+			messagesToMark.map((msg) => {
+				// Use first recipient as the agent reading the message
+				const recipients = msg.recipients ?? msg.recipient_names ?? [];
+				const agentName = recipients[0];
+				if (!agentName || !msg.project_slug) return Promise.resolve();
+				return dataProvider.markMessageRead(msg.project_slug, agentName, msg.id);
+			})
+		);
+	} catch {
+		// Backend sync failed silently - local state is already updated
+	}
 }

@@ -171,6 +171,17 @@ export interface DataProvider {
 
 	/** List attachments */
 	listAttachments(projectSlug?: string): Promise<Attachment[]>;
+
+	// ============================================================================
+	// Message Actions
+	// ============================================================================
+
+	/** Mark a message as read (no-op in static mode) */
+	markMessageRead(
+		projectSlug: string,
+		agentName: string,
+		messageId: number
+	): Promise<{ marked: boolean; message_id: number }>;
 }
 
 /**

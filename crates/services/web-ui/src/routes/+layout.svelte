@@ -9,6 +9,7 @@
 	import { InstallPrompt, UpdatePrompt } from '$lib/components/pwa/index.js';
 	import DemoModeBanner from '$lib/components/DemoModeBanner.svelte';
 	import { dataProvider } from '$lib/data';
+	import { allMessages, unreadCount } from '$lib/stores/unifiedInbox';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -17,24 +18,22 @@
 
 	let { children }: Props = $props();
 
-	// Fetch actual unread count from unified inbox API
-	let unreadCount = $state(0);
-
+	// Initialize the shared store with messages from API
 	$effect(() => {
 		if (browser) {
-			fetchUnreadCount();
+			initializeMessages();
 			// Refresh every 30 seconds
-			const interval = setInterval(fetchUnreadCount, 30000);
+			const interval = setInterval(initializeMessages, 30000);
 			return () => clearInterval(interval);
 		}
 	});
 
-	async function fetchUnreadCount() {
+	async function initializeMessages() {
 		try {
 			const response = await dataProvider.fetchUnifiedInbox(1000);
-			unreadCount = response.messages.filter((m) => !m.is_read).length;
+			allMessages.set(response.messages ?? []);
 		} catch {
-			// Silently fail - keep showing 0
+			// Silently fail - keep showing current count
 		}
 	}
 </script>
@@ -52,7 +51,7 @@
 
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Sidebar (handles both mobile sheet trigger and desktop sidebar) -->
-		<AppSidebar {unreadCount} />
+		<AppSidebar unreadCount={$unreadCount} />
 
 		<!-- Main content -->
 		<div class="flex-1 flex flex-col min-w-0 overflow-hidden">
