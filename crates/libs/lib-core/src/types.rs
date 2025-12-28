@@ -427,4 +427,221 @@ mod tests {
         // But they're not equal (different types)
         // project_id == agent_id would not compile
     }
+
+    // AgentId tests
+    #[test]
+    fn test_agent_id_conversion() {
+        let id = AgentId::new(42);
+        assert_eq!(id.get(), 42);
+        assert_eq!(i64::from(id), 42);
+
+        let id2: AgentId = 100.into();
+        assert_eq!(id2.get(), 100);
+    }
+
+    #[test]
+    fn test_agent_id_display() {
+        let id = AgentId::new(99);
+        assert_eq!(format!("{}", id), "99");
+    }
+
+    // MessageId tests
+    #[test]
+    fn test_message_id_conversion() {
+        let id = MessageId::new(42);
+        assert_eq!(id.get(), 42);
+        assert_eq!(i64::from(id), 42);
+
+        let id2: MessageId = 100.into();
+        assert_eq!(id2.get(), 100);
+    }
+
+    #[test]
+    fn test_message_id_display() {
+        let id = MessageId::new(123);
+        assert_eq!(format!("{}", id), "123");
+    }
+
+    // ProjectId display test
+    #[test]
+    fn test_project_id_display() {
+        let id = ProjectId::new(77);
+        assert_eq!(format!("{}", id), "77");
+    }
+
+    // ProjectSlug additional tests
+    #[test]
+    fn test_project_slug_as_ref() {
+        let slug = ProjectSlug::new("my-project");
+        let s: &str = slug.as_ref();
+        assert_eq!(s, "my-project");
+    }
+
+    #[test]
+    fn test_project_slug_display() {
+        let slug = ProjectSlug::new("test-slug");
+        assert_eq!(format!("{}", slug), "test-slug");
+    }
+
+    #[test]
+    fn test_project_slug_from_string() {
+        let slug: ProjectSlug = String::from("owned-string").into();
+        assert_eq!(slug.as_str(), "owned-string");
+    }
+
+    // AgentName tests
+    #[test]
+    fn test_agent_name_new_and_as_str() {
+        let name = AgentName::new("worker-1");
+        assert_eq!(name.as_str(), "worker-1");
+    }
+
+    #[test]
+    fn test_agent_name_from_str() {
+        let name: AgentName = "reviewer".into();
+        assert_eq!(name.as_str(), "reviewer");
+    }
+
+    #[test]
+    fn test_agent_name_from_string() {
+        let name: AgentName = String::from("coordinator").into();
+        assert_eq!(name.as_str(), "coordinator");
+    }
+
+    #[test]
+    fn test_agent_name_as_ref() {
+        let name = AgentName::new("test-agent");
+        let s: &str = name.as_ref();
+        assert_eq!(s, "test-agent");
+    }
+
+    #[test]
+    fn test_agent_name_display() {
+        let name = AgentName::new("display-agent");
+        assert_eq!(format!("{}", name), "display-agent");
+    }
+
+    // ThreadId tests
+    #[test]
+    fn test_thread_id_new_and_as_str() {
+        let id = ThreadId::new("TASK-123");
+        assert_eq!(id.as_str(), "TASK-123");
+    }
+
+    #[test]
+    fn test_thread_id_from_str() {
+        let id: ThreadId = "REVIEW-456".into();
+        assert_eq!(id.as_str(), "REVIEW-456");
+    }
+
+    #[test]
+    fn test_thread_id_from_string() {
+        let id: ThreadId = String::from("ESCALATE-789").into();
+        assert_eq!(id.as_str(), "ESCALATE-789");
+    }
+
+    #[test]
+    fn test_thread_id_as_ref() {
+        let id = ThreadId::new("test-thread");
+        let s: &str = id.as_ref();
+        assert_eq!(s, "test-thread");
+    }
+
+    #[test]
+    fn test_thread_id_display() {
+        let id = ThreadId::new("display-thread");
+        assert_eq!(format!("{}", id), "display-thread");
+    }
+
+    // Equality tests
+    #[test]
+    fn test_project_id_equality() {
+        let a = ProjectId::new(42);
+        let b = ProjectId::new(42);
+        let c = ProjectId::new(43);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_agent_id_equality() {
+        let a = AgentId::new(42);
+        let b = AgentId::new(42);
+        let c = AgentId::new(43);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_message_id_equality() {
+        let a = MessageId::new(42);
+        let b = MessageId::new(42);
+        let c = MessageId::new(43);
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_project_slug_equality() {
+        let a = ProjectSlug::new("test");
+        let b = ProjectSlug::new("test");
+        let c = ProjectSlug::new("other");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_agent_name_equality() {
+        let a = AgentName::new("test");
+        let b = AgentName::new("test");
+        let c = AgentName::new("other");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    #[test]
+    fn test_thread_id_equality() {
+        let a = ThreadId::new("test");
+        let b = ThreadId::new("test");
+        let c = ThreadId::new("other");
+        assert_eq!(a, b);
+        assert_ne!(a, c);
+    }
+
+    // Serde tests for all types
+    #[test]
+    fn test_agent_id_serde() {
+        let id = AgentId::new(42);
+        let json = serde_json::to_string(&id).unwrap();
+        assert_eq!(json, "42");
+        let back: AgentId = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, id);
+    }
+
+    #[test]
+    fn test_message_id_serde() {
+        let id = MessageId::new(42);
+        let json = serde_json::to_string(&id).unwrap();
+        assert_eq!(json, "42");
+        let back: MessageId = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, id);
+    }
+
+    #[test]
+    fn test_agent_name_serde() {
+        let name = AgentName::new("test-agent");
+        let json = serde_json::to_string(&name).unwrap();
+        assert_eq!(json, "\"test-agent\"");
+        let back: AgentName = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, name);
+    }
+
+    #[test]
+    fn test_thread_id_serde() {
+        let id = ThreadId::new("TASK-123");
+        let json = serde_json::to_string(&id).unwrap();
+        assert_eq!(json, "\"TASK-123\"");
+        let back: ThreadId = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, id);
+    }
 }

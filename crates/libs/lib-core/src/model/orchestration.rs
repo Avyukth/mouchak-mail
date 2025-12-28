@@ -1108,4 +1108,125 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_gate_result_default() {
+        let result = GateResult::default();
+        assert!(!result.passed);
+        assert_eq!(result.exit_code, -1);
+        assert!(result.output.is_empty());
+        assert_eq!(result.duration_ms, 0);
+    }
+
+    #[test]
+    fn test_worktree_manager_new() {
+        let mgr = WorktreeManager::new(Path::new("/repo"));
+        assert_eq!(mgr.base_path, Path::new("/repo/.sandboxes"));
+    }
+
+    #[test]
+    fn test_worktree_manager_worker_path() {
+        let mgr = WorktreeManager::new(Path::new("/repo"));
+        let path = mgr.worker_path("task-123");
+        assert_eq!(path, Path::new("/repo/.sandboxes/worker-task-123"));
+    }
+
+    #[test]
+    fn test_worktree_manager_reviewer_path() {
+        let mgr = WorktreeManager::new(Path::new("/repo"));
+        let path = mgr.reviewer_path("task-123");
+        assert_eq!(path, Path::new("/repo/.sandboxes/reviewer-fix-task-123"));
+    }
+
+    #[test]
+    fn test_orchestration_state_display() {
+        assert_eq!(format!("{}", OrchestrationState::Started), "[TASK_STARTED]");
+        assert_eq!(format!("{}", OrchestrationState::Completed), "[COMPLETION]");
+        assert_eq!(format!("{}", OrchestrationState::Reviewing), "[REVIEWING]");
+        assert_eq!(format!("{}", OrchestrationState::Approved), "[APPROVED]");
+        assert_eq!(format!("{}", OrchestrationState::Rejected), "[REJECTED]");
+        assert_eq!(format!("{}", OrchestrationState::Fixed), "[FIXED]");
+        assert_eq!(format!("{}", OrchestrationState::Acknowledged), "[ACK]");
+    }
+
+    #[test]
+    fn test_full_quality_gate_results_default() {
+        let results = FullQualityGateResults::default();
+        assert!(!results.all_passed);
+        assert!(!results.cargo_check.passed);
+        assert!(!results.cargo_clippy.passed);
+        assert!(!results.cargo_fmt.passed);
+        assert!(!results.cargo_test.passed);
+    }
+
+    #[test]
+    fn test_worktree_result_success() {
+        let result = WorktreeResult {
+            success: true,
+            path: PathBuf::from("/repo/.sandboxes/worker-test"),
+            branch: "feature/test".to_string(),
+            message: "Created successfully".to_string(),
+        };
+        assert!(result.success);
+        assert_eq!(result.branch, "feature/test");
+    }
+
+    #[test]
+    fn test_worktree_result_failure() {
+        let result = WorktreeResult {
+            success: false,
+            path: PathBuf::from("/repo/.sandboxes/worker-test"),
+            branch: "feature/test".to_string(),
+            message: "Already exists".to_string(),
+        };
+        assert!(!result.success);
+        assert!(result.message.contains("exists"));
+    }
+
+    #[test]
+    fn test_worktree_info() {
+        let info = WorktreeInfo {
+            path: PathBuf::from("/repo/.sandboxes/worker-abc"),
+            branch: "worker-abc".to_string(),
+            task_id: Some("abc".to_string()),
+            created_at: "2025-01-01".to_string(),
+        };
+        assert_eq!(info.task_id, Some("abc".to_string()));
+        assert_eq!(info.branch, "worker-abc");
+    }
+
+    #[test]
+    fn test_abandoned_task() {
+        let task = AbandonedTask {
+            thread_id: "TASK-123".to_string(),
+            task_title: "Fix bug".to_string(),
+            worker_name: "worker-1".to_string(),
+            last_activity: "2025-01-01".to_string(),
+            state: OrchestrationState::Started,
+        };
+        assert_eq!(task.thread_id, "TASK-123");
+        assert_eq!(task.state, OrchestrationState::Started);
+    }
+
+    #[test]
+    fn test_abandoned_review() {
+        let review = AbandonedReview {
+            thread_id: "TASK-456".to_string(),
+            reviewer_name: "reviewer".to_string(),
+            last_activity: "2025-01-01".to_string(),
+        };
+        assert_eq!(review.thread_id, "TASK-456");
+        assert_eq!(review.reviewer_name, "reviewer");
+    }
+
+    #[test]
+    fn test_conflict_info() {
+        let conflict = ConflictInfo {
+            worktree_path: PathBuf::from("/repo/.sandboxes/worker-x"),
+            branch: "feature/x".to_string(),
+            conflicting_files: vec!["src/main.rs".to_string()],
+        };
+        assert_eq!(conflict.branch, "feature/x");
+        assert_eq!(conflict.conflicting_files.len(), 1);
+    }
 }
