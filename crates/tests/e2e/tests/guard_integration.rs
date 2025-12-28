@@ -447,12 +447,11 @@ async fn test_prepush_blocks_pending_reviews() {
 
             match pending_resp {
                 Ok(r) if r.status().is_success() => {
-                    // Verify pending reviews exist (pre-push should block)
                     let body = r.text().await.unwrap_or_default();
-                    // If we got a response, pending reviews exist = pre-push would block
                     assert!(
-                        !body.is_empty() || body.contains("["),
-                        "Should have pending reviews that would block pre-push"
+                        !body.is_empty() && body.contains("["),
+                        "Should have pending reviews (non-empty JSON array), got: {}",
+                        body
                     );
                     println!("✓ Pre-push would block: pending reviews exist for ReviewerAgent");
                 }

@@ -318,16 +318,26 @@ async fn test_invalid_thread_id_validation() {
     match response {
         Ok(resp) => {
             let status = resp.status();
-            // Should be 400 Bad Request or the path traversal should be sanitized
             if status.is_client_error() {
                 println!("✓ Invalid thread_id handled (status={})", status);
             } else if status.is_success() {
-                // If it succeeds, the value was sanitized
+                let body: serde_json::Value = resp.json().await.unwrap_or_default();
+                let thread_id = body["thread_id"].as_str().unwrap_or("");
+                assert!(
+                    !thread_id.contains("..") && !thread_id.contains("/etc/"),
+                    "Path traversal in thread_id was not sanitized: {}",
+                    thread_id
+                );
                 println!("✓ Thread ID was sanitized and accepted");
+            } else {
+                panic!(
+                    "Unexpected response status for path traversal attempt: {}",
+                    status
+                );
             }
         }
         Err(e) => {
-            println!("⚠ Request failed: {}", e);
+            panic!("Request failed unexpectedly: {}", e);
         }
     }
 }
@@ -604,18 +614,24 @@ async fn test_path_traversal_blocked() {
                 if status.is_client_error() {
                     println!("✓ Path traversal '{}' blocked (status={})", attempt, status);
                 } else if status.is_success() {
-                    // If it succeeds, the value was sanitized
                     let body: serde_json::Value = resp.json().await.unwrap_or_default();
                     let slug = body["slug"].as_str().unwrap_or("");
-                    if !slug.contains("..") && !slug.contains("/") && !slug.contains("\\") {
-                        println!("✓ Path traversal '{}' sanitized to '{}'", attempt, slug);
-                    } else {
-                        println!("⚠ Path traversal might not be sanitized: {}", slug);
-                    }
+                    assert!(
+                        !slug.contains("..") && !slug.contains("/") && !slug.contains("\\"),
+                        "Path traversal '{}' was NOT sanitized, resulted in slug: {}",
+                        attempt,
+                        slug
+                    );
+                    println!("✓ Path traversal '{}' sanitized to '{}'", attempt, slug);
+                } else {
+                    panic!(
+                        "Unexpected status {} for path traversal attempt '{}'",
+                        status, attempt
+                    );
                 }
             }
             Err(e) => {
-                println!("⚠ Request failed: {}", e);
+                panic!("Request failed for path traversal attempt '{}': {}", attempt, e);
             }
         }
     }
@@ -667,23 +683,46 @@ async fn test_sql_injection_sanitized() {
         match response {
             Ok(resp) => {
                 let status = resp.status();
-                // Should either reject with 400 or accept (with sanitized/escaped value)
                 if status.is_client_error() {
                     println!("✓ SQL injection '{}' rejected (status={})", attempt, status);
-                } else if status.is_success() {
-                    // If it succeeds, the value was properly escaped by parameterized queries
+                } else if status.is_success() || status == StatusCode::CONFLICT {
                     println!(
-                        "✓ SQL injection '{}' handled safely (created agent)",
-                        attempt
+                        "✓ SQL injection '{}' handled safely (status={})",
+                        attempt, status
                     );
-                } else if status == StatusCode::CONFLICT {
-                    // Conflict means agent was created (parameterized queries work)
-                    println!("✓ SQL injection '{}' handled safely (conflict)", attempt);
+                } else {
+                    panic!(
+                        "Unexpected status {} for SQL injection attempt '{}'",
+                        status, attempt
+                    );
                 }
             }
             Err(e) => {
-                println!("⚠ Request failed: {}", e);
+                panic!(
+                    "Request failed for SQL injection attempt '{}': {}",
+                    attempt, e
+                );
             }
+        }
+    }
+
+    let verify_resp = client
+        .get(format!("{}/api/projects/{}/agents", config.api_url, project.slug))
+        .send()
+        .await;
+
+    match verify_resp {
+        Ok(resp) if resp.status().is_success() => {
+            println!("✓ Database still accessible after injection attempts - parameterized queries working");
+        }
+        Ok(resp) => {
+            panic!(
+                "Database may be corrupted after SQL injection attempts: status={}",
+                resp.status()
+            );
+        }
+        Err(e) => {
+            panic!("Database verification failed after SQL injection attempts: {}", e);
         }
     }
 }

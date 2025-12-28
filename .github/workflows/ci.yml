@@ -106,7 +106,10 @@ jobs:
     - name: Run Miri on lib-core
       run: |
         echo "::notice::Running Miri to detect undefined behavior"
-        cargo +nightly miri test -p lib-core --lib 2>&1 | head -100 || echo "Miri completed with issues"
+        cargo +nightly miri test -p lib-core --lib 2>&1 | tee miri-output.txt | head -100 || true
+        if [ $(wc -l < miri-output.txt) -gt 100 ]; then
+          echo "::warning::Miri output truncated. Full output: $(wc -l < miri-output.txt) lines"
+        fi
 
   kani:
     name: Kani (Formal Verification)
@@ -124,7 +127,10 @@ jobs:
     - name: Run Kani Proofs
       run: |
         echo "::notice::Running Kani formal verification proofs"
-        cargo kani --package lib-core --output-format terse 2>&1 | head -200 || echo "Kani verification completed"
+        cargo kani --package lib-core --output-format terse 2>&1 | tee kani-output.txt | head -200 || true
+        if [ $(wc -l < kani-output.txt) -gt 200 ]; then
+          echo "::warning::Kani output truncated. Full output: $(wc -l < kani-output.txt) lines"
+        fi
 
   coverage:
     name: Coverage (Advisory)

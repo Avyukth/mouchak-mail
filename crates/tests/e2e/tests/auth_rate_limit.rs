@@ -202,18 +202,15 @@ async fn test_invalid_jwt_signature_returns_401() {
     match response {
         Ok(resp) => {
             let status = resp.status();
-            if status == StatusCode::UNAUTHORIZED {
-                println!("✓ Invalid JWT signature correctly rejected with 401");
-            } else {
-                // Server might be in bearer mode, not JWT mode
-                println!(
-                    "⚠ Expected 401, got {} - server may be in bearer mode, not JWT mode",
-                    status
-                );
-            }
+            assert!(
+                status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN,
+                "Invalid JWT should be rejected with 401/403, got {}. Auth is enabled but invalid token was accepted!",
+                status
+            );
+            println!("✓ Invalid JWT signature correctly rejected with {}", status);
         }
         Err(e) => {
-            println!("⚠ API server not running: {}", e);
+            panic!("API server not running: {}", e);
         }
     }
 }
@@ -244,17 +241,15 @@ async fn test_expired_jwt_returns_401() {
     match response {
         Ok(resp) => {
             let status = resp.status();
-            if status == StatusCode::UNAUTHORIZED {
-                println!("✓ Expired JWT correctly rejected with 401");
-            } else {
-                println!(
-                    "⚠ Expected 401, got {} - server may be in bearer mode or JWT validation differs",
-                    status
-                );
-            }
+            assert!(
+                status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN,
+                "Expired JWT should be rejected with 401/403, got {}. Auth is enabled but expired token was accepted!",
+                status
+            );
+            println!("✓ Expired JWT correctly rejected with {}", status);
         }
         Err(e) => {
-            println!("⚠ API server not running: {}", e);
+            panic!("API server not running: {}", e);
         }
     }
 }
@@ -290,7 +285,7 @@ async fn test_missing_auth_header_returns_401() {
             }
         }
         Err(e) => {
-            println!("⚠ API server not running: {}", e);
+            panic!("API server not running: {}", e);
         }
     }
 }
