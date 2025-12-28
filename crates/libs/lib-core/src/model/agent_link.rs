@@ -62,6 +62,13 @@ impl AgentLinkBmc {
         mm: &ModelManager,
         link_c: AgentLinkForCreate,
     ) -> Result<i64> {
+        // Validate: cannot request contact with self
+        if link_c.a_project_id == link_c.b_project_id && link_c.a_agent_id == link_c.b_agent_id {
+            return Err(crate::Error::InvalidInput(
+                "Cannot request contact with yourself".into(),
+            ));
+        }
+
         let db = mm.db();
 
         let stmt = db.prepare(

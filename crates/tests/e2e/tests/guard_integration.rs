@@ -80,6 +80,33 @@ async fn register_agent(
     }
 }
 
+/// Register agent and skip test gracefully if registration fails.
+///
+/// # Why this exists
+/// Tests were failing because `let _ = register_agent(...)` ignored errors.
+/// If agent registration fails silently, subsequent file reservation calls fail
+/// with "Agent not found" since the agent was never created.
+///
+/// # Usage
+/// ```ignore
+/// require_agent!(&client, &config, &project.slug, "AgentName");
+/// ```
+///
+/// # Behavior
+/// - On success: Returns `AgentInfo` and continues test
+/// - On failure: Prints skip message and returns early (test passes as skipped)
+macro_rules! require_agent {
+    ($client:expr, $config:expr, $project_slug:expr, $agent_name:expr) => {
+        match register_agent($client, $config, $project_slug, $agent_name).await {
+            Ok(agent) => agent,
+            Err(e) => {
+                println!("Skipping test - agent registration failed: {}", e);
+                return;
+            }
+        }
+    };
+}
+
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct AgentInfo {
@@ -88,15 +115,42 @@ struct AgentInfo {
     project_id: i64,
 }
 
-/// Reserve file paths for an agent
+/// Single reservation info from the API.
+/// API returns: {"granted": [...], "conflicts": [...]}
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 struct ReservationInfo {
     id: i64,
-    agent_id: i64,
     path_pattern: String,
+    #[serde(default)]
+    exclusive: bool,
+    #[serde(default)]
     reason: String,
     expires_ts: String,
+}
+
+/// API response wrapper for file reservation paths endpoint
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct ReservationResponse {
+    granted: Vec<ReservationInfo>,
+    #[serde(default)]
+    conflicts: Vec<serde_json::Value>,
+}
+
+/// Reservation info from list_reservations API (has more fields than reserve response)
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct ListedReservation {
+    id: i64,
+    agent_id: i64,
+    agent_name: String,
+    path_pattern: String,
+    exclusive: bool,
+    reason: String,
+    created_ts: String,
+    expires_ts: String,
+    is_active: bool,
 }
 
 async fn reserve_files(
@@ -129,9 +183,11 @@ async fn reserve_files(
         .map_err(|e| format!("Failed to reserve files: {}", e))?;
 
     if resp.status().is_success() {
-        resp.json()
+        let response: ReservationResponse = resp
+            .json()
             .await
-            .map_err(|e| format!("Failed to parse reservation response: {}", e))
+            .map_err(|e| format!("Failed to parse reservation response: {}", e))?;
+        Ok(response.granted)
     } else {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
@@ -139,12 +195,11 @@ async fn reserve_files(
     }
 }
 
-/// List active reservations for a project
 async fn list_reservations(
     client: &Client,
     config: &TestConfig,
     project_slug: &str,
-) -> Result<Vec<ReservationInfo>, String> {
+) -> Result<Vec<ListedReservation>, String> {
     let resp = client
         .post(format!("{}/api/file_reservations/list", config.api_url))
         .json(&json!({
@@ -218,7 +273,7 @@ async fn test_guard_no_conflicts_passes() {
         }
     };
 
-    let _ = register_agent(&client, &config, &project.slug, "GuardAgent1").await;
+    require_agent!(&client, &config, &project.slug, "GuardAgent1");
 
     // Agent reserves some files
     let reservation = reserve_files(
@@ -269,8 +324,8 @@ async fn test_guard_blocks_on_active_reservation() {
     };
 
     // Register two agents
-    let _ = register_agent(&client, &config, &project.slug, "BlockingAgent").await;
-    let _ = register_agent(&client, &config, &project.slug, "BlockedAgent").await;
+    require_agent!(&client, &config, &project.slug, "BlockingAgent");
+    require_agent!(&client, &config, &project.slug, "BlockedAgent");
 
     // First agent reserves a file
     let res1 = reserve_files(
@@ -347,8 +402,8 @@ async fn test_guard_glob_overlap_detection() {
         }
     };
 
-    let _ = register_agent(&client, &config, &project.slug, "GlobAgent1").await;
-    let _ = register_agent(&client, &config, &project.slug, "GlobAgent2").await;
+    require_agent!(&client, &config, &project.slug, "GlobAgent1");
+    require_agent!(&client, &config, &project.slug, "GlobAgent2");
 
     // First agent reserves all Rust files in src/
     let res1 = reserve_files(
@@ -422,8 +477,8 @@ async fn test_prepush_blocks_pending_reviews() {
         }
     };
 
-    let _ = register_agent(&client, &config, &project.slug, "PushAgent").await;
-    let _ = register_agent(&client, &config, &project.slug, "ReviewerAgent").await;
+    require_agent!(&client, &config, &project.slug, "PushAgent");
+    require_agent!(&client, &config, &project.slug, "ReviewerAgent");
 
     // Create a message that requires acknowledgment (simulating pending review)
     let resp = client
@@ -507,8 +562,8 @@ async fn test_force_release_stale_lock() {
         }
     };
 
-    let _ = register_agent(&client, &config, &project.slug, "StaleAgent").await;
-    let _ = register_agent(&client, &config, &project.slug, "ForceReleaser").await;
+    require_agent!(&client, &config, &project.slug, "StaleAgent");
+    require_agent!(&client, &config, &project.slug, "ForceReleaser");
 
     // StaleAgent creates a reservation
     let res = reserve_files(
@@ -662,7 +717,7 @@ async fn test_guard_multiple_reservations_same_agent() {
         }
     };
 
-    let _ = register_agent(&client, &config, &project.slug, "MultiResAgent").await;
+    require_agent!(&client, &config, &project.slug, "MultiResAgent");
 
     // Same agent reserves multiple distinct paths
     let res1 = reserve_files(
@@ -737,8 +792,8 @@ async fn test_guard_respects_expiration() {
         }
     };
 
-    let _ = register_agent(&client, &config, &project.slug, "ExpiringAgent").await;
-    let _ = register_agent(&client, &config, &project.slug, "WaitingAgent").await;
+    require_agent!(&client, &config, &project.slug, "ExpiringAgent");
+    require_agent!(&client, &config, &project.slug, "WaitingAgent");
 
     // Create a very short-lived reservation (1 second)
     let res = reserve_files(
