@@ -664,7 +664,8 @@ impl ServerHandler for AgentMailService {
 }
 
 // ============================================================================
-// Tool Implementations
+// Tool Implementations  
+// COVERAGE: Dispatch tested in tool_dispatch_tests.rs, impls in *_tests.rs files
 // ============================================================================
 
 #[tool_router]

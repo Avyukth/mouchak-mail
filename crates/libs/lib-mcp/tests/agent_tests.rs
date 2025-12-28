@@ -398,6 +398,70 @@ async fn test_create_agent_identity_impl_with_hint() {
 }
 
 #[tokio::test]
+async fn test_register_agent_impl_unix_username_hint() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+    let project_slug = setup_project(&mm, "unix_hint").await;
+
+    let params = RegisterAgentParams {
+        project_slug: project_slug.clone(),
+        name: "ubuntu".to_string(),
+        program: "claude_code".to_string(),
+        model: "opus".to_string(),
+        task_description: "Testing unix username hint".to_string(),
+    };
+
+    let result = agent::register_agent_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Registered agent"));
+    assert!(output.contains("Hint:"));
+}
+
+#[tokio::test]
+async fn test_register_agent_impl_no_unix_hint_for_proper_name() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+    let project_slug = setup_project(&mm, "no_unix_hint").await;
+
+    let params = RegisterAgentParams {
+        project_slug: project_slug.clone(),
+        name: "BlueMountain".to_string(),
+        program: "claude_code".to_string(),
+        model: "opus".to_string(),
+        task_description: "Testing no unix hint".to_string(),
+    };
+
+    let result = agent::register_agent_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Registered agent"));
+    assert!(!output.contains("Hint:"));
+}
+
+#[tokio::test]
+async fn test_create_agent_identity_impl_with_non_matching_hint() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+    let project_slug = setup_project(&mm, "identity_nonmatch").await;
+
+    let params = CreateAgentIdentityParams {
+        project_slug,
+        hint: Some("xyz123".to_string()),
+    };
+
+    let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Suggested name"));
+    assert!(output.contains("Alternatives"));
+    assert!(!output.contains("xyz123"));
+}
+
+#[tokio::test]
 async fn test_create_agent_identity_impl_avoids_existing() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -425,4 +489,93 @@ async fn test_create_agent_identity_impl_avoids_existing() {
 
     let output = extract_text(&result.unwrap());
     assert!(!output.contains("BlueMountain") || output.contains("Alternatives"));
+}
+
+#[tokio::test]
+async fn test_list_agents_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = ListAgentsParams {
+        project_slug: "nonexistent_project".to_string(),
+    };
+
+    let result = agent::list_agents_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_create_agent_identity_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = CreateAgentIdentityParams {
+        project_slug: "nonexistent_project".to_string(),
+        hint: None,
+    };
+
+    let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_whois_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = WhoisParams {
+        project_slug: "nonexistent_project".to_string(),
+        agent_name: "SomeAgent".to_string(),
+    };
+
+    let result = agent::whois_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_get_agent_profile_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = GetAgentProfileParams {
+        project_slug: "nonexistent_project".to_string(),
+        agent_name: "SomeAgent".to_string(),
+    };
+
+    let result = agent::get_agent_profile_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_update_agent_profile_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = UpdateAgentProfileParams {
+        project_slug: "nonexistent_project".to_string(),
+        agent_name: "SomeAgent".to_string(),
+        task_description: Some("New task".to_string()),
+        attachments_policy: None,
+        contact_policy: None,
+    };
+
+    let result = agent::update_agent_profile_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_register_agent_impl_invalid_project_slug() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = RegisterAgentParams {
+        project_slug: "has spaces invalid".to_string(),
+        name: "ValidAgent".to_string(),
+        program: "claude_code".to_string(),
+        model: "opus".to_string(),
+        task_description: "Should fail".to_string(),
+    };
+
+    let result = agent::register_agent_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
 }
