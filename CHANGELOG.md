@@ -5,6 +5,29 @@ All notable changes to MCP Agent Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/Avyukth/mcp-agent-mail-rs/compare/v0.2.1...v0.2.2) (2025-12-28)
+
+
+### Features
+
+* **e2e:** add auth & rate limiting E2E tests ([06dafe6](https://github.com/Avyukth/mcp-agent-mail-rs/commit/06dafe6e287126a764875e67dbf5f7bc9bee9258))
+* **kani:** add complete formal verification proofs for AgentId and MessageId ([9b4a482](https://github.com/Avyukth/mcp-agent-mail-rs/commit/9b4a4829ad65b5eb1dd686b89e103f90cc0ad1ee))
+* **lib-core:** add Kani formal verification proof harnesses ([ee1d470](https://github.com/Avyukth/mcp-agent-mail-rs/commit/ee1d470bd228f486395dd190a78156b23afa2d0e))
+
+
+### Bug Fixes
+
+* resolve clippy warnings and update quality-gate ([3fd8e6b](https://github.com/Avyukth/mcp-agent-mail-rs/commit/3fd8e6bb55f820d6d3e204a44c751f5647b7d2fa))
+* **tests:** address PR [#16](https://github.com/Avyukth/mcp-agent-mail-rs/issues/16) bot review findings ([dc5ff00](https://github.com/Avyukth/mcp-agent-mail-rs/commit/dc5ff00beb9c55c872b34bf4b0f6c9d1ca45cc43))
+
+## [0.2.1](https://github.com/Avyukth/mcp-agent-mail-rs/compare/v0.2.0...v0.2.1) (2025-12-27)
+
+
+### Bug Fixes
+
+* **beads,ci:** remove tracked beads data files and fix release workflow ([79f70ce](https://github.com/Avyukth/mcp-agent-mail-rs/commit/79f70ce7a20a1dee122d14b01ca247ecb6fe98c8))
+* **beads,ci:** remove tracked beads data files and fix release workflow ([98b958c](https://github.com/Avyukth/mcp-agent-mail-rs/commit/98b958c744f9efcb4ab3076c4e7ab005eab58958))
+
 ## [0.2.0](https://github.com/Avyukth/mcp-agent-mail-rs/compare/v0.1.0...v0.2.0) (2025-12-27)
 
 
