@@ -125,10 +125,12 @@ fn extract_description(schema: &Value) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
     use super::*;
     use schemars::JsonSchema;
 
+    #[allow(dead_code)]
     #[derive(Debug, JsonSchema)]
     struct TestParams {
         /// A required string field

@@ -7,7 +7,7 @@
 //! - Tests run with sequential test threads to avoid git locking
 //! - Cleanup happens automatically via TempDir RAII
 
-#![allow(dead_code)]
+#![allow(dead_code, clippy::unwrap_used, clippy::expect_used)]
 
 use lib_common::config::AppConfig;
 use lib_core::{Ctx, ModelManager, Result};

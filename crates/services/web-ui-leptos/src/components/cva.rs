@@ -411,6 +411,7 @@ pub fn with_class(base: &str, extra: Option<&str>) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::const_is_empty)]
 mod tests {
     use super::*;
 

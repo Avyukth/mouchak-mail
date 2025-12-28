@@ -1869,14 +1869,14 @@ mod tests {
 
     #[test]
     fn test_get_recipients_single_recipient() {
-        let recipients = vec!["single-agent".to_string()];
+        let recipients = ["single-agent".to_string()];
         assert_eq!(recipients.len(), 1);
         assert_eq!(recipients[0], "single-agent");
     }
 
     #[test]
     fn test_get_recipients_multiple_recipients() {
-        let recipients = vec![
+        let recipients = [
             "alice".to_string(),
             "bob".to_string(),
             "charlie".to_string(),
@@ -1889,7 +1889,7 @@ mod tests {
 
     #[test]
     fn test_get_recipients_unicode_names() {
-        let recipients = vec![
+        let recipients = [
             "日本語エージェント".to_string(),
             "مساعد".to_string(),
             "помощник".to_string(),
@@ -1900,7 +1900,7 @@ mod tests {
 
     #[test]
     fn test_get_recipients_special_characters() {
-        let recipients = vec![
+        let recipients = [
             "agent-with-dashes".to_string(),
             "agent_with_underscores".to_string(),
             "agent.with.dots".to_string(),
@@ -1914,7 +1914,7 @@ mod tests {
     #[test]
     fn test_get_recipients_preserves_order() {
         // The SQL orders by recipient_type then name
-        let recipients = vec![
+        let recipients = [
             "alice".to_string(),
             "bob".to_string(),
             "charlie".to_string(),
@@ -1928,7 +1928,7 @@ mod tests {
     #[test]
     fn test_get_recipients_no_duplicates() {
         // Recipients should be unique (enforced by message_recipients table)
-        let recipients = vec!["alice".to_string(), "bob".to_string()];
+        let recipients = ["alice".to_string(), "bob".to_string()];
         let unique_count = recipients
             .iter()
             .collect::<std::collections::HashSet<_>>()

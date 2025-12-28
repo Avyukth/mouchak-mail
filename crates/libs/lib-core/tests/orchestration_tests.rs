@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Integration tests for multi-agent orchestration workflows.
 //!
 //! Tests the complete lifecycle of tasks through the Worker → Reviewer → Human pipeline.

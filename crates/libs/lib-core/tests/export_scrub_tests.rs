@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use lib_core::ctx::Ctx;
 use lib_core::model::ModelManager;
 use lib_core::model::agent::{AgentBmc, AgentForCreate};

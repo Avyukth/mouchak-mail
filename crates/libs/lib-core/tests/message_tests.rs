@@ -32,7 +32,7 @@ async fn setup_messaging(tc: &TestContext) -> (i64, i64, i64) {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Sender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -42,7 +42,7 @@ async fn setup_messaging(tc: &TestContext) -> (i64, i64, i64) {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Recipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -444,7 +444,7 @@ async fn test_outbox_project_filtering() {
     let project1 = ProjectBmc::get(&tc.ctx, &tc.mm, project1_id).await.unwrap();
 
     let sender1_c = AgentForCreate {
-        project_id: project1.id.into(),
+        project_id: project1.id,
         name: "Sender1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -453,7 +453,7 @@ async fn test_outbox_project_filtering() {
     let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
 
     let recipient1_c = AgentForCreate {
-        project_id: project1.id.into(),
+        project_id: project1.id,
         name: "Recipient1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -472,7 +472,7 @@ async fn test_outbox_project_filtering() {
     let project2 = ProjectBmc::get(&tc.ctx, &tc.mm, project2_id).await.unwrap();
 
     let sender2_c = AgentForCreate {
-        project_id: project2.id.into(),
+        project_id: project2.id,
         name: "Sender2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -481,7 +481,7 @@ async fn test_outbox_project_filtering() {
     let sender2_id = AgentBmc::create(&tc.ctx, &tc.mm, sender2_c).await.unwrap();
 
     let recipient2_c = AgentForCreate {
-        project_id: project2.id.into(),
+        project_id: project2.id,
         name: "Recipient2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -616,7 +616,7 @@ async fn test_outbox_with_multiple_recipients() {
 
     // Create one sender and multiple recipients
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "MultiSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -625,7 +625,7 @@ async fn test_outbox_with_multiple_recipients() {
     let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
 
     let recipient1_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Recipient1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -636,7 +636,7 @@ async fn test_outbox_with_multiple_recipients() {
         .unwrap();
 
     let recipient2_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Recipient2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -647,7 +647,7 @@ async fn test_outbox_with_multiple_recipients() {
         .unwrap();
 
     let recipient3_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Recipient3".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -761,7 +761,7 @@ async fn test_multiple_to_recipients() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "BatchSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -773,7 +773,7 @@ async fn test_multiple_to_recipients() {
     let mut recipient_ids = Vec::new();
     for i in 1..=3 {
         let recipient_c = AgentForCreate {
-            project_id: project.id.into(),
+            project_id: project.id,
             name: format!("ToRecipient{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -1036,7 +1036,7 @@ async fn test_list_pending_reviews_partial_ack() {
 
     // Create sender and 2 recipients
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "PartialSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1045,7 +1045,7 @@ async fn test_list_pending_reviews_partial_ack() {
     let sender_id = AgentBmc::create(&tc.ctx, &tc.mm, sender_c).await.unwrap();
 
     let r1_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Reviewer1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1054,7 +1054,7 @@ async fn test_list_pending_reviews_partial_ack() {
     let r1_id = AgentBmc::create(&tc.ctx, &tc.mm, r1_c).await.unwrap();
 
     let r2_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Reviewer2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1173,7 +1173,7 @@ async fn test_list_pending_reviews_full_context_present() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "ContextSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1183,7 +1183,7 @@ async fn test_list_pending_reviews_full_context_present() {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "ContextRecipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1262,7 +1262,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let project1 = ProjectBmc::get(&tc.ctx, &tc.mm, project1_id).await.unwrap();
 
     let sender1_c = AgentForCreate {
-        project_id: project1.id.into(),
+        project_id: project1.id,
         name: "P1Sender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1271,7 +1271,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
 
     let r1_c = AgentForCreate {
-        project_id: project1.id.into(),
+        project_id: project1.id,
         name: "P1Recipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1287,7 +1287,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let project2 = ProjectBmc::get(&tc.ctx, &tc.mm, project2_id).await.unwrap();
 
     let sender2_c = AgentForCreate {
-        project_id: project2.id.into(),
+        project_id: project2.id,
         name: "P2Sender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1296,7 +1296,7 @@ async fn test_list_pending_reviews_filter_by_project() {
     let sender2_id = AgentBmc::create(&tc.ctx, &tc.mm, sender2_c).await.unwrap();
 
     let r2_c = AgentForCreate {
-        project_id: project2.id.into(),
+        project_id: project2.id,
         name: "P2Recipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1381,7 +1381,7 @@ async fn test_list_pending_reviews_filter_by_sender() {
 
     // Create 2 different senders
     let sender1_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Sender1".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1390,7 +1390,7 @@ async fn test_list_pending_reviews_filter_by_sender() {
     let sender1_id = AgentBmc::create(&tc.ctx, &tc.mm, sender1_c).await.unwrap();
 
     let sender2_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "Sender2".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1400,7 +1400,7 @@ async fn test_list_pending_reviews_filter_by_sender() {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "CommonRecipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1499,7 +1499,7 @@ async fn test_list_pending_reviews_limit_clamped() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "LimitSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1509,7 +1509,7 @@ async fn test_list_pending_reviews_limit_clamped() {
 
     // Create recipient
     let recipient_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "LimitRecipient".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1596,7 +1596,7 @@ async fn test_batch_mixed_recipient_types() {
 
     // Create sender
     let sender_c = AgentForCreate {
-        project_id: project.id.into(),
+        project_id: project.id,
         name: "MixedSender".to_string(),
         program: "test".to_string(),
         model: "test".to_string(),
@@ -1608,7 +1608,7 @@ async fn test_batch_mixed_recipient_types() {
     let mut to_ids = Vec::new();
     for i in 1..=2 {
         let c = AgentForCreate {
-            project_id: project.id.into(),
+            project_id: project.id,
             name: format!("MixedTo{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -1621,7 +1621,7 @@ async fn test_batch_mixed_recipient_types() {
     let mut cc_ids = Vec::new();
     for i in 1..=2 {
         let c = AgentForCreate {
-            project_id: project.id.into(),
+            project_id: project.id,
             name: format!("MixedCc{}", i),
             program: "test".to_string(),
             model: "test".to_string(),
@@ -1634,7 +1634,7 @@ async fn test_batch_mixed_recipient_types() {
     let mut bcc_ids = Vec::new();
     for i in 1..=2 {
         let c = AgentForCreate {
-            project_id: project.id.into(),
+            project_id: project.id,
             name: format!("MixedBcc{}", i),
             program: "test".to_string(),
             model: "test".to_string(),

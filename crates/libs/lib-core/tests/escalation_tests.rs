@@ -16,11 +16,11 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
 
     // 1. Setup Data
     let project_slug = Uuid::new_v4().to_string();
-    let project_id = ProjectBmc::create(&ctx, &mm, &project_slug, "Escalation Test").await?;
+    let project_id = ProjectBmc::create(ctx, mm, &project_slug, "Escalation Test").await?;
 
     let sender = AgentBmc::create(
-        &ctx,
-        &mm,
+        ctx,
+        mm,
         AgentForCreate {
             project_id,
             name: "sender".to_string(),
@@ -33,8 +33,8 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
     let sender: i64 = sender.into();
 
     let recipient = AgentBmc::create(
-        &ctx,
-        &mm,
+        ctx,
+        mm,
         AgentForCreate {
             project_id,
             name: "recipient".to_string(),
@@ -59,7 +59,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         importance: None,
         ack_required: true,
     };
-    let overdue_msg_id = MessageBmc::create(&ctx, &mm, msg_c).await?;
+    let overdue_msg_id = MessageBmc::create(ctx, mm, msg_c).await?;
 
     // Backdate it
     let db = mm.db_for_test();
@@ -82,7 +82,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         importance: None,
         ack_required: true,
     };
-    let _recent_msg_id = MessageBmc::create(&ctx, &mm, msg_recent).await?;
+    let _recent_msg_id = MessageBmc::create(ctx, mm, msg_recent).await?;
 
     // 4. Create Acked Message (Old but Acked)
     let msg_acked = MessageForCreate {
@@ -97,7 +97,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         importance: None,
         ack_required: true,
     };
-    let acked_msg_id = MessageBmc::create(&ctx, &mm, msg_acked).await?;
+    let acked_msg_id = MessageBmc::create(ctx, mm, msg_acked).await?;
     // Backdate
     db.execute(
         "UPDATE messages SET created_ts = datetime('now', '-25 hours') WHERE id = ?",
@@ -105,7 +105,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
     )
     .await?;
     // Ack it
-    MessageBmc::acknowledge(&ctx, &mm, acked_msg_id, recipient).await?;
+    MessageBmc::acknowledge(ctx, mm, acked_msg_id, recipient).await?;
 
     // 5. Create Non-Ack-Required Message (Old but no ack required)
     let msg_no_ack = MessageForCreate {
@@ -120,7 +120,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
         importance: None,
         ack_required: false,
     };
-    let no_ack_msg_id = MessageBmc::create(&ctx, &mm, msg_no_ack).await?;
+    let no_ack_msg_id = MessageBmc::create(ctx, mm, msg_no_ack).await?;
     db.execute(
         "UPDATE messages SET created_ts = datetime('now', '-25 hours') WHERE id = ?",
         [no_ack_msg_id],
@@ -128,7 +128,7 @@ async fn test_list_overdue_acks() -> lib_core::Result<()> {
     .await?;
 
     // Run Query using 24 hour threshold
-    let overdue_list = MessageBmc::list_overdue_acks(&ctx, &mm, 24).await?;
+    let overdue_list = MessageBmc::list_overdue_acks(ctx, mm, 24).await?;
 
     // Verify
     assert_eq!(

@@ -50,7 +50,7 @@ async fn setup_project_and_message(mm: &Arc<ModelManager>) -> (i64, i64, String)
         .unwrap();
 
     let agent_c = AgentForCreate {
-        project_id: project_id.into(),
+        project_id: project_id,
         name: "sender_agent".to_string(),
         program: "claude".to_string(),
         model: "opus".to_string(),
@@ -59,7 +59,7 @@ async fn setup_project_and_message(mm: &Arc<ModelManager>) -> (i64, i64, String)
     let sender_id = AgentBmc::create(&ctx, mm, agent_c).await.unwrap();
 
     let agent_c2 = AgentForCreate {
-        project_id: project_id.into(),
+        project_id: project_id,
         name: "receiver_agent".to_string(),
         program: "claude".to_string(),
         model: "sonnet".to_string(),

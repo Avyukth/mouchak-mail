@@ -30,49 +30,49 @@ use jugar_probar::Assertion;
 
 /// Inbox page element locators
 mod locators {
-    pub mod inbox {
-        pub const PROJECT_SELECT: &str = "#projectSelect";
-        pub const AGENT_SELECT: &str = "#agentSelect";
-        pub const REFRESH_BTN: &str = "button:has-text('Refresh')";
-        pub const COMPOSE_BTN: &str = "button:has-text('Compose')";
-        pub const MESSAGE_LIST: &str = "[data-testid='message-list']";
-        pub const MESSAGE_ITEM: &str = "[data-testid='message-item']";
-        pub const IMPORTANCE_BADGE: &str = "[data-testid='importance-badge']";
-        pub const ACK_BADGE: &str = "[data-testid='ack-badge']";
-        pub const EMPTY_INBOX: &str = "[data-testid='empty-inbox']";
-        pub const SEARCH_INPUT: &str = "#searchMessages";
-        pub const FILTER_UNREAD: &str = "[data-testid='filter-unread']";
+    pub(crate) mod inbox {
+        pub(crate) const PROJECT_SELECT: &str = "#projectSelect";
+        pub(crate) const AGENT_SELECT: &str = "#agentSelect";
+        pub(crate) const REFRESH_BTN: &str = "button:has-text('Refresh')";
+        pub(crate) const COMPOSE_BTN: &str = "button:has-text('Compose')";
+        pub(crate) const MESSAGE_LIST: &str = "[data-testid='message-list']";
+        pub(crate) const MESSAGE_ITEM: &str = "[data-testid='message-item']";
+        pub(crate) const IMPORTANCE_BADGE: &str = "[data-testid='importance-badge']";
+        pub(crate) const ACK_BADGE: &str = "[data-testid='ack-badge']";
+        pub(crate) const EMPTY_INBOX: &str = "[data-testid='empty-inbox']";
+        pub(crate) const SEARCH_INPUT: &str = "#searchMessages";
+        pub(crate) const FILTER_UNREAD: &str = "[data-testid='filter-unread']";
     }
 
-    pub mod message_detail {
-        pub const SUBJECT: &str = "[data-testid='message-subject']";
-        pub const BODY: &str = "[data-testid='message-body']";
-        pub const SENDER: &str = "[data-testid='message-sender']";
-        pub const TIMESTAMP: &str = "[data-testid='message-timestamp']";
-        pub const RECIPIENTS: &str = "[data-testid='message-recipients']";
-        pub const REPLY_BTN: &str = "button:has-text('Reply')";
-        pub const BACK_BTN: &str = "button:has-text('Back')";
-        pub const THREAD_ID: &str = "[data-testid='thread-id']";
-        pub const ATTACHMENTS: &str = "[data-testid='attachments']";
+    pub(crate) mod message_detail {
+        pub(crate) const SUBJECT: &str = "[data-testid='message-subject']";
+        pub(crate) const BODY: &str = "[data-testid='message-body']";
+        pub(crate) const SENDER: &str = "[data-testid='message-sender']";
+        pub(crate) const TIMESTAMP: &str = "[data-testid='message-timestamp']";
+        pub(crate) const RECIPIENTS: &str = "[data-testid='message-recipients']";
+        pub(crate) const REPLY_BTN: &str = "button:has-text('Reply')";
+        pub(crate) const BACK_BTN: &str = "button:has-text('Back')";
+        pub(crate) const THREAD_ID: &str = "[data-testid='thread-id']";
+        pub(crate) const ATTACHMENTS: &str = "[data-testid='attachments']";
     }
 
-    pub mod compose_modal {
-        pub const MODAL: &str = "[data-testid='compose-modal']";
-        pub const SENDER_NAME: &str = "[data-testid='compose-sender']";
-        pub const RECIPIENT_SELECT: &str = "[data-testid='recipient-select']";
-        pub const SUBJECT_INPUT: &str = "#composeSubject";
-        pub const BODY_INPUT: &str = "#composeBody";
-        pub const IMPORTANCE_SELECT: &str = "#composeImportance";
-        pub const ACK_CHECKBOX: &str = "#composeAckRequired";
-        pub const SEND_BTN: &str = "button:has-text('Send')";
-        pub const CANCEL_BTN: &str = "button:has-text('Cancel')";
+    pub(crate) mod compose_modal {
+        pub(crate) const MODAL: &str = "[data-testid='compose-modal']";
+        pub(crate) const SENDER_NAME: &str = "[data-testid='compose-sender']";
+        pub(crate) const RECIPIENT_SELECT: &str = "[data-testid='recipient-select']";
+        pub(crate) const SUBJECT_INPUT: &str = "#composeSubject";
+        pub(crate) const BODY_INPUT: &str = "#composeBody";
+        pub(crate) const IMPORTANCE_SELECT: &str = "#composeImportance";
+        pub(crate) const ACK_CHECKBOX: &str = "#composeAckRequired";
+        pub(crate) const SEND_BTN: &str = "button:has-text('Send')";
+        pub(crate) const CANCEL_BTN: &str = "button:has-text('Cancel')";
     }
 
-    pub mod thread_view {
-        pub const THREAD_MESSAGES: &str = "[data-testid='thread-messages']";
-        pub const THREAD_MESSAGE_ITEM: &str = "[data-testid='thread-message']";
-        pub const THREAD_NAV_PREV: &str = "[data-testid='thread-nav-prev']";
-        pub const THREAD_NAV_NEXT: &str = "[data-testid='thread-nav-next']";
+    pub(crate) mod thread_view {
+        pub(crate) const THREAD_MESSAGES: &str = "[data-testid='thread-messages']";
+        pub(crate) const THREAD_MESSAGE_ITEM: &str = "[data-testid='thread-message']";
+        pub(crate) const THREAD_NAV_PREV: &str = "[data-testid='thread-nav-prev']";
+        pub(crate) const THREAD_NAV_NEXT: &str = "[data-testid='thread-nav-next']";
     }
 }
 

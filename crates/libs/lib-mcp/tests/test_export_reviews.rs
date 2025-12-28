@@ -49,7 +49,7 @@ async fn setup_project_with_messages(mm: &Arc<ModelManager>) -> (i64, i64, i64, 
         .unwrap();
 
     let agent1_c = AgentForCreate {
-        project_id: project_id.into(),
+        project_id: project_id,
         name: "sender_agent".to_string(),
         program: "claude".to_string(),
         model: "opus".to_string(),
@@ -58,7 +58,7 @@ async fn setup_project_with_messages(mm: &Arc<ModelManager>) -> (i64, i64, i64, 
     let agent1_id = AgentBmc::create(&ctx, mm, agent1_c).await.unwrap();
 
     let agent2_c = AgentForCreate {
-        project_id: project_id.into(),
+        project_id: project_id,
         name: "receiver_agent".to_string(),
         program: "claude".to_string(),
         model: "opus".to_string(),
@@ -289,7 +289,7 @@ async fn test_claim_review_impl_success() {
 
     let params = ClaimReviewParams {
         project_slug,
-        message_id: msg_id.into(),
+        message_id: msg_id,
         reviewer_name: "receiver_agent".to_string(),
     };
 
@@ -325,7 +325,7 @@ async fn test_claim_review_impl_already_claimed() {
     // First claim
     let params1 = ClaimReviewParams {
         project_slug: project_slug.clone(),
-        message_id: msg_id.into(),
+        message_id: msg_id,
         reviewer_name: "receiver_agent".to_string(),
     };
     reviews::claim_review_impl(&ctx, &mm, params1)
@@ -335,7 +335,7 @@ async fn test_claim_review_impl_already_claimed() {
     // Try to claim again
     let params2 = ClaimReviewParams {
         project_slug,
-        message_id: msg_id.into(),
+        message_id: msg_id,
         reviewer_name: "receiver_agent".to_string(),
     };
 
@@ -385,7 +385,7 @@ async fn test_claim_review_impl_reviewer_not_found() {
 
     let params = ClaimReviewParams {
         project_slug,
-        message_id: msg_id.into(),
+        message_id: msg_id,
         reviewer_name: "nonexistent_reviewer".to_string(),
     };
 

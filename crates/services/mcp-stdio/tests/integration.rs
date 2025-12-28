@@ -135,7 +135,7 @@ mod tools_tests {
         let res_id = FileReservationBmc::create(&ctx, &mm, fr_c)
             .await
             .expect("Failed to create reservation");
-        assert!(i64::from(res_id) > 0);
+        assert!(res_id > 0);
 
         // List active reservations
         let active = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id)
@@ -202,7 +202,7 @@ mod tools_tests {
         let res_a_id = FileReservationBmc::create(&ctx, &mm, fr_a)
             .await
             .expect("Agent A should reserve successfully");
-        assert!(i64::from(res_a_id) > 0);
+        assert!(res_a_id > 0);
 
         // Agent B tries to reserve overlapping path (should still succeed in advisory model)
         let fr_b = FileReservationForCreate {
@@ -216,7 +216,7 @@ mod tools_tests {
         let res_b_id = FileReservationBmc::create(&ctx, &mm, fr_b)
             .await
             .expect("Agent B reservation should succeed (advisory model allows conflicts)");
-        assert!(i64::from(res_b_id) > 0);
+        assert!(res_b_id > 0);
 
         // Both reservations should be active
         let active = FileReservationBmc::list_active_for_project(&ctx, &mm, project_id)
@@ -276,7 +276,7 @@ mod tools_tests {
         let slot_id = BuildSlotBmc::acquire(&ctx, &mm, slot_c)
             .await
             .expect("Failed to acquire build slot");
-        assert!(i64::from(slot_id) > 0);
+        assert!(slot_id > 0);
 
         // Verify slot exists via list_active
         let active = BuildSlotBmc::list_active(&ctx, &mm, project_id.into())
@@ -344,7 +344,7 @@ mod tools_tests {
         let link_id = AgentLinkBmc::request_contact(&ctx, &mm, link_c)
             .await
             .expect("Failed to request contact");
-        assert!(i64::from(link_id) > 0);
+        assert!(link_id > 0);
 
         // Check pending requests for Agent B
         let pending =
@@ -398,7 +398,7 @@ mod tools_tests {
         let macro_id = MacroDefBmc::create(&ctx, &mm, macro_c)
             .await
             .expect("Failed to create macro");
-        assert!(i64::from(macro_id) > 0);
+        assert!(macro_id > 0);
 
         // List macros
         let macros = MacroDefBmc::list(&ctx, &mm, project_id.into())

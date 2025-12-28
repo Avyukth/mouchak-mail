@@ -1567,7 +1567,7 @@ mod tests {
         let sender_id = AgentBmc::create(&ctx, &mm, sender_c).await.unwrap();
         // Recipient
         let recv_c = AgentForCreate {
-            project_id: pid.into(),
+            project_id: pid,
             name: "Recv".into(),
             program: "test".into(),
             model: "test".into(),
@@ -1576,7 +1576,7 @@ mod tests {
         let recv_id = AgentBmc::create(&ctx, &mm, recv_c).await.unwrap();
         // CC
         let cc_c = AgentForCreate {
-            project_id: pid.into(),
+            project_id: pid,
             name: "CCAgent".into(),
             program: "test".into(),
             model: "test".into(),
@@ -1585,7 +1585,7 @@ mod tests {
         let cc_id = AgentBmc::create(&ctx, &mm, cc_c).await.unwrap();
         // BCC
         let bcc_c = AgentForCreate {
-            project_id: pid.into(),
+            project_id: pid,
             name: "BCCAgent".into(),
             program: "test".into(),
             model: "test".into(),
@@ -1732,7 +1732,7 @@ mod tests {
             .await
             .unwrap();
         let agent_c = AgentForCreate {
-            project_id: project_id.into(),
+            project_id,
             name: "MetricAgent".into(),
             program: "test".into(),
             model: "test".into(),

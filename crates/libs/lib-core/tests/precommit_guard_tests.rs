@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use lib_core::model::precommit_guard::{GuardMode, PrecommitGuardBmc, render_prepush_script};
 use temp_env::with_vars;
 
@@ -160,7 +162,7 @@ async fn test_guard_warn_mode() {
                 violations.is_some(),
                 "Should return violations in warn mode"
             );
-            assert!(violations.unwrap().len() > 0);
+            assert!(!violations.unwrap().is_empty());
         },
     )
     .await;

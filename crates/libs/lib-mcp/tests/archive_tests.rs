@@ -48,7 +48,7 @@ async fn setup_project_and_agent(mm: &Arc<ModelManager>) -> (i64, String) {
         .unwrap();
 
     let agent_c = AgentForCreate {
-        project_id: project_id.into(),
+        project_id: project_id,
         name: "archive_agent".to_string(),
         program: "claude".to_string(),
         model: "opus".to_string(),
