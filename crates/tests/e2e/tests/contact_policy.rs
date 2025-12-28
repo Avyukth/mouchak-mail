@@ -273,9 +273,14 @@ async fn test_cross_project_blocked_by_default() {
             let status = resp.status();
             // Should fail because agent_b doesn't exist in project_a
             if !status.is_success() {
-                println!("✓ Cross-project messaging blocked (agent not found in project): {}", status);
+                println!(
+                    "✓ Cross-project messaging blocked (agent not found in project): {}",
+                    status
+                );
             } else {
-                println!("⚠ Cross-project messaging unexpectedly succeeded - project isolation may not be enforced");
+                println!(
+                    "⚠ Cross-project messaging unexpectedly succeeded - project isolation may not be enforced"
+                );
             }
         }
         Err(e) => {

@@ -256,9 +256,7 @@ async fn test_unix_username_as_agent_hint() {
                 println!("✓ Unix username detected, returns 404");
                 println!("  Error: {}", error.error);
                 // Check if error message or suggestions contain hints
-                if error.error.to_lowercase().contains("agent")
-                    || !error.suggestions.is_empty()
-                {
+                if error.error.to_lowercase().contains("agent") || !error.suggestions.is_empty() {
                     println!("  Helpful info provided");
                 }
             } else {
@@ -440,7 +438,10 @@ async fn test_empty_recipients_validation() {
             } else if status.is_client_error() {
                 println!("✓ Empty recipients rejected with {}", status);
             } else {
-                println!("⚠ Empty recipients unexpectedly allowed (status={})", status);
+                println!(
+                    "⚠ Empty recipients unexpectedly allowed (status={})",
+                    status
+                );
             }
         }
         Err(e) => {
@@ -671,7 +672,10 @@ async fn test_sql_injection_sanitized() {
                     println!("✓ SQL injection '{}' rejected (status={})", attempt, status);
                 } else if status.is_success() {
                     // If it succeeds, the value was properly escaped by parameterized queries
-                    println!("✓ SQL injection '{}' handled safely (created agent)", attempt);
+                    println!(
+                        "✓ SQL injection '{}' handled safely (created agent)",
+                        attempt
+                    );
                 } else if status == StatusCode::CONFLICT {
                     // Conflict means agent was created (parameterized queries work)
                     println!("✓ SQL injection '{}' handled safely (conflict)", attempt);

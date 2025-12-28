@@ -209,7 +209,13 @@ async fn test_five_agents_register_concurrent() {
         }
     };
 
-    let agent_names = ["AgentAlpha", "AgentBeta", "AgentGamma", "AgentDelta", "AgentEpsilon"];
+    let agent_names = [
+        "AgentAlpha",
+        "AgentBeta",
+        "AgentGamma",
+        "AgentDelta",
+        "AgentEpsilon",
+    ];
     let registered = Arc::new(Mutex::new(Vec::new()));
 
     // Spawn concurrent registrations
@@ -461,7 +467,10 @@ async fn test_concurrent_inbox_no_deadlock() {
     })
     .await;
 
-    assert!(timeout.is_ok(), "Concurrent inbox checks should not deadlock");
+    assert!(
+        timeout.is_ok(),
+        "Concurrent inbox checks should not deadlock"
+    );
 
     let final_count = *success_count.lock().await;
     println!(
@@ -521,7 +530,10 @@ async fn test_broadcast_to_all_agents() {
         }
     }
 
-    assert_eq!(received_count, 3, "All 3 receivers should get the broadcast");
+    assert_eq!(
+        received_count, 3,
+        "All 3 receivers should get the broadcast"
+    );
     println!("✓ Broadcast delivered to all {} receivers", received_count);
 }
 
@@ -563,8 +575,7 @@ async fn test_parallel_file_claims_different_paths() {
         let counter = Arc::clone(&success_count);
 
         let handle = tokio::spawn(async move {
-            let result =
-                reserve_files(&client_clone, &config_clone, &slug, agent, &[path]).await;
+            let result = reserve_files(&client_clone, &config_clone, &slug, agent, &[path]).await;
             if result.is_ok() {
                 let mut count = counter.lock().await;
                 *count += 1;
@@ -683,7 +694,12 @@ async fn test_threaded_conversation_five_agents() {
         &config,
         &project.slug,
         "ThreadAgent1",
-        &["ThreadAgent2", "ThreadAgent3", "ThreadAgent4", "ThreadAgent5"],
+        &[
+            "ThreadAgent2",
+            "ThreadAgent3",
+            "ThreadAgent4",
+            "ThreadAgent5",
+        ],
         "Thread Start",
         "Starting a group discussion",
         Some("GROUP-THREAD-TEST"),
@@ -725,7 +741,10 @@ async fn test_threaded_conversation_five_agents() {
         }
     }
 
-    assert!(message_count >= 3, "At least 3 messages should be in thread");
+    assert!(
+        message_count >= 3,
+        "At least 3 messages should be in thread"
+    );
     println!(
         "✓ Threaded conversation with {} messages across 5 agents",
         message_count
@@ -807,7 +826,10 @@ async fn test_agent_leaves_mid_conversation() {
 
     // Verify staying agents can still communicate
     let inbox = fetch_inbox(&client, &config, &project.slug, "StayingAgent1").await;
-    assert!(inbox.is_ok(), "Staying agent should still have inbox access");
+    assert!(
+        inbox.is_ok(),
+        "Staying agent should still have inbox access"
+    );
 
     println!("✓ Conversation continues when agent leaves mid-conversation");
 }
@@ -833,7 +855,13 @@ async fn test_message_ordering_preserved() {
     let _ = register_agent(&client, &config, &project.slug, "OrderReceiver").await;
 
     // Send messages in sequence with distinct subjects
-    let message_subjects = ["Message 1", "Message 2", "Message 3", "Message 4", "Message 5"];
+    let message_subjects = [
+        "Message 1",
+        "Message 2",
+        "Message 3",
+        "Message 4",
+        "Message 5",
+    ];
     let mut sent_ids = Vec::new();
 
     for subject in &message_subjects {
@@ -1027,7 +1055,10 @@ async fn test_stress_100_messages_5_agents() {
     })
     .await;
 
-    assert!(timeout.is_ok(), "Stress test should complete within timeout");
+    assert!(
+        timeout.is_ok(),
+        "Stress test should complete within timeout"
+    );
 
     let final_count = *success_count.lock().await;
     assert!(

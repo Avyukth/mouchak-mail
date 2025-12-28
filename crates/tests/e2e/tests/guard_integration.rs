@@ -681,7 +681,11 @@ async fn test_guard_respects_expiration() {
     let reservations_before = list_reservations(&client, &config, &project.slug).await;
     let before_count = reservations_before
         .as_ref()
-        .map(|r| r.iter().filter(|r| r.path_pattern == "src/expiring.rs").count())
+        .map(|r| {
+            r.iter()
+                .filter(|r| r.path_pattern == "src/expiring.rs")
+                .count()
+        })
         .unwrap_or(0);
 
     if before_count > 0 {

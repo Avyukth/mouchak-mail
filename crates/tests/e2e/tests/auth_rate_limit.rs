@@ -120,7 +120,7 @@ fn generate_mock_jwt(expired: bool) -> String {
 
 /// Base64 URL-safe encoding without padding
 fn base64_url_encode(input: &str) -> String {
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
     URL_SAFE_NO_PAD.encode(input.as_bytes())
 }
 
@@ -139,14 +139,19 @@ async fn test_valid_bearer_token_succeeds() {
     // First check if auth is enabled
     if !is_auth_enabled(&client, &config).await {
         println!("⚠ Auth not enabled on server, skipping test");
-        println!("  Start server with: HTTP_AUTH_MODE=bearer HTTP_BEARER_TOKEN=test-secret-token cargo run -p mcp-server");
+        println!(
+            "  Start server with: HTTP_AUTH_MODE=bearer HTTP_BEARER_TOKEN=test-secret-token cargo run -p mcp-server"
+        );
         return;
     }
 
     // Make request with valid bearer token
     let response = client
         .get(format!("{}/api/projects", config.base.api_url))
-        .header("Authorization", format!("Bearer {}", config.valid_bearer_token))
+        .header(
+            "Authorization",
+            format!("Bearer {}", config.valid_bearer_token),
+        )
         .send()
         .await;
 
@@ -157,7 +162,9 @@ async fn test_valid_bearer_token_succeeds() {
                 println!("✓ Valid bearer token accepted (status={})", status);
             } else if status == StatusCode::UNAUTHORIZED {
                 // Token might not match server config
-                println!("⚠ Bearer token rejected - check TEST_BEARER_TOKEN matches server's HTTP_BEARER_TOKEN");
+                println!(
+                    "⚠ Bearer token rejected - check TEST_BEARER_TOKEN matches server's HTTP_BEARER_TOKEN"
+                );
             } else {
                 println!("✓ Request processed (status={})", status);
             }
@@ -278,10 +285,7 @@ async fn test_missing_auth_header_returns_401() {
             if status == StatusCode::UNAUTHORIZED {
                 println!("✓ Missing auth header correctly rejected with 401");
             } else {
-                panic!(
-                    "Expected 401 for missing auth header, got {}",
-                    status
-                );
+                panic!("Expected 401 for missing auth header, got {}", status);
             }
         }
         Err(e) => {
@@ -429,7 +433,10 @@ async fn test_rate_limit_resets_after_window() {
             } else if status == StatusCode::TOO_MANY_REQUESTS {
                 println!("⚠ Rate limit still active - window may be longer than 2 seconds");
             } else {
-                println!("✓ Request processed with status {} after rate limit reset", status);
+                println!(
+                    "✓ Request processed with status {} after rate limit reset",
+                    status
+                );
             }
         }
         Err(e) => {
