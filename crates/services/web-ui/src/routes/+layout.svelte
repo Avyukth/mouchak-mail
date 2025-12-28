@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { browser } from '$app/environment';
 	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { AppSidebar, AppHeader } from '$lib/components/layout/index.js';
@@ -7,6 +8,7 @@
 	import TutorialModal from '$lib/components/TutorialModal.svelte';
 	import { InstallPrompt, UpdatePrompt } from '$lib/components/pwa/index.js';
 	import DemoModeBanner from '$lib/components/DemoModeBanner.svelte';
+	import { dataProvider } from '$lib/data';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -15,8 +17,26 @@
 
 	let { children }: Props = $props();
 
-	// TODO: Fetch actual unread count from API
-	let unreadCount = $state(3);
+	// Fetch actual unread count from unified inbox API
+	let unreadCount = $state(0);
+
+	$effect(() => {
+		if (browser) {
+			fetchUnreadCount();
+			// Refresh every 30 seconds
+			const interval = setInterval(fetchUnreadCount, 30000);
+			return () => clearInterval(interval);
+		}
+	});
+
+	async function fetchUnreadCount() {
+		try {
+			const response = await dataProvider.fetchUnifiedInbox(1000);
+			unreadCount = response.messages.filter((m) => !m.is_read).length;
+		} catch {
+			// Silently fail - keep showing 0
+		}
+	}
 </script>
 
 <ModeWatcher />

@@ -33,11 +33,11 @@
 		{ href: '/inbox', label: 'Inbox', icon: Inbox }
 	];
 
-	// Reactive badge for inbox
+	// Reactive badge for mail (unified inbox)
 	let navItemsWithBadge = $derived(
 		navItems.map((item) => ({
 			...item,
-			badge: item.href === '/inbox' ? unreadCount : undefined
+			badge: item.href === '/mail' ? unreadCount : undefined
 		}))
 	);
 

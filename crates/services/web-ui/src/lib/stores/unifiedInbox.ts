@@ -183,3 +183,18 @@ export function selectPreviousMessage(): void {
 	const prevIndex = Math.max(currentIndex - 1, 0);
 	selectedMessage.set(messages[prevIndex]);
 }
+
+// Derived unread count for sidebar badge
+export const unreadCount = derived(allMessages, ($messages) =>
+	$messages.filter((m) => !m.is_read).length
+);
+
+// Mark messages as read (updates local state, call API separately)
+export function markMessagesAsRead(ids: number[]): void {
+	if (ids.length === 0) return;
+	allMessages.update((messages) =>
+		messages.map((message) =>
+			ids.includes(message.id) ? { ...message, is_read: true } : message
+		)
+	);
+}
