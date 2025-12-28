@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Mail Viewer E2E Tests
 //!
 //! Browser-based E2E tests for the mail viewer functionality.
@@ -21,6 +20,8 @@
 //! # With visible browser:
 //! TEST_HEADLESS=false cargo test -p e2e-tests --test mail_viewer
 //! ```
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 use e2e_tests::{TestConfig, TestFixtures};
 use jugar_probar::Assertion;

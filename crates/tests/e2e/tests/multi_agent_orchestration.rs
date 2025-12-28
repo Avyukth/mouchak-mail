@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Multi-Agent Orchestration E2E Tests (mcpmail-o05a)
 //!
 //! Tests for concurrent multi-agent scenarios:
@@ -11,6 +10,8 @@
 //! ```bash
 //! cargo test -p e2e-tests --test multi_agent_orchestration
 //! ```
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 use e2e_tests::fixtures::{AgentResponse, MessageResponse, ProjectResponse};
 use e2e_tests::{TestConfig, TestFixtures};

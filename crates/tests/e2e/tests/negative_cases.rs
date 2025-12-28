@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Negative Cases & Error Paths E2E Tests
 //!
 //! These tests verify error handling and validation edge cases.
@@ -11,6 +10,8 @@
 //! ```bash
 //! cargo test -p e2e-tests --test negative_cases
 //! ```
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 use e2e_tests::fixtures::ProjectResponse;
 use e2e_tests::{TestConfig, TestFixtures};
@@ -324,10 +325,7 @@ async fn test_invalid_thread_id_validation() {
             } else if status.is_success() {
                 println!("✓ Thread ID accepted (stored in DB only, no filesystem risk)");
             } else {
-                panic!(
-                    "Unexpected response status for thread_id test: {}",
-                    status
-                );
+                panic!("Unexpected response status for thread_id test: {}", status);
             }
         }
         Err(e) => {

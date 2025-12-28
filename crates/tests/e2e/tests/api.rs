@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! API E2E Tests
 //!
 //! These tests verify the REST API endpoints work correctly.
@@ -142,9 +141,15 @@ async fn test_ensure_project() {
             let body = resp.text().await.unwrap_or_else(|_| "no body".to_string());
             println!("Response status: {}", status);
             println!("Response body: {}", body);
-            assert!(status.is_success(), "ensure_project should succeed, got {} with body: {}", status, body);
+            assert!(
+                status.is_success(),
+                "ensure_project should succeed, got {} with body: {}",
+                status,
+                body
+            );
 
-            let project: ProjectResponse = serde_json::from_str(&body).expect("Should parse response");
+            let project: ProjectResponse =
+                serde_json::from_str(&body).expect("Should parse response");
             assert_eq!(
                 project.human_key, human_key,
                 "Project human_key should match"

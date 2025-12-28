@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
+
 #![allow(deprecated)] // cargo_bin is still valid for our use case
 #![allow(clippy::unwrap_used)]
 

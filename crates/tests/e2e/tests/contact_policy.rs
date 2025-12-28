@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Contact Policy E2E Tests
 //!
 //! These tests verify cross-project messaging permission enforcement.
@@ -11,6 +10,8 @@
 //! ```bash
 //! cargo test -p e2e-tests --test contact_policy
 //! ```
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 use e2e_tests::fixtures::{AgentResponse, ProjectResponse};
 use e2e_tests::{TestConfig, TestFixtures};

@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Video Walkthrough - Placeholder
 //!
 //! The full automated video walkthrough is implemented in TypeScript using Playwright.
@@ -12,6 +11,8 @@
 //! ```
 //!
 //! See `scripts/video-walkthrough/walkthrough.ts` for the full implementation.
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 #[test]
 fn walkthrough_info() {

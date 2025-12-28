@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Guard Integration E2E Tests (mcpmail-ifbw)
 //!
 //! Tests for pre-commit/pre-push guard functionality:
@@ -15,6 +14,8 @@
 //! ```bash
 //! cargo test -p e2e-tests --test guard_integration
 //! ```
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 use e2e_tests::fixtures::ProjectResponse;
 use e2e_tests::{TestConfig, TestFixtures};

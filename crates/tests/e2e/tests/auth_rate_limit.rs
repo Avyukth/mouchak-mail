@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 //! Auth & Rate Limiting E2E Tests
 //!
 //! These tests verify authentication and rate limiting functionality.
@@ -11,6 +10,8 @@
 //! ```bash
 //! cargo test -p e2e-tests --test auth_rate_limit
 //! ```
+
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 
 use e2e_tests::TestConfig;
 use reqwest::{Client, StatusCode};
@@ -360,7 +361,9 @@ async fn test_rate_limit_exceeded_returns_429() {
             "⚠ Skipping rate limit test - rate limiting not enabled on server ({} requests sent without 429)",
             requests_sent
         );
-        println!("  To test rate limiting, configure server with: HTTP_RATE_LIMIT_ENABLED=true HTTP_RATE_LIMIT_RPS=50");
+        println!(
+            "  To test rate limiting, configure server with: HTTP_RATE_LIMIT_ENABLED=true HTTP_RATE_LIMIT_RPS=50"
+        );
         return;
     }
     println!(
