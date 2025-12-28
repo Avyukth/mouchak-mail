@@ -161,16 +161,17 @@ async fn test_valid_bearer_token_succeeds() {
             if status.is_success() {
                 println!("✓ Valid bearer token accepted (status={})", status);
             } else if status == StatusCode::UNAUTHORIZED {
-                // Token might not match server config
-                println!(
-                    "⚠ Bearer token rejected - check TEST_BEARER_TOKEN matches server's HTTP_BEARER_TOKEN"
+                // Token doesn't match server config - this is a test configuration error
+                panic!(
+                    "Bearer token rejected - ensure TEST_BEARER_TOKEN matches server's HTTP_BEARER_TOKEN"
                 );
             } else {
+                // Other status codes are acceptable (e.g., 404 if endpoint doesn't exist)
                 println!("✓ Request processed (status={})", status);
             }
         }
         Err(e) => {
-            println!("⚠ API server not running: {}", e);
+            println!("⚠ Skipping test - API server not running: {}", e);
         }
     }
 }
@@ -353,12 +354,19 @@ async fn test_rate_limit_exceeded_returns_429() {
         }
     }
 
-    if !hit_rate_limit {
+    if hit_rate_limit {
         println!(
-            "⚠ Rate limit not triggered after {} requests - rate limiting may not be enabled",
+            "✓ Rate limit correctly triggered after {} requests",
             requests_sent
         );
-        println!("  Configure with: HTTP_RATE_LIMIT_ENABLED=true");
+    } else {
+        // Rate limiting not enabled - skip test with informative message
+        println!(
+            "⚠ Skipping assertion - rate limit not triggered after {} requests",
+            requests_sent
+        );
+        println!("  To test rate limiting, configure server with: HTTP_RATE_LIMIT_ENABLED=true");
+        // Don't fail - rate limiting is optional, but log clearly
     }
 }
 
@@ -407,9 +415,11 @@ async fn test_rate_limit_resets_after_window() {
     }
 
     if !rate_limited {
-        println!("⚠ Could not trigger rate limit, skipping reset test");
+        println!("⚠ Skipping reset test - rate limiting not enabled on server");
+        println!("  To test rate limiting, configure server with: HTTP_RATE_LIMIT_ENABLED=true");
         return;
     }
+    println!("✓ Rate limit triggered, testing reset behavior");
 
     // Wait for rate limit window to reset (typically 1 second)
     println!("  Waiting 2 seconds for rate limit window to reset...");
@@ -431,7 +441,9 @@ async fn test_rate_limit_resets_after_window() {
             if status.is_success() || status == StatusCode::OK {
                 println!("✓ Rate limit reset - request succeeded after waiting");
             } else if status == StatusCode::TOO_MANY_REQUESTS {
+                // Rate limit window might be longer than 2 seconds
                 println!("⚠ Rate limit still active - window may be longer than 2 seconds");
+                // This is acceptable behavior, not a test failure
             } else {
                 println!(
                     "✓ Request processed with status {} after rate limit reset",
@@ -440,7 +452,7 @@ async fn test_rate_limit_resets_after_window() {
             }
         }
         Err(e) => {
-            println!("⚠ Request failed: {}", e);
+            panic!("Request after rate limit reset should not fail: {}", e);
         }
     }
 }

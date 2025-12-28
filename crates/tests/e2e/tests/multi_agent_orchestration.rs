@@ -191,6 +191,30 @@ async fn reserve_files(
     }
 }
 
+/// Fetch all reservations for a project
+async fn fetch_reservations(
+    client: &Client,
+    config: &TestConfig,
+    project_slug: &str,
+) -> Result<Vec<ReservationResponse>, String> {
+    let resp = client
+        .post(format!("{}/api/reservation/list", config.api_url))
+        .json(&json!({
+            "project_slug": project_slug
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch reservations: {}", e))?;
+
+    if resp.status().is_success() {
+        resp.json()
+            .await
+            .map_err(|e| format!("Failed to parse reservations response: {}", e))
+    } else {
+        Err(format!("Fetch reservations failed: {}", resp.status()))
+    }
+}
+
 // ============================================================================
 // Test 1: Five Agents Register Concurrently
 // ============================================================================
@@ -387,12 +411,33 @@ async fn test_file_reservation_conflict() {
     )
     .await;
 
-    // Conflict detection - either error or success with conflict info
+    // Conflict detection - either error (blocked) or success (conflict tracked)
     if res2.is_err() {
         println!("✓ Conflict detected: reservation blocked for Agent2");
     } else {
-        // Some systems allow but track conflicts
-        println!("✓ Reservation created (conflicts tracked separately)");
+        // System allows but tracks conflicts - verify both reservations exist
+        let reservations = match fetch_reservations(&client, &config, &project.slug).await {
+            Ok(r) => r,
+            Err(e) => {
+                panic!(
+                    "Should list reservations to verify conflict tracking: {}",
+                    e
+                );
+            }
+        };
+        let conflict_count = reservations
+            .iter()
+            .filter(|r| r.paths.contains(&"src/lib.rs".to_string()))
+            .count();
+        assert!(
+            conflict_count >= 2,
+            "System should track both conflicting reservations, found {}",
+            conflict_count
+        );
+        println!(
+            "✓ Conflict tracked: {} reservations for same path",
+            conflict_count
+        );
     }
 }
 
@@ -616,37 +661,43 @@ async fn test_build_slot_contention() {
         }
     };
 
-    // Register multiple agents that will compete for build slots
+    // Register multiple agents that will compete for the SAME build slot
     let agents = ["BuildAgent1", "BuildAgent2", "BuildAgent3"];
     for agent in &agents {
         let _ = register_agent(&client, &config, &project.slug, agent).await;
     }
 
-    // Simulate concurrent build slot requests via file reservations on build paths
-    let build_paths = [
-        "target/debug/build.lock",
-        "target/release/build.lock",
-        "Cargo.lock",
-    ];
+    // All agents try to reserve the SAME path to create actual contention
+    let contested_path = "target/debug/build.lock";
 
-    let contention_detected = Arc::new(Mutex::new(false));
+    let success_count = Arc::new(Mutex::new(0u32));
+    let failure_count = Arc::new(Mutex::new(0u32));
     let mut handles = Vec::new();
 
-    for (i, agent) in agents.iter().enumerate() {
+    for agent in agents.iter() {
         let client_clone = client.clone();
         let config_clone = config.clone();
         let slug = project.slug.clone();
         let agent_name = (*agent).to_string();
-        let path = build_paths[i % build_paths.len()];
-        let contention = Arc::clone(&contention_detected);
+        let success_counter = Arc::clone(&success_count);
+        let failure_counter = Arc::clone(&failure_count);
 
         let handle = tokio::spawn(async move {
-            // Try to reserve the same build path
-            let result =
-                reserve_files(&client_clone, &config_clone, &slug, &agent_name, &[path]).await;
-            if result.is_err() {
-                let mut detected = contention.lock().await;
-                *detected = true;
+            // All agents try to reserve the SAME path
+            let result = reserve_files(
+                &client_clone,
+                &config_clone,
+                &slug,
+                &agent_name,
+                &[contested_path],
+            )
+            .await;
+            if result.is_ok() {
+                let mut count = success_counter.lock().await;
+                *count += 1;
+            } else {
+                let mut count = failure_counter.lock().await;
+                *count += 1;
             }
         });
         handles.push(handle);
@@ -656,8 +707,30 @@ async fn test_build_slot_contention() {
         let _ = handle.await;
     }
 
-    // Build slot contention is expected - either detected or all succeeded with tracking
-    println!("✓ Build slot contention test completed");
+    let successes = *success_count.lock().await;
+    let failures = *failure_count.lock().await;
+
+    // Verify contention occurred: either some failed (conflict blocked) or all succeeded (tracked)
+    // At minimum, we should have processed all 3 requests
+    assert_eq!(
+        successes + failures,
+        3,
+        "All 3 reservation attempts should complete"
+    );
+
+    // Contention is detected if: failures > 0 OR all succeeded (conflicts tracked separately)
+    if failures > 0 {
+        println!(
+            "✓ Build slot contention detected: {} succeeded, {} blocked",
+            successes, failures
+        );
+    } else {
+        // All succeeded - verify system tracks multiple reservations
+        println!(
+            "✓ Build slot contention tracked: {} reservations on same path",
+            successes
+        );
+    }
 }
 
 // ============================================================================

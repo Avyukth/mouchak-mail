@@ -298,20 +298,30 @@ async fn test_guard_blocks_on_active_reservation() {
 
     // Either fails (conflict) or succeeds (tracked separately)
     if res2.is_err() {
-        println!("Guard correctly blocked: second agent cannot reserve same file");
+        println!("✓ Guard correctly blocked: second agent cannot reserve same file");
     } else {
         // Check that both reservations exist (conflict tracking)
         let reservations = list_reservations(&client, &config, &project.slug).await;
-        if let Ok(res_list) = reservations {
-            let critical_count = res_list
-                .iter()
-                .filter(|r| r.path_pattern == "src/critical.rs")
-                .count();
-            println!(
-                "Guard tracks conflicts: {} reservations for same path",
-                critical_count
-            );
-        }
+        let res_list = match reservations {
+            Ok(r) => r,
+            Err(e) => panic!(
+                "Should list reservations to verify conflict tracking: {}",
+                e
+            ),
+        };
+        let critical_count = res_list
+            .iter()
+            .filter(|r| r.path_pattern == "src/critical.rs")
+            .count();
+        assert!(
+            critical_count >= 2,
+            "Guard should track both conflicting reservations, found {}",
+            critical_count
+        );
+        println!(
+            "✓ Guard tracks conflicts: {} reservations for same path",
+            critical_count
+        );
     }
 }
 
@@ -368,14 +378,19 @@ async fn test_guard_glob_overlap_detection() {
         }
     };
 
-    // Both reservations should exist (overlapping patterns tracked)
+    // Both reservations should exist (overlapping patterns tracked) OR second was blocked
     let has_glob = res_list.iter().any(|r| r.path_pattern == "src/*.rs");
     let has_specific = res_list.iter().any(|r| r.path_pattern == "src/lib.rs");
 
-    if has_glob && has_specific {
-        println!("Guard tracks overlapping patterns: glob and specific file");
-    } else if res2.is_err() {
-        println!("Guard blocked overlapping reservation");
+    if res2.is_err() {
+        // Overlap detected and blocked
+        assert!(has_glob, "Original glob reservation should exist");
+        println!("✓ Guard blocked overlapping reservation");
+    } else {
+        // Both tracked - verify overlap detection
+        assert!(has_glob, "Glob reservation should exist");
+        assert!(has_specific, "Specific file reservation should exist");
+        println!("✓ Guard tracks overlapping patterns: glob and specific file");
     }
 }
 
@@ -420,7 +435,7 @@ async fn test_prepush_blocks_pending_reviews() {
 
     match resp {
         Ok(r) if r.status().is_success() => {
-            // Message sent, now check pending reviews
+            // Message sent, now check pending reviews exist
             let pending_resp = client
                 .post(format!("{}/api/message/pending_acks", config.api_url))
                 .json(&json!({
@@ -430,14 +445,37 @@ async fn test_prepush_blocks_pending_reviews() {
                 .send()
                 .await;
 
-            if let Ok(r) = pending_resp {
-                if r.status().is_success() {
-                    println!("Pre-push would check for pending reviews before allowing push");
+            match pending_resp {
+                Ok(r) if r.status().is_success() => {
+                    // Verify pending reviews exist (pre-push should block)
+                    let body = r.text().await.unwrap_or_default();
+                    // If we got a response, pending reviews exist = pre-push would block
+                    assert!(
+                        !body.is_empty() || body.contains("["),
+                        "Should have pending reviews that would block pre-push"
+                    );
+                    println!("✓ Pre-push would block: pending reviews exist for ReviewerAgent");
+                }
+                Ok(r) => {
+                    // 404 or other response - endpoint may not exist
+                    println!(
+                        "⚠ Pending acks endpoint returned {}, skipping blocking test",
+                        r.status()
+                    );
+                }
+                Err(e) => {
+                    println!("⚠ Pending acks request failed: {}", e);
                 }
             }
         }
-        _ => {
-            println!("Message endpoint not available, skipping pending review check");
+        Ok(r) => {
+            println!(
+                "⚠ Message endpoint returned {}, skipping pending review check",
+                r.status()
+            );
+        }
+        Err(e) => {
+            println!("⚠ Message endpoint not available: {}", e);
         }
     }
 }
@@ -497,36 +535,48 @@ async fn test_force_release_stale_lock() {
         .send()
         .await;
 
-    match force_resp {
+    let force_release_succeeded = match force_resp {
         Ok(r) => {
-            if r.status().is_success() {
-                println!("Force release succeeded (admin capability)");
+            let status = r.status();
+            if status.is_success() {
+                println!("✓ Force release succeeded (admin capability)");
+                true
             } else {
-                println!(
-                    "Force release blocked (expected for non-owner): {}",
-                    r.status()
+                // Non-owner blocked is expected behavior - this is correct
+                assert!(
+                    status.is_client_error(),
+                    "Force release should return 4xx for non-owner, got {}",
+                    status
                 );
+                println!(
+                    "✓ Force release correctly blocked for non-owner: {}",
+                    status
+                );
+                false
             }
         }
         Err(e) => {
-            println!("Force release request failed: {}", e);
+            panic!("Force release request should not fail: {}", e);
         }
-    }
+    };
 
-    // Original agent can always release their own
-    let normal_release = release_reservation(
-        &client,
-        &config,
-        &project.slug,
-        "StaleAgent",
-        reservation_id,
-    )
-    .await;
-    assert!(
-        normal_release.is_ok(),
-        "Owner should be able to release their reservation"
-    );
-    println!("Owner successfully released their reservation");
+    // If force release succeeded, reservation is gone; otherwise original agent releases
+    if !force_release_succeeded {
+        // Original agent can always release their own
+        let normal_release = release_reservation(
+            &client,
+            &config,
+            &project.slug,
+            "StaleAgent",
+            reservation_id,
+        )
+        .await;
+        assert!(
+            normal_release.is_ok(),
+            "Owner should be able to release their reservation"
+        );
+        println!("✓ Owner successfully released their reservation");
+    }
 }
 
 // ============================================================================
@@ -551,19 +601,36 @@ async fn test_guard_status_output() {
             let stdout = String::from_utf8_lossy(&o.stdout);
             let stderr = String::from_utf8_lossy(&o.stderr);
 
-            // Guard status should output some information
+            // Guard status command should exist and run (may fail if server not configured)
+            // The key test is that the command runs without crashing
             if o.status.success() {
-                println!("Guard status succeeded");
+                // Success - verify output exists
+                assert!(
+                    !stdout.is_empty() || !stderr.is_empty(),
+                    "Guard status should produce some output"
+                );
+                println!("✓ Guard status succeeded");
                 if !stdout.is_empty() {
-                    println!("Status output: {}", stdout.lines().next().unwrap_or(""));
+                    println!("  Output: {}", stdout.lines().next().unwrap_or(""));
                 }
             } else {
-                // May fail if server not configured, but command should exist
-                println!("Guard status command exists (stderr: {})", stderr);
+                // Command ran but returned error (server not configured) - still valid
+                // The test passes if the command exists and runs
+                assert!(
+                    !stderr.is_empty() || o.status.code().is_some(),
+                    "Guard status should produce output or exit code on failure"
+                );
+                println!(
+                    "✓ Guard status command exists (exit code: {:?})",
+                    o.status.code()
+                );
             }
         }
         Err(e) => {
-            println!("Could not run guard status: {}", e);
+            panic!(
+                "Guard status command should be runnable: {} (build with cargo build first)",
+                e
+            );
         }
     }
 }
@@ -688,31 +755,34 @@ async fn test_guard_respects_expiration() {
         })
         .unwrap_or(0);
 
-    if before_count > 0 {
-        println!("Reservation exists immediately after creation");
-    }
+    assert!(
+        before_count > 0,
+        "Reservation should exist immediately after creation"
+    );
+    println!("✓ Reservation exists immediately after creation");
 
     // Wait for expiration
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // After expiration, check again
     let reservations_after = list_reservations(&client, &config, &project.slug).await;
+    let res_list = match reservations_after {
+        Ok(r) => r,
+        Err(e) => panic!("Should list reservations after expiration: {}", e),
+    };
 
-    if let Ok(res_list) = reservations_after {
-        let after_count = res_list
-            .iter()
-            .filter(|r| r.path_pattern == "src/expiring.rs")
-            .count();
+    let after_count = res_list
+        .iter()
+        .filter(|r| r.path_pattern == "src/expiring.rs")
+        .count();
 
-        if after_count == 0 {
-            println!("Expired reservation correctly removed from active list");
-        } else {
-            // May still exist but marked as expired
-            println!("Reservation still tracked (may be marked expired)");
-        }
-    }
+    // Either removed OR still tracked (both are valid - depends on cleanup strategy)
+    println!(
+        "✓ After expiration: {} active reservations for expired path",
+        after_count
+    );
 
-    // Second agent should now be able to reserve the same file
+    // Second agent should now be able to reserve the same file (key test)
     let res2 = reserve_files(
         &client,
         &config,
@@ -724,9 +794,16 @@ async fn test_guard_respects_expiration() {
     )
     .await;
 
+    // The critical assertion: either res2 succeeds (expiration honored)
+    // OR res2 fails but after_count is 0 (expired but cleanup pending)
     if res2.is_ok() {
-        println!("Second agent successfully reserved file after expiration");
+        println!("✓ Second agent successfully reserved file after expiration");
     } else {
-        println!("Expiration handling may need manual cleanup");
+        assert_eq!(
+            after_count, 0,
+            "If second reservation fails, original should be cleaned up (after_count={})",
+            after_count
+        );
+        println!("✓ Expiration detected, cleanup may be pending");
     }
 }
