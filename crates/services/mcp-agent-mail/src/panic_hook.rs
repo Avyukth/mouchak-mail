@@ -295,7 +295,12 @@ mod tests {
         // By default, sentry feature is NOT enabled
         #[cfg(not(feature = "sentry"))]
         {
-            assert!(true, "Sentry feature is correctly disabled by default");
+            // Verify sentry is correctly disabled by checking the feature flag
+            let sentry_enabled = cfg!(feature = "sentry");
+            assert!(
+                !sentry_enabled,
+                "Sentry feature should be disabled by default"
+            );
         }
     }
 

@@ -8,6 +8,12 @@
 //!
 //! This is the TDD test suite for task mcpmail-woia.
 
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::redundant_field_names
+)]
+
 use lib_mcp::tools::{RegisterAgentParams, SendMessageParams, schema_from_params};
 
 /// Test that generated schema has correct structure matching what we expect

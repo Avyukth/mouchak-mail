@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use e2e_tests::TestConfig;
 use jugar_probar::Browser;
 

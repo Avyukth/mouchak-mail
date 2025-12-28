@@ -119,6 +119,7 @@ fn compute_git_common_dir_slug(path: &str) -> Option<String> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
 

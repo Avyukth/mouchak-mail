@@ -1,7 +1,11 @@
 //! Tests for export and review tool implementations
 //! Target: Improve coverage for export.rs and reviews.rs
 
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::redundant_field_names
+)]
 
 use lib_common::config::AppConfig;
 use lib_core::ctx::Ctx;

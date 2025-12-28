@@ -2,7 +2,9 @@
 //!
 //! These tests verify the REST API endpoints work correctly.
 //! Uses reqwest for HTTP calls and jugar-probar for advanced assertions.
-//!
+
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 //! Prerequisites:
 //! - API server running: `cargo run -p mcp-server`
 //!

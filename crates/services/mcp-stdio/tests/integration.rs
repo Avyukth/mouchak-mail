@@ -3,6 +3,8 @@
 //! These tests verify end-to-end functionality of the MCP tools
 //! by testing the lib-core models directly.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use lib_common::config::AppConfig;
 use lib_core::ModelManager;
 use std::sync::Arc;

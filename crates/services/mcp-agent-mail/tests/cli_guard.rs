@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+#![allow(deprecated)] // cargo_bin is still valid for our use case
 
 use assert_cmd::Command;
 use predicates::prelude::*;
