@@ -19,6 +19,15 @@ jobs:
     name: Build Linux
     runs-on: ubuntu-latest
     steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        df -h
+
     - uses: actions/checkout@v4
 
     - name: Install Dependencies
@@ -35,10 +44,10 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p release
-        cp target/release/mcp-server release/mcp-server-linux-x86_64
-        cp target/release/mcp-cli release/mcp-cli-linux-x86_64
+        cp target/release/mouchak-mail-http release/mouchak-mail-http-linux-x86_64
+        cp target/release/mouchak-mail-cli release/mouchak-mail-cli-linux-x86_64
         cp target/release/mouchak-mail release/mouchak-mail-linux-x86_64
-        cp target/release/mcp-stdio-server release/mcp-stdio-linux-x86_64
+        cp target/release/mouchak-mail-stdio release/mouchak-mail-stdio-linux-x86_64
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -61,10 +70,10 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir -p release
-        cp target/release/mcp-server release/mcp-server-darwin-arm64
-        cp target/release/mcp-cli release/mcp-cli-darwin-arm64
+        cp target/release/mouchak-mail-http release/mouchak-mail-http-darwin-arm64
+        cp target/release/mouchak-mail-cli release/mouchak-mail-cli-darwin-arm64
         cp target/release/mouchak-mail release/mouchak-mail-darwin-arm64
-        cp target/release/mcp-stdio-server release/mcp-stdio-darwin-arm64
+        cp target/release/mouchak-mail-stdio release/mouchak-mail-stdio-darwin-arm64
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4

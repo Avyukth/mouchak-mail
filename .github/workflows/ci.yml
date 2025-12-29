@@ -17,6 +17,15 @@ jobs:
     # Build locally for macOS: cargo build --release
 
     steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        df -h
+
     - uses: actions/checkout@v4
 
     - name: Install Rust
@@ -93,6 +102,13 @@ jobs:
     # Non-blocking: Miri detects undefined behavior in unsafe code
     continue-on-error: true
     steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        df -h
+
     - uses: actions/checkout@v4
 
     - name: Install Rust Nightly
@@ -103,10 +119,10 @@ jobs:
     - name: Setup Miri
       run: cargo +nightly miri setup
 
-    - name: Run Miri on lib-core
+    - name: Run Miri on mouchak-mail-core
       run: |
         echo "::notice::Running Miri to detect undefined behavior"
-        cargo +nightly miri test -p lib-core --lib 2>&1 | tee miri-output.txt | head -100 || true
+        cargo +nightly miri test -p mouchak-mail-core --lib 2>&1 | tee miri-output.txt | head -100 || true
         if [ $(wc -l < miri-output.txt) -gt 100 ]; then
           echo "::warning::Miri output truncated. Full output: $(wc -l < miri-output.txt) lines"
         fi
@@ -117,6 +133,13 @@ jobs:
     # Non-blocking: Kani proves mathematical properties of code
     continue-on-error: true
     steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        df -h
+
     - uses: actions/checkout@v4
 
     - name: Install Kani
@@ -127,7 +150,7 @@ jobs:
     - name: Run Kani Proofs
       run: |
         echo "::notice::Running Kani formal verification proofs"
-        cargo kani --package lib-core --output-format terse 2>&1 | tee kani-output.txt | head -200 || true
+        cargo kani --package mouchak-mail-core --output-format terse 2>&1 | tee kani-output.txt | head -200 || true
         if [ $(wc -l < kani-output.txt) -gt 200 ]; then
           echo "::warning::Kani output truncated. Full output: $(wc -l < kani-output.txt) lines"
         fi
@@ -139,6 +162,15 @@ jobs:
     # Target: Enable --fail-under-lines 85 when coverage reaches 80%
     continue-on-error: true
     steps:
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force
+        df -h
+
     - uses: actions/checkout@v4
 
     - name: Install Rust
