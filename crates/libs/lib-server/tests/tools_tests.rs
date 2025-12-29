@@ -6,17 +6,17 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use axum::{
+    Router,
     body::Body,
     http::{Request, StatusCode},
     routing::{get, post},
-    Router,
 };
 use http_body_util::BodyExt;
 use lib_common::config::AppConfig;
 use lib_core::ModelManager;
-use lib_server::{AppState, tools};
 use lib_server::auth::{AuthConfig, AuthMode};
 use lib_server::ratelimit::RateLimitConfig;
+use lib_server::{AppState, tools};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -236,7 +236,12 @@ mod project_tests {
         let app1 = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        post_json(app1, "/api/project/ensure", json!({"human_key": "list-test-project"})).await;
+        post_json(
+            app1,
+            "/api/project/ensure",
+            json!({"human_key": "list-test-project"}),
+        )
+        .await;
 
         // List projects
         let app2 = Router::new()
@@ -257,7 +262,12 @@ mod project_tests {
         let app1 = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app1, "/api/project/ensure", json!({"human_key": "info-test"})).await;
+        let (_, proj) = post_json(
+            app1,
+            "/api/project/ensure",
+            json!({"human_key": "info-test"}),
+        )
+        .await;
 
         // Get project info
         let app2 = Router::new()
@@ -289,7 +299,12 @@ mod agent_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, body) = post_json(app, "/api/project/ensure", json!({"human_key": "agent-test-proj"})).await;
+        let (_, body) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "agent-test-proj"}),
+        )
+        .await;
         body["slug"].as_str().unwrap().to_string()
     }
 
@@ -368,7 +383,10 @@ mod agent_tests {
         let project_slug = setup_with_project(&state).await;
 
         let app = Router::new()
-            .route("/api/agent/create_identity", post(tools::create_agent_identity))
+            .route(
+                "/api/agent/create_identity",
+                post(tools::create_agent_identity),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -415,7 +433,8 @@ mod agent_tests {
             )
             .with_state(state);
 
-        let (status, body) = get_json(app2, &format!("/api/projects/{}/agents", project_slug)).await;
+        let (status, body) =
+            get_json(app2, &format!("/api/projects/{}/agents", project_slug)).await;
 
         assert_eq!(status, StatusCode::OK);
         let agents = body.as_array().unwrap();
@@ -436,7 +455,12 @@ mod message_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "msg-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "msg-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create sender agent
@@ -471,7 +495,11 @@ mod message_tests {
         )
         .await;
 
-        (project_slug, "SenderAgent".to_string(), "RecipientAgent".to_string())
+        (
+            project_slug,
+            "SenderAgent".to_string(),
+            "RecipientAgent".to_string(),
+        )
     }
 
     #[tokio::test]
@@ -686,7 +714,12 @@ mod file_reservation_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "res-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "res-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         let app = Router::new()
@@ -713,7 +746,10 @@ mod file_reservation_tests {
         let (project_slug, agent_name) = setup_with_agent(&state).await;
 
         let app = Router::new()
-            .route("/api/file_reservations/paths", post(tools::file_reservation_paths))
+            .route(
+                "/api/file_reservations/paths",
+                post(tools::file_reservation_paths),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -741,7 +777,10 @@ mod file_reservation_tests {
 
         // Create a reservation
         let app = Router::new()
-            .route("/api/file_reservations/paths", post(tools::file_reservation_paths))
+            .route(
+                "/api/file_reservations/paths",
+                post(tools::file_reservation_paths),
+            )
             .with_state(state.clone());
         post_json(
             app,
@@ -757,7 +796,10 @@ mod file_reservation_tests {
 
         // List reservations
         let app = Router::new()
-            .route("/api/file_reservations/list", post(tools::list_file_reservations))
+            .route(
+                "/api/file_reservations/list",
+                post(tools::list_file_reservations),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -780,7 +822,10 @@ mod file_reservation_tests {
 
         // Create reservation
         let app = Router::new()
-            .route("/api/file_reservations/paths", post(tools::file_reservation_paths))
+            .route(
+                "/api/file_reservations/paths",
+                post(tools::file_reservation_paths),
+            )
             .with_state(state.clone());
         post_json(
             app,
@@ -796,7 +841,10 @@ mod file_reservation_tests {
 
         // Release it
         let app = Router::new()
-            .route("/api/file_reservations/release", post(tools::release_file_reservation))
+            .route(
+                "/api/file_reservations/release",
+                post(tools::release_file_reservation),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -821,7 +869,10 @@ mod file_reservation_tests {
 
         // Create a lock
         let app = Router::new()
-            .route("/api/file_reservations/paths", post(tools::file_reservation_paths))
+            .route(
+                "/api/file_reservations/paths",
+                post(tools::file_reservation_paths),
+            )
             .with_state(state.clone());
         post_json(
             app,
@@ -859,7 +910,12 @@ mod thread_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "thread-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "thread-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agents
@@ -984,7 +1040,12 @@ mod build_slot_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "build-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "build-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         let app = Router::new()
@@ -1121,7 +1182,12 @@ mod contact_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "contact-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "contact-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         for name in ["ContactRequester", "ContactTarget"] {
@@ -1141,7 +1207,11 @@ mod contact_tests {
             .await;
         }
 
-        (project_slug, "ContactRequester".to_string(), "ContactTarget".to_string())
+        (
+            project_slug,
+            "ContactRequester".to_string(),
+            "ContactTarget".to_string(),
+        )
     }
 
     #[tokio::test]
@@ -1278,7 +1348,12 @@ mod macro_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "macro-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "macro-test-proj"}),
+        )
+        .await;
         proj["slug"].as_str().unwrap().to_string()
     }
 
@@ -1404,7 +1479,12 @@ mod profile_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "profile-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "profile-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         let app = Router::new()
@@ -1457,7 +1537,10 @@ mod profile_tests {
         let (project_slug, agent_name) = setup_with_agent(&state).await;
 
         let app = Router::new()
-            .route("/api/agent/profile/update", post(tools::update_agent_profile))
+            .route(
+                "/api/agent/profile/update",
+                post(tools::update_agent_profile),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -1514,7 +1597,12 @@ mod ack_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "ack-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "ack-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agents
@@ -1553,7 +1641,11 @@ mod ack_tests {
         )
         .await;
 
-        (project_slug, "AckRecipient".to_string(), msg["id"].as_i64().unwrap())
+        (
+            project_slug,
+            "AckRecipient".to_string(),
+            msg["id"].as_i64().unwrap(),
+        )
     }
 
     #[tokio::test]
@@ -1620,7 +1712,12 @@ mod delete_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "delete-agent-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "delete-agent-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agent
@@ -1665,7 +1762,12 @@ mod delete_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "delete-proj-test"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "delete-proj-test"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Delete project
@@ -1699,7 +1801,12 @@ mod message_extended_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "msg-ext-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "msg-ext-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agents
@@ -1796,7 +1903,12 @@ mod file_reservation_extended_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "file-res-ext-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "file-res-ext-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agent
@@ -1817,7 +1929,10 @@ mod file_reservation_extended_tests {
 
         // Create reservation
         let app = Router::new()
-            .route("/api/file_reservations/paths", post(tools::file_reservation_paths))
+            .route(
+                "/api/file_reservations/paths",
+                post(tools::file_reservation_paths),
+            )
             .with_state(state.clone());
         let (_, res) = post_json(
             app,
@@ -1832,7 +1947,9 @@ mod file_reservation_extended_tests {
         )
         .await;
 
-        let res_id = res["granted"].as_array().unwrap()[0]["id"].as_i64().unwrap();
+        let res_id = res["granted"].as_array().unwrap()[0]["id"]
+            .as_i64()
+            .unwrap();
         (project_slug, "FileResAgent".to_string(), res_id)
     }
 
@@ -1842,7 +1959,10 @@ mod file_reservation_extended_tests {
         let (_project_slug, _agent_name, reservation_id) = setup_with_reservation(&state).await;
 
         let app = Router::new()
-            .route("/api/file_reservations/renew", post(tools::renew_file_reservation))
+            .route(
+                "/api/file_reservations/renew",
+                post(tools::renew_file_reservation),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -1865,7 +1985,10 @@ mod file_reservation_extended_tests {
         let (_project_slug, _agent_name, reservation_id) = setup_with_reservation(&state).await;
 
         let app = Router::new()
-            .route("/api/file_reservations/force_release", post(tools::force_release_reservation))
+            .route(
+                "/api/file_reservations/force_release",
+                post(tools::force_release_reservation),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -1897,7 +2020,12 @@ mod quota_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "quota-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "quota-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agent
@@ -1952,7 +2080,12 @@ mod overseer_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "overseer-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "overseer-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agent
@@ -2004,7 +2137,12 @@ mod macro_extended_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "macro-ext-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "macro-ext-proj"}),
+        )
+        .await;
         proj["slug"].as_str().unwrap().to_string()
     }
 
@@ -2054,7 +2192,10 @@ mod macro_extended_tests {
         let project_slug = setup_project(&state).await;
 
         let app = Router::new()
-            .route("/api/macros/start_session", post(tools::macro_start_session))
+            .route(
+                "/api/macros/start_session",
+                post(tools::macro_start_session),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -2097,7 +2238,10 @@ mod macro_extended_tests {
         .await;
 
         let app = Router::new()
-            .route("/api/macros/file_reservation_cycle", post(tools::macro_file_reservation_cycle))
+            .route(
+                "/api/macros/file_reservation_cycle",
+                post(tools::macro_file_reservation_cycle),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -2140,7 +2284,10 @@ mod macro_extended_tests {
         }
 
         let app = Router::new()
-            .route("/api/macros/contact_handshake", post(tools::macro_contact_handshake))
+            .route(
+                "/api/macros/contact_handshake",
+                post(tools::macro_contact_handshake),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -2172,7 +2319,12 @@ mod thread_extended_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "thread-ext-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "thread-ext-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agents
@@ -2255,7 +2407,12 @@ mod precommit_guard_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "guard-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "guard-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create a temp directory for the repo
@@ -2264,7 +2421,10 @@ mod precommit_guard_tests {
         std::fs::create_dir_all(temp_repo.path().join(".git/hooks")).unwrap();
 
         let app = Router::new()
-            .route("/api/setup/install_guard", post(tools::install_precommit_guard))
+            .route(
+                "/api/setup/install_guard",
+                post(tools::install_precommit_guard),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -2288,12 +2448,19 @@ mod precommit_guard_tests {
         let temp_repo = tempfile::tempdir().unwrap();
         let hooks_dir = temp_repo.path().join(".git/hooks");
         std::fs::create_dir_all(&hooks_dir).unwrap();
-        std::fs::write(hooks_dir.join("pre-commit"), "#!/bin/bash\n# MCP Agent Mail Pre-commit Guard\necho 'checking'").unwrap();
+        std::fs::write(
+            hooks_dir.join("pre-commit"),
+            "#!/bin/bash\n# MCP Agent Mail Pre-commit Guard\necho 'checking'",
+        )
+        .unwrap();
 
         let repo_path = temp_repo.path().to_string_lossy().to_string();
 
         let app = Router::new()
-            .route("/api/setup/uninstall_guard", post(tools::uninstall_precommit_guard))
+            .route(
+                "/api/setup/uninstall_guard",
+                post(tools::uninstall_precommit_guard),
+            )
             .with_state(state);
 
         let (status, body) = post_json(
@@ -2352,14 +2519,20 @@ mod metrics_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "activity-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "activity-test-proj"}),
+        )
+        .await;
         let project_id = proj["id"].as_i64().unwrap();
 
         let app = Router::new()
             .route("/api/activity", get(tools::list_activity))
             .with_state(state);
 
-        let (status, body) = get_json(app, &format!("/api/activity?project_id={}", project_id)).await;
+        let (status, body) =
+            get_json(app, &format!("/api/activity?project_id={}", project_id)).await;
 
         assert_eq!(status, StatusCode::OK);
         assert!(body.is_array());
@@ -2381,7 +2554,12 @@ mod pending_reviews_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "pending-rev-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "pending-rev-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         // Create agents
@@ -2421,7 +2599,10 @@ mod pending_reviews_tests {
         .await;
 
         let app = Router::new()
-            .route("/api/messages/pending-reviews", get(tools::list_pending_reviews))
+            .route(
+                "/api/messages/pending-reviews",
+                get(tools::list_pending_reviews),
+            )
             .with_state(state);
 
         let (status, body) = get_json(app, "/api/messages/pending-reviews").await;
@@ -2447,7 +2628,12 @@ mod siblings_tests {
         let app = Router::new()
             .route("/api/project/ensure", post(tools::ensure_project))
             .with_state(state.clone());
-        let (_, proj) = post_json(app, "/api/project/ensure", json!({"human_key": "sibling-test-proj"})).await;
+        let (_, proj) = post_json(
+            app,
+            "/api/project/ensure",
+            json!({"human_key": "sibling-test-proj"}),
+        )
+        .await;
         let project_slug = proj["slug"].as_str().unwrap().to_string();
 
         let app = Router::new()

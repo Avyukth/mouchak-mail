@@ -444,7 +444,10 @@ async fn test_acquire_build_slot_impl_slot_conflict() {
         ttl_seconds: Some(3600),
     };
     let result2 = builds::acquire_build_slot_impl(&ctx, &mm, params2).await;
-    assert!(result2.is_err(), "Second acquisition should fail - slot already held");
+    assert!(
+        result2.is_err(),
+        "Second acquisition should fail - slot already held"
+    );
 }
 
 #[tokio::test]

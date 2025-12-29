@@ -205,11 +205,16 @@ export async function markMessagesAsRead(ids: number[]): Promise<void> {
 	);
 
 	// Sync with backend - dynamically import to avoid circular dependency
+	// DESIGN NOTE: This unified inbox is a monitoring dashboard without user authentication.
+	// We use recipients[0] as a pragmatic actor for mark-as-read since:
+	// 1. The API requires an agent_name parameter to identify who is reading
+	// 2. Recipients are the agents who would legitimately read this message
+	// 3. For dashboard monitoring purposes, tracking "marked as read" matters more than "by whom"
 	try {
 		const { dataProvider } = await import('$lib/data');
 		await Promise.allSettled(
 			messagesToMark.map((msg) => {
-				// Use first recipient as the agent reading the message
+				// Use first recipient as the actor (see DESIGN NOTE above)
 				const recipients = msg.recipients ?? msg.recipient_names ?? [];
 				const agentName = recipients[0];
 				if (!agentName || !msg.project_slug) return Promise.resolve();

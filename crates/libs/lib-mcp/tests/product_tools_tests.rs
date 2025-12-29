@@ -19,8 +19,8 @@ use lib_mcp::tools::{
     SearchMessagesProductParams, SummarizeThreadProductParams, ThreadIdInput,
     UnlinkProjectFromProductParams, products,
 };
-use rmcp::handler::server::wrapper::Parameters;
 use libsql::Builder;
+use rmcp::handler::server::wrapper::Parameters;
 use std::sync::Arc;
 use tempfile::TempDir;
 use uuid::Uuid;

@@ -47,9 +47,14 @@ async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
 async fn setup_project(mm: &Arc<ModelManager>, suffix: &str) -> String {
     let ctx = Ctx::root_ctx();
     let project_slug = format!("agent_project_{}", suffix);
-    ProjectBmc::create(&ctx, mm, &project_slug, &format!("Agent Project {}", suffix))
-        .await
-        .unwrap();
+    ProjectBmc::create(
+        &ctx,
+        mm,
+        &project_slug,
+        &format!("Agent Project {}", suffix),
+    )
+    .await
+    .unwrap();
     project_slug
 }
 
@@ -338,9 +343,7 @@ async fn test_list_agents_impl_with_agents() {
             model: "opus".to_string(),
             task_description: format!("Task for {}", name),
         };
-        agent::register_agent_impl(&ctx, &mm, params)
-            .await
-            .unwrap();
+        agent::register_agent_impl(&ctx, &mm, params).await.unwrap();
     }
 
     let params = ListAgentsParams {

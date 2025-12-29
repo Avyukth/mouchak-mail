@@ -85,7 +85,10 @@ async fn test_get_by_uid_not_found() {
 
     let result = ProductBmc::get_by_uid(&tc.ctx, &tc.mm, "prod-nonexistent-uid").await;
 
-    assert!(result.is_err(), "Should return error for non-existent product");
+    assert!(
+        result.is_err(),
+        "Should return error for non-existent product"
+    );
 }
 
 /// Test list_all returns all products with their linked projects
@@ -186,9 +189,10 @@ async fn test_list_for_project() {
         .expect("Failed to create test context");
 
     // Create project
-    let project_id = ProjectBmc::create(&tc.ctx, &tc.mm, "proj-list-prods", "List Products Project")
-        .await
-        .unwrap();
+    let project_id =
+        ProjectBmc::create(&tc.ctx, &tc.mm, "proj-list-prods", "List Products Project")
+            .await
+            .unwrap();
 
     // Create two products and link project to both
     let product1 = ProductBmc::ensure(&tc.ctx, &tc.mm, "prod-list-for-1", "List For 1")

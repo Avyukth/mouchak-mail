@@ -62,7 +62,10 @@ async fn test_list_tool_metrics_impl_empty() {
     assert!(result.is_ok());
 
     let output = extract_text(&result.unwrap());
-    assert!(output.contains("[]"), "Empty metrics should return empty array");
+    assert!(
+        output.contains("[]"),
+        "Empty metrics should return empty array"
+    );
 }
 
 #[tokio::test]
@@ -126,8 +129,16 @@ async fn test_get_tool_stats_impl_with_data() {
             agent_id: None,
             tool_name: "fetch_inbox".to_string(),
             args_json: None,
-            status: if i % 2 == 0 { "success".to_string() } else { "error".to_string() },
-            error_code: if i % 2 != 0 { Some("TEST_ERROR".to_string()) } else { None },
+            status: if i % 2 == 0 {
+                "success".to_string()
+            } else {
+                "error".to_string()
+            },
+            error_code: if i % 2 != 0 {
+                Some("TEST_ERROR".to_string())
+            } else {
+                None
+            },
             duration_ms: 10 + i,
         };
         ToolMetricBmc::create(&ctx, &mm, metric).await.unwrap();
@@ -160,7 +171,10 @@ async fn test_list_activity_impl_empty() {
     assert!(result.is_ok());
 
     let output = extract_text(&result.unwrap());
-    assert!(output.contains("[]"), "Empty activity should return empty array");
+    assert!(
+        output.contains("[]"),
+        "Empty activity should return empty array"
+    );
 }
 
 #[tokio::test]
@@ -216,7 +230,10 @@ async fn test_list_pending_reviews_impl_empty() {
     assert!(result.is_ok());
 
     let output = extract_text(&result.unwrap());
-    assert!(output.contains("[]"), "No pending reviews should return empty array");
+    assert!(
+        output.contains("[]"),
+        "No pending reviews should return empty array"
+    );
 }
 
 #[tokio::test]

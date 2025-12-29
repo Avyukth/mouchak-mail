@@ -53,9 +53,14 @@ async fn setup_project_with_agent(mm: &Arc<ModelManager>, suffix: &str) -> (Stri
     let ctx = Ctx::root_ctx();
 
     let project_slug = format!("files-project-{}", suffix);
-    let project_id = ProjectBmc::create(&ctx, mm, &project_slug, &format!("Files Project {}", suffix))
-        .await
-        .unwrap();
+    let project_id = ProjectBmc::create(
+        &ctx,
+        mm,
+        &project_slug,
+        &format!("Files Project {}", suffix),
+    )
+    .await
+    .unwrap();
 
     let agent_c = AgentForCreate {
         project_id,
