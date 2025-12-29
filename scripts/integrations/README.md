@@ -433,13 +433,11 @@ Once configured, clients have access to 28 MCP tools:
 **Contact Management**: add, list, approve, block
 **Macros**: create, list, execute, delete
 
-See [MCP Tools Reference](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail) for full documentation.
 
 ## Support
 
 For issues or questions:
 - Check project README: `/path/to/mcp-agent-mail-rs/README.md`
-- Review AGENTS.md for project guidelines
 - Check client-specific documentation
 
 ## Contributing

@@ -734,7 +734,6 @@ SQLite with FTS5 full-text search. **15 tables** across 4 migrations:
 ## References
 
 - [Python Original](https://github.com/Dicklesworthstone/mcp_agent_mail) — Source implementation
-- [MCP Tools Reference](https://glama.ai/mcp/servers/@Dicklesworthstone/mcp_agent_mail) — MCP tools specification
 - [MCP Protocol](https://modelcontextprotocol.io) — Model Context Protocol specification
 - [Beads Issue Tracker](https://github.com/steveyegge/beads) — Task tracking via `bd` CLI
 - [PMAT Quality Gates](https://paiml.github.io/pmat-book/) — Production maturity analysis
