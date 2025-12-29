@@ -361,7 +361,9 @@ async fn test_export_signing_keypair_generation() {
 
 #[tokio::test]
 async fn test_export_manifest_signing() {
-    use mouchak_mail_core::model::export::{ExportManifest, ExportedMailbox, generate_signing_keypair};
+    use mouchak_mail_core::model::export::{
+        ExportManifest, ExportedMailbox, generate_signing_keypair,
+    };
 
     let exported = ExportedMailbox {
         project_slug: "test-project".to_string(),
@@ -386,7 +388,9 @@ async fn test_export_manifest_signing() {
 
 #[tokio::test]
 async fn test_export_manifest_verification() {
-    use mouchak_mail_core::model::export::{ExportManifest, ExportedMailbox, generate_signing_keypair};
+    use mouchak_mail_core::model::export::{
+        ExportManifest, ExportedMailbox, generate_signing_keypair,
+    };
 
     let exported = ExportedMailbox {
         project_slug: "test-project".to_string(),
@@ -407,7 +411,9 @@ async fn test_export_manifest_verification() {
 
 #[tokio::test]
 async fn test_export_manifest_tamper_detection() {
-    use mouchak_mail_core::model::export::{ExportManifest, ExportedMailbox, generate_signing_keypair};
+    use mouchak_mail_core::model::export::{
+        ExportManifest, ExportedMailbox, generate_signing_keypair,
+    };
 
     let exported = ExportedMailbox {
         project_slug: "test-project".to_string(),
@@ -565,7 +571,9 @@ async fn test_age_encrypt_decrypt_with_passphrase() {
 
 #[tokio::test]
 async fn test_age_encrypt_decrypt_with_keypair() {
-    use mouchak_mail_core::model::export::{decrypt_with_identity, encrypt_with_age, generate_age_identity};
+    use mouchak_mail_core::model::export::{
+        decrypt_with_identity, encrypt_with_age, generate_age_identity,
+    };
 
     let test_data = b"Hello, world! This is a test message for age key encryption.";
     let (identity, recipient) = generate_age_identity();
@@ -610,7 +618,9 @@ async fn test_age_wrong_passphrase_fails() {
 
 #[tokio::test]
 async fn test_age_wrong_identity_fails() {
-    use mouchak_mail_core::model::export::{decrypt_with_identity, encrypt_with_age, generate_age_identity};
+    use mouchak_mail_core::model::export::{
+        decrypt_with_identity, encrypt_with_age, generate_age_identity,
+    };
 
     let test_data = b"Secret message";
     let (_identity, recipient) = generate_age_identity();
@@ -789,7 +799,9 @@ async fn test_encrypted_export_identity_roundtrip() {
         .await
         .expect("Failed to create test context");
 
-    use mouchak_mail_core::model::export::{ExportBmc, generate_age_identity, generate_signing_keypair};
+    use mouchak_mail_core::model::export::{
+        ExportBmc, generate_age_identity, generate_signing_keypair,
+    };
 
     let (_, slug) = setup_project_with_messages(&tc, "enc-roundtrip").await;
     let (identity, recipient) = generate_age_identity();
@@ -924,7 +936,9 @@ async fn test_verify_bundle_content_tampered() {
 /// Test multi-recipient encryption
 #[tokio::test]
 async fn test_age_multi_recipient_encryption() {
-    use mouchak_mail_core::model::export::{decrypt_with_identity, encrypt_with_age, generate_age_identity};
+    use mouchak_mail_core::model::export::{
+        decrypt_with_identity, encrypt_with_age, generate_age_identity,
+    };
 
     let test_data = b"Message for multiple recipients";
 

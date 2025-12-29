@@ -12,12 +12,12 @@ use axum::{
     routing::{get, post},
 };
 use http_body_util::BodyExt;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ModelManager;
 use mouchak_mail_server::auth::{AuthConfig, AuthMode};
 use mouchak_mail_server::ratelimit::RateLimitConfig;
 use mouchak_mail_server::{AppState, tools};
-use metrics_exporter_prometheus::PrometheusBuilder;
 use serde_json::{Value, json};
 use std::sync::Arc;
 use std::time::Instant;

@@ -14,11 +14,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use chrono::{Duration, Utc};
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::ModelManager;
 use mouchak_mail_core::model::archive_browser::{ArchiveBrowserBmc, CommitFilter};
-use libsql::Builder;
 use std::path::Path;
 use std::sync::Arc;
 use tempfile::TempDir;

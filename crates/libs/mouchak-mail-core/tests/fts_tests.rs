@@ -18,9 +18,11 @@ use serial_test::serial;
 async fn create_test_mm() -> ModelManager {
     // In-memory DB with migrations
     // FTS tables created automatically by migrations in ModelManager::new()
-    ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default()))
-        .await
-        .unwrap()
+    ModelManager::new(std::sync::Arc::new(
+        mouchak_mail_common::config::AppConfig::default(),
+    ))
+    .await
+    .unwrap()
 }
 
 async fn setup_project_and_agent(ctx: &Ctx, mm: &ModelManager, suffix: &str) -> (ProjectId, i64) {

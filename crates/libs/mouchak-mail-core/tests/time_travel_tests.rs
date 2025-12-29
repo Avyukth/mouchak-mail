@@ -11,11 +11,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use chrono::{DateTime, Duration, Utc};
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::ModelManager;
 use mouchak_mail_core::model::time_travel::{TimeTravelBmc, parse_timestamp};
-use libsql::Builder;
 use std::path::Path;
 use std::sync::Arc;
 use tempfile::TempDir;

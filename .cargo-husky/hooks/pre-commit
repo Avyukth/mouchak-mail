@@ -15,17 +15,13 @@ set -e
 echo "Running pre-commit checks..."
 
 # ============================================================================
-# 1. Rust Format Check (REQUIRED - blocks commit on failure)
+# 1. Rust Format (auto-fix and stage formatted files)
 # ============================================================================
-echo "  -> Checking code formatting..."
-if ! cargo fmt --check --quiet 2>/dev/null; then
-    echo "ERROR: Format check failed!"
-    echo ""
-    echo "Run 'cargo fmt' to fix formatting issues."
-    echo ""
-    exit 1
-fi
-echo "  OK: Format check passed"
+echo "  -> Formatting code..."
+cargo fmt --all
+git add -u *.rs 2>/dev/null || true
+git add -u **/*.rs 2>/dev/null || true
+echo "  OK: Code formatted"
 
 # ============================================================================
 # 2. Clippy Lint Check (advisory - shows warnings but doesn't block)

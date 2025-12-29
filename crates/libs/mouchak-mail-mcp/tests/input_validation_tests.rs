@@ -3,6 +3,7 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -11,7 +12,6 @@ use mouchak_mail_core::model::{
     project::ProjectBmc,
 };
 use mouchak_mail_mcp::tools::helpers;
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

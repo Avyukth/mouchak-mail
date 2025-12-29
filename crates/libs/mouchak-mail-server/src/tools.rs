@@ -113,41 +113,48 @@ pub async fn ensure_project(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        match mouchak_mail_core::model::project::ProjectBmc::get_by_human_key(&ctx, mm, &payload.human_key)
-            .await
-        {
-            Ok(p) => p,
-            Err(e) => {
-                if let mouchak_mail_core::Error::ProjectNotFound { .. } = e {
-                    let mcp_config = mouchak_mail_common::config::McpConfig::from_env();
-                    let slug = mouchak_mail_core::utils::compute_project_slug(
-                        &payload.human_key,
-                        mcp_config.project_identity_mode,
-                        &mcp_config.project_identity_remote,
-                    );
-                    let _id = mouchak_mail_core::model::project::ProjectBmc::create(
-                        &ctx,
-                        mm,
-                        &slug,
-                        &payload.human_key,
-                    )
-                    .await?;
-                    mouchak_mail_core::model::project::ProjectBmc::get_by_human_key(
-                        &ctx,
-                        mm,
-                        &payload.human_key,
-                    )
-                    .await?
-                } else {
-                    return Err(e.into());
-                }
+    let project = match mouchak_mail_core::model::project::ProjectBmc::get_by_human_key(
+        &ctx,
+        mm,
+        &payload.human_key,
+    )
+    .await
+    {
+        Ok(p) => p,
+        Err(e) => {
+            if let mouchak_mail_core::Error::ProjectNotFound { .. } = e {
+                let mcp_config = mouchak_mail_common::config::McpConfig::from_env();
+                let slug = mouchak_mail_core::utils::compute_project_slug(
+                    &payload.human_key,
+                    mcp_config.project_identity_mode,
+                    &mcp_config.project_identity_remote,
+                );
+                let _id = mouchak_mail_core::model::project::ProjectBmc::create(
+                    &ctx,
+                    mm,
+                    &slug,
+                    &payload.human_key,
+                )
+                .await?;
+                mouchak_mail_core::model::project::ProjectBmc::get_by_human_key(
+                    &ctx,
+                    mm,
+                    &payload.human_key,
+                )
+                .await?
+            } else {
+                return Err(e.into());
             }
-        };
+        }
+    };
 
     // Ensure built-in macros exist
-    mouchak_mail_core::model::macro_def::MacroDefBmc::ensure_builtin_macros(&ctx, mm, project.id.get())
-        .await?;
+    mouchak_mail_core::model::macro_def::MacroDefBmc::ensure_builtin_macros(
+        &ctx,
+        mm,
+        project.id.get(),
+    )
+    .await?;
 
     Ok(Json(EnsureProjectResponse {
         id: project.id.get(),
@@ -189,9 +196,12 @@ pub async fn register_agent(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     let agent_c = mouchak_mail_core::model::agent::AgentForCreate {
         project_id: project.id,
@@ -264,18 +274,26 @@ pub async fn send_message(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let sender =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.sender_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let sender = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.sender_name,
+    )
+    .await?;
 
     // Resolve "to" recipients
     let mut recipient_ids = Vec::new();
     for name in payload.recipient_names {
         let agent =
-            mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name).await?;
+            mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name)
+                .await?;
         recipient_ids.push(agent.id.get());
     }
 
@@ -284,7 +302,8 @@ pub async fn send_message(
         let mut ids = Vec::new();
         for name in cc_names {
             let agent =
-                mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name).await?;
+                mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name)
+                    .await?;
             ids.push(agent.id.get());
         }
         Some(ids)
@@ -297,7 +316,8 @@ pub async fn send_message(
         let mut ids = Vec::new();
         for name in bcc_names {
             let agent =
-                mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name).await?;
+                mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &name)
+                    .await?;
             ids.push(agent.id.get());
         }
         Some(ids)
@@ -366,12 +386,19 @@ pub async fn list_inbox(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let messages = mouchak_mail_core::model::message::MessageBmc::list_inbox_for_agent(
         &ctx,
@@ -411,12 +438,19 @@ pub async fn list_outbox(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let messages = mouchak_mail_core::model::message::MessageBmc::list_outbox_for_agent(
         &ctx,
@@ -485,7 +519,8 @@ pub async fn delete_project(
     let mm = &app_state.mm;
 
     let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug).await?;
+        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug)
+            .await?;
 
     mouchak_mail_core::model::project::ProjectBmc::delete(&ctx, mm, project.id).await?;
 
@@ -505,9 +540,11 @@ pub async fn delete_agent(
     let mm = &app_state.mm;
 
     let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug).await?;
+        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug)
+            .await?;
     let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &agent_name).await?;
+        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &agent_name)
+            .await?;
 
     mouchak_mail_core::model::agent::AgentBmc::delete(&ctx, mm, agent.id).await?;
 
@@ -545,9 +582,11 @@ pub async fn list_all_agents_for_project(
     let mm = &app_state.mm;
 
     let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug).await?;
+        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &project_slug)
+            .await?;
     let agents =
-        mouchak_mail_core::model::agent::AgentBmc::list_all_for_project(&ctx, mm, project.id).await?;
+        mouchak_mail_core::model::agent::AgentBmc::list_all_for_project(&ctx, mm, project.id)
+            .await?;
 
     let agent_responses: Vec<AgentResponse> = agents
         .into_iter()
@@ -597,9 +636,10 @@ pub async fn get_message(
     let mm = &app_state.mm;
 
     let message = mouchak_mail_core::model::message::MessageBmc::get(&ctx, mm, message_id).await?;
-    let recipients = mouchak_mail_core::model::message::MessageBmc::get_recipients(&ctx, mm, message_id)
-        .await
-        .unwrap_or_default();
+    let recipients =
+        mouchak_mail_core::model::message::MessageBmc::get_recipients(&ctx, mm, message_id)
+            .await
+            .unwrap_or_default();
 
     Ok(Json(MessageResponse {
         id: message.id,
@@ -691,12 +731,19 @@ pub async fn file_reservation_paths(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let active_reservations =
         FileReservationBmc::list_active_for_project(&ctx, mm, project.id).await?;
@@ -824,12 +871,16 @@ pub async fn create_agent_identity(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     let existing_agents =
-        mouchak_mail_core::model::agent::AgentBmc::list_all_for_project(&ctx, mm, project.id).await?;
+        mouchak_mail_core::model::agent::AgentBmc::list_all_for_project(&ctx, mm, project.id)
+            .await?;
     let existing_names: std::collections::HashSet<String> =
         existing_agents.iter().map(|a| a.name.clone()).collect();
 
@@ -882,12 +933,19 @@ pub async fn whois(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     Ok(Json(WhoisResponse {
         id: agent.id.get(),
@@ -935,9 +993,12 @@ pub async fn list_file_reservations(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     let reservations = if payload.active_only.unwrap_or(true) {
         FileReservationBmc::list_active_for_project(&ctx, mm, project.id).await?
@@ -951,7 +1012,8 @@ pub async fn list_file_reservations(
     for res in reservations {
         // Filter by agent if specified
         if let Some(ref agent_name) = payload.agent_name {
-            let agent = mouchak_mail_core::model::agent::AgentBmc::get(&ctx, mm, res.agent_id).await?;
+            let agent =
+                mouchak_mail_core::model::agent::AgentBmc::get(&ctx, mm, res.agent_id).await?;
             if &agent.name != agent_name {
                 continue;
             }
@@ -1057,12 +1119,19 @@ pub async fn release_file_reservation(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let mut released_ids = Vec::new();
 
@@ -1096,9 +1165,12 @@ pub async fn get_thread(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
     let messages = mouchak_mail_core::model::message::MessageBmc::list_by_thread(
         &ctx,
         mm,
@@ -1147,12 +1219,19 @@ pub async fn reply_message(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let sender =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.sender_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let sender = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.sender_name,
+    )
+    .await?;
 
     // Get original message to extract thread_id and original sender as recipient
     let original_msg =
@@ -1242,9 +1321,12 @@ pub async fn search_messages(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     let messages = mouchak_mail_core::model::message::MessageBmc::search(
         &ctx,
@@ -1363,13 +1445,17 @@ pub async fn get_project_info(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     // Count agents
     let agents =
-        mouchak_mail_core::model::agent::AgentBmc::list_all_for_project(&ctx, mm, project.id).await?;
+        mouchak_mail_core::model::agent::AgentBmc::list_all_for_project(&ctx, mm, project.id)
+            .await?;
     let agent_count = agents.len();
 
     // Count messages
@@ -1411,23 +1497,33 @@ pub async fn get_quota_status(
     let mm = &app_state.mm;
     let config = &mm.app_config.quota;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-
-    let attachments_usage = mouchak_mail_core::model::attachment::AttachmentBmc::get_total_project_usage(
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
         &ctx,
         mm,
-        project.id.get(),
+        &payload.project_slug,
     )
     .await?;
 
+    let attachments_usage =
+        mouchak_mail_core::model::attachment::AttachmentBmc::get_total_project_usage(
+            &ctx,
+            mm,
+            project.id.get(),
+        )
+        .await?;
+
     let mut agent_usage = None;
     if let Some(agent_name) = &payload.agent_name {
-        let agent =
-            mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, agent_name).await?;
-        let count =
-            mouchak_mail_core::model::message::MessageBmc::get_inbox_count(&ctx, mm, agent.id.get()).await?;
+        let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+            &ctx, mm, project.id, agent_name,
+        )
+        .await?;
+        let count = mouchak_mail_core::model::message::MessageBmc::get_inbox_count(
+            &ctx,
+            mm,
+            agent.id.get(),
+        )
+        .await?;
         agent_usage = Some(count);
     }
 
@@ -1469,18 +1565,26 @@ pub async fn get_agent_profile(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     // Count sent and received messages
     let sent_count =
         mouchak_mail_core::model::agent::AgentBmc::count_messages_sent(&ctx, mm, agent.id).await?;
     let received_count =
-        mouchak_mail_core::model::agent::AgentBmc::count_messages_received(&ctx, mm, agent.id).await?;
+        mouchak_mail_core::model::agent::AgentBmc::count_messages_received(&ctx, mm, agent.id)
+            .await?;
 
     // Count active reservations
     let reservations = FileReservationBmc::list_active_for_project(&ctx, mm, project.id).await?;
@@ -1529,15 +1633,27 @@ pub async fn mark_message_read(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
-    mouchak_mail_core::model::message::MessageBmc::mark_read(&ctx, mm, payload.message_id, agent.id.get())
-        .await?;
+    mouchak_mail_core::model::message::MessageBmc::mark_read(
+        &ctx,
+        mm,
+        payload.message_id,
+        agent.id.get(),
+    )
+    .await?;
 
     Ok(Json(MarkMessageReadResponse {
         marked: true,
@@ -1567,15 +1683,27 @@ pub async fn acknowledge_message(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
-    mouchak_mail_core::model::message::MessageBmc::acknowledge(&ctx, mm, payload.message_id, agent.id.get())
-        .await?;
+    mouchak_mail_core::model::message::MessageBmc::acknowledge(
+        &ctx,
+        mm,
+        payload.message_id,
+        agent.id.get(),
+    )
+    .await?;
 
     Ok(Json(AcknowledgeMessageResponse {
         acknowledged: true,
@@ -1611,9 +1739,12 @@ pub async fn list_threads(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
     let threads = mouchak_mail_core::model::message::MessageBmc::list_threads(
         &ctx,
         mm,
@@ -1658,12 +1789,19 @@ pub async fn update_agent_profile(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let update = mouchak_mail_core::model::agent::AgentProfileUpdate {
         task_description: payload.task_description,
@@ -1717,9 +1855,12 @@ pub async fn request_contact(
     )
     .await?;
 
-    let to_project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.to_project_slug)
-            .await?;
+    let to_project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.to_project_slug,
+    )
+    .await?;
     let to_agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
         &ctx,
         mm,
@@ -1737,7 +1878,8 @@ pub async fn request_contact(
     };
 
     let link_id =
-        mouchak_mail_core::model::agent_link::AgentLinkBmc::request_contact(&ctx, mm, link_c).await?;
+        mouchak_mail_core::model::agent_link::AgentLinkBmc::request_contact(&ctx, mm, link_c)
+            .await?;
 
     Ok(Json(RequestContactResponse {
         link_id,
@@ -1810,12 +1952,19 @@ pub async fn list_contacts(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let links = mouchak_mail_core::model::agent_link::AgentLinkBmc::list_contacts(
         &ctx,
@@ -1870,12 +2019,19 @@ pub async fn set_contact_policy(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let update = mouchak_mail_core::model::agent::AgentProfileUpdate {
         task_description: None,
@@ -1920,12 +2076,19 @@ pub async fn acquire_build_slot(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let slot_c = mouchak_mail_core::model::build_slot::BuildSlotForCreate {
         project_id: project.id.get(),
@@ -1934,7 +2097,8 @@ pub async fn acquire_build_slot(
         ttl_seconds: payload.ttl_seconds,
     };
 
-    let slot_id = mouchak_mail_core::model::build_slot::BuildSlotBmc::acquire(&ctx, mm, slot_c).await?;
+    let slot_id =
+        mouchak_mail_core::model::build_slot::BuildSlotBmc::acquire(&ctx, mm, slot_c).await?;
     let expires = chrono::Utc::now().naive_utc() + chrono::Duration::seconds(payload.ttl_seconds);
 
     Ok(Json(AcquireBuildSlotResponse {
@@ -2035,12 +2199,19 @@ pub async fn send_overseer_message(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let msg_c = mouchak_mail_core::model::overseer_message::OverseerMessageForCreate {
         project_id: project.id.get(),
@@ -2051,7 +2222,8 @@ pub async fn send_overseer_message(
     };
 
     let message_id =
-        mouchak_mail_core::model::overseer_message::OverseerMessageBmc::create(&ctx, mm, msg_c).await?;
+        mouchak_mail_core::model::overseer_message::OverseerMessageBmc::create(&ctx, mm, msg_c)
+            .await?;
 
     Ok(Json(SendOverseerMessageResponse {
         sent: true,
@@ -2081,10 +2253,14 @@ pub async fn list_macros(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let macros = mouchak_mail_core::model::macro_def::MacroDefBmc::list(&ctx, mm, project.id.get()).await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let macros =
+        mouchak_mail_core::model::macro_def::MacroDefBmc::list(&ctx, mm, project.id.get()).await?;
 
     let responses: Vec<MacroResponse> = macros
         .into_iter()
@@ -2121,9 +2297,12 @@ pub async fn register_macro(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     let macro_c = mouchak_mail_core::model::macro_def::MacroDefForCreate {
         project_id: project.id.get(),
@@ -2132,7 +2311,8 @@ pub async fn register_macro(
         steps: payload.steps,
     };
 
-    let macro_id = mouchak_mail_core::model::macro_def::MacroDefBmc::create(&ctx, mm, macro_c).await?;
+    let macro_id =
+        mouchak_mail_core::model::macro_def::MacroDefBmc::create(&ctx, mm, macro_c).await?;
 
     Ok(Json(RegisterMacroResponse {
         macro_id,
@@ -2161,12 +2341,19 @@ pub async fn unregister_macro(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let deleted =
-        mouchak_mail_core::model::macro_def::MacroDefBmc::delete(&ctx, mm, project.id.get(), &payload.name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let deleted = mouchak_mail_core::model::macro_def::MacroDefBmc::delete(
+        &ctx,
+        mm,
+        project.id.get(),
+        &payload.name,
+    )
+    .await?;
 
     Ok(Json(UnregisterMacroResponse {
         deleted,
@@ -2198,9 +2385,12 @@ pub async fn invoke_macro(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
     let macro_def = mouchak_mail_core::model::macro_def::MacroDefBmc::get_by_name(
         &ctx,
         mm,
@@ -2259,9 +2449,12 @@ pub async fn macro_start_session(
     let mm = &app_state.mm;
 
     // Step 1: Ensure project exists
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     // Step 2: Register agent
     let agent_c = mouchak_mail_core::model::agent::AgentForCreate {
@@ -2286,7 +2479,8 @@ pub async fn macro_start_session(
                 + chrono::Duration::seconds(payload.ttl_seconds),
         };
         let res_id =
-            mouchak_mail_core::model::file_reservation::FileReservationBmc::create(&ctx, mm, res_c).await?;
+            mouchak_mail_core::model::file_reservation::FileReservationBmc::create(&ctx, mm, res_c)
+                .await?;
         reservation_ids.push(res_id);
     }
 
@@ -2325,12 +2519,19 @@ pub async fn macro_file_reservation_cycle(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let agent =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.agent_name)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let agent = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.agent_name,
+    )
+    .await?;
 
     let mut ids = Vec::new();
 
@@ -2345,9 +2546,10 @@ pub async fn macro_file_reservation_cycle(
                 expires_ts: chrono::Utc::now().naive_utc()
                     + chrono::Duration::seconds(payload.ttl_seconds),
             };
-            let res_id =
-                mouchak_mail_core::model::file_reservation::FileReservationBmc::create(&ctx, mm, res_c)
-                    .await?;
+            let res_id = mouchak_mail_core::model::file_reservation::FileReservationBmc::create(
+                &ctx, mm, res_c,
+            )
+            .await?;
             ids.push(res_id);
         }
     } else if payload.action == "release" {
@@ -2397,15 +2599,26 @@ pub async fn macro_contact_handshake(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let requester =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.requester)
-            .await?;
-    let target =
-        mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &payload.target)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
+    let requester = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.requester,
+    )
+    .await?;
+    let target = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+        &ctx,
+        mm,
+        project.id,
+        &payload.target,
+    )
+    .await?;
 
     // Create bidirectional contact: request + auto-accept
     let link_c = mouchak_mail_core::model::agent_link::AgentLinkForCreate {
@@ -2417,9 +2630,11 @@ pub async fn macro_contact_handshake(
     };
 
     let link_id =
-        mouchak_mail_core::model::agent_link::AgentLinkBmc::request_contact(&ctx, mm, link_c).await?;
+        mouchak_mail_core::model::agent_link::AgentLinkBmc::request_contact(&ctx, mm, link_c)
+            .await?;
     // Auto-accept the contact request
-    mouchak_mail_core::model::agent_link::AgentLinkBmc::respond_contact(&ctx, mm, link_id, true).await?;
+    mouchak_mail_core::model::agent_link::AgentLinkBmc::respond_contact(&ctx, mm, link_id, true)
+        .await?;
 
     Ok(Json(MacroContactHandshakeResponse {
         contacts_created: 1,
@@ -2509,9 +2724,12 @@ pub async fn summarize_thread(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
     let all_messages = mouchak_mail_core::model::message::MessageBmc::list_by_thread(
         &ctx,
         mm,
@@ -2594,9 +2812,12 @@ pub async fn summarize_threads(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
     let threads = mouchak_mail_core::model::message::MessageBmc::list_threads(
         &ctx,
         mm,
@@ -2640,9 +2861,12 @@ pub async fn install_precommit_guard(
     let mm = &app_state.mm;
 
     // Verify project exists
-    let _project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
+    let _project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+        &ctx,
+        mm,
+        &payload.project_slug,
+    )
+    .await?;
 
     let target_path = std::path::PathBuf::from(&payload.target_repo_path);
     let hooks_dir = target_path.join(".git").join("hooks");
@@ -2854,15 +3078,19 @@ pub async fn list_project_siblings(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let project =
-        mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, &payload.project_slug)
-            .await?;
-    let siblings = mouchak_mail_core::model::project_sibling_suggestion::ProjectSiblingSuggestionBmc::list(
+    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
         &ctx,
         mm,
-        project.id.get(),
+        &payload.project_slug,
     )
     .await?;
+    let siblings =
+        mouchak_mail_core::model::project_sibling_suggestion::ProjectSiblingSuggestionBmc::list(
+            &ctx,
+            mm,
+            project.id.get(),
+        )
+        .await?;
 
     let responses: Vec<ProjectSiblingResponse> = siblings
         .into_iter()
@@ -2965,7 +3193,8 @@ pub async fn list_pending_reviews(
     // Resolve project_id from slug if provided
     let project_id = if let Some(ref slug) = params.project {
         let project =
-            mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, slug).await?;
+            mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, mm, slug)
+                .await?;
         Some(project.id)
     } else {
         None
@@ -2975,7 +3204,8 @@ pub async fn list_pending_reviews(
     let sender_id = if let Some(ref sender_name) = params.sender {
         if let Some(pid) = project_id {
             let agent =
-                mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, pid, sender_name).await?;
+                mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, pid, sender_name)
+                    .await?;
             Some(agent.id)
         } else {
             // If no project specified, we can't resolve sender by name
@@ -3118,8 +3348,10 @@ pub async fn get_archive_commit(
     let ctx = Ctx::root_ctx();
     let mm = &app_state.mm;
 
-    let details =
-        mouchak_mail_core::model::archive_browser::ArchiveBrowserBmc::commit_details(&ctx, mm, &sha).await?;
+    let details = mouchak_mail_core::model::archive_browser::ArchiveBrowserBmc::commit_details(
+        &ctx, mm, &sha,
+    )
+    .await?;
 
     Ok(Json(details).into_response())
 }

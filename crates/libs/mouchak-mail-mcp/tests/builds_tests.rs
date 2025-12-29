@@ -8,6 +8,7 @@
     clippy::redundant_field_names
 )]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -17,8 +18,9 @@ use mouchak_mail_core::model::{
     project::ProjectBmc,
 };
 use mouchak_mail_mcp::tools::builds;
-use mouchak_mail_mcp::tools::{AcquireBuildSlotParams, ReleaseBuildSlotParams, RenewBuildSlotParams};
-use libsql::Builder;
+use mouchak_mail_mcp::tools::{
+    AcquireBuildSlotParams, ReleaseBuildSlotParams, RenewBuildSlotParams,
+};
 use std::sync::Arc;
 use tempfile::TempDir;
 

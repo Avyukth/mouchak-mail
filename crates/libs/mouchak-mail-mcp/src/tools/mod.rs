@@ -973,7 +973,9 @@ impl MouchakMailService {
         &self,
         params: Parameters<SendOverseerMessageParams>,
     ) -> Result<CallToolResult, McpError> {
-        use mouchak_mail_core::model::overseer_message::{OverseerMessageBmc, OverseerMessageForCreate};
+        use mouchak_mail_core::model::overseer_message::{
+            OverseerMessageBmc, OverseerMessageForCreate,
+        };
 
         let ctx = self.ctx();
         let p = params.0;
@@ -1399,7 +1401,9 @@ mod tests {
     use super::*;
     use mouchak_mail_common::config::AppConfig;
     use mouchak_mail_core::model::agent::{AgentBmc, AgentForCreate};
-    use mouchak_mail_core::model::agent_capabilities::{AgentCapabilityBmc, AgentCapabilityForCreate};
+    use mouchak_mail_core::model::agent_capabilities::{
+        AgentCapabilityBmc, AgentCapabilityForCreate,
+    };
     use mouchak_mail_core::model::project::ProjectBmc;
     use std::sync::Arc;
     use tempfile::TempDir;

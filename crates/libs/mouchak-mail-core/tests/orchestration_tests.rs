@@ -10,7 +10,9 @@ mod common;
 use common::TestContext;
 use mouchak_mail_core::model::agent::{AgentBmc, AgentForCreate};
 use mouchak_mail_core::model::message::{MessageBmc, MessageForCreate};
-use mouchak_mail_core::model::orchestration::{OrchestrationBmc, OrchestrationState, parse_thread_state};
+use mouchak_mail_core::model::orchestration::{
+    OrchestrationBmc, OrchestrationState, parse_thread_state,
+};
 use mouchak_mail_core::model::project::ProjectBmc;
 use mouchak_mail_core::types::ProjectId;
 

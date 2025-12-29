@@ -1,6 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use mouchak_mail_core::model::precommit_guard::{GuardMode, PrecommitGuardBmc, render_prepush_script};
+use mouchak_mail_core::model::precommit_guard::{
+    GuardMode, PrecommitGuardBmc, render_prepush_script,
+};
 use temp_env::with_vars;
 
 #[test]

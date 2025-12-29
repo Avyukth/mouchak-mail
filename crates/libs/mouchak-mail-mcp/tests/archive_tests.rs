@@ -4,6 +4,7 @@
     clippy::redundant_field_names
 )]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -14,7 +15,6 @@ use mouchak_mail_core::model::{
 use mouchak_mail_core::store::git_store;
 use mouchak_mail_mcp::tools::CommitArchiveParams;
 use mouchak_mail_mcp::tools::archive;
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

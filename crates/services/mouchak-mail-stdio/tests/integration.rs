@@ -103,7 +103,9 @@ mod tools_tests {
     async fn test_file_reservation_workflow() {
         use mouchak_mail_core::Ctx;
         use mouchak_mail_core::model::agent::{AgentBmc, AgentForCreate};
-        use mouchak_mail_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
+        use mouchak_mail_core::model::file_reservation::{
+            FileReservationBmc, FileReservationForCreate,
+        };
         use mouchak_mail_core::model::project::ProjectBmc;
 
         let (mm, _temp) = create_test_mm().await;
@@ -162,7 +164,9 @@ mod tools_tests {
     async fn test_file_reservation_conflict() {
         use mouchak_mail_core::Ctx;
         use mouchak_mail_core::model::agent::{AgentBmc, AgentForCreate};
-        use mouchak_mail_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
+        use mouchak_mail_core::model::file_reservation::{
+            FileReservationBmc, FileReservationForCreate,
+        };
         use mouchak_mail_core::model::project::ProjectBmc;
 
         let (mm, _temp) = create_test_mm().await;

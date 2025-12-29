@@ -2892,9 +2892,13 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
 
     match args.command {
         ProductsCommands::Ensure { product_uid, name } => {
-            let product =
-                mouchak_mail_core::model::product::ProductBmc::ensure(&ctx, &mm, &product_uid, &name)
-                    .await?;
+            let product = mouchak_mail_core::model::product::ProductBmc::ensure(
+                &ctx,
+                &mm,
+                &product_uid,
+                &name,
+            )
+            .await?;
             println!(
                 "Ensured product: {} ({})",
                 product.name, product.product_uid
@@ -2905,10 +2909,12 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
             project,
         } => {
             let product =
-                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
-            let project =
-                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, &mm, &project)
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid)
                     .await?;
+            let project = mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(
+                &ctx, &mm, &project,
+            )
+            .await?;
 
             mouchak_mail_core::model::product::ProductBmc::link_project(
                 &ctx,
@@ -2924,10 +2930,12 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
         }
         ProductsCommands::Status { product_uid } => {
             let product =
-                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
-            let project_ids =
-                mouchak_mail_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid)
                     .await?;
+            let project_ids = mouchak_mail_core::model::product::ProductBmc::get_linked_projects(
+                &ctx, &mm, product.id,
+            )
+            .await?;
 
             println!("Product: {} ({})", product.name, product.product_uid);
             println!("Linked Projects: {}", project_ids.len());
@@ -2952,16 +2960,19 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
         } => {
             // Search logic needs to search across all linked projects
             let product =
-                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
-            let project_ids =
-                mouchak_mail_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid)
                     .await?;
+            let project_ids = mouchak_mail_core::model::product::ProductBmc::get_linked_projects(
+                &ctx, &mm, product.id,
+            )
+            .await?;
 
             let mut all_matches = Vec::new();
             for pid in project_ids {
-                if let Ok(messages) =
-                    mouchak_mail_core::model::message::MessageBmc::search(&ctx, &mm, pid, &query, limit)
-                        .await
+                if let Ok(messages) = mouchak_mail_core::model::message::MessageBmc::search(
+                    &ctx, &mm, pid, &query, limit,
+                )
+                .await
                 {
                     all_matches.extend(messages);
                 }
@@ -2993,10 +3004,12 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
         } => {
             // Inbox logic: Get all projects, find agent ID in each, fetch inbox
             let product =
-                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
-            let project_ids =
-                mouchak_mail_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid)
                     .await?;
+            let project_ids = mouchak_mail_core::model::product::ProductBmc::get_linked_projects(
+                &ctx, &mm, product.id,
+            )
+            .await?;
 
             println!("Inbox for agent '{}' in product '{}':", agent, product.name);
 
@@ -3019,8 +3032,12 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
                 use mouchak_mail_core::model::agent::AgentBmc;
                 // We need to implement get_by_name_in_project in AgentBmc or similar logic
                 // For now, let's iterate all agents in project and match name (slow but works for CLI)
-                if let Ok(agents) =
-                    AgentBmc::list_all_for_project(&ctx, &mm, mouchak_mail_core::ProjectId::from(pid)).await
+                if let Ok(agents) = AgentBmc::list_all_for_project(
+                    &ctx,
+                    &mm,
+                    mouchak_mail_core::ProjectId::from(pid),
+                )
+                .await
                 {
                     if let Some(agent_obj) = agents.into_iter().find(|a| a.name == agent) {
                         if let Ok(messages) =
@@ -3066,7 +3083,9 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
             per_thread_limit,
             no_llm: _,
         } => {
-            use mouchak_mail_core::model::{message::MessageBmc, product::ProductBmc, project::ProjectBmc};
+            use mouchak_mail_core::model::{
+                message::MessageBmc, product::ProductBmc, project::ProjectBmc,
+            };
 
             let product = ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
             let project_ids = ProductBmc::get_linked_projects(&ctx, &mm, product.id).await?;

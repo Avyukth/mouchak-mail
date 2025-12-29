@@ -5,6 +5,7 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -19,7 +20,6 @@ use mouchak_mail_mcp::tools::{
     SearchMessagesProductParams, SummarizeThreadProductParams, ThreadIdInput,
     UnlinkProjectFromProductParams, products,
 };
-use libsql::Builder;
 use rmcp::handler::server::wrapper::Parameters;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -331,7 +331,10 @@ async fn test_product_inbox_impl_product_not_found() {
 #[tokio::test]
 async fn test_search_messages_product() -> anyhow::Result<()> {
     let mm = Arc::new(
-        ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default())).await?,
+        ModelManager::new(std::sync::Arc::new(
+            mouchak_mail_common::config::AppConfig::default(),
+        ))
+        .await?,
     );
     let ctx = mouchak_mail_core::ctx::Ctx::root_ctx();
 
@@ -448,7 +451,10 @@ async fn test_search_messages_product() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_summarize_thread_product() -> anyhow::Result<()> {
     let mm = Arc::new(
-        ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default())).await?,
+        ModelManager::new(std::sync::Arc::new(
+            mouchak_mail_common::config::AppConfig::default(),
+        ))
+        .await?,
     );
     let ctx = mouchak_mail_core::ctx::Ctx::root_ctx();
 
@@ -567,7 +573,10 @@ async fn test_summarize_thread_product() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_search_messages_product_no_matches() -> anyhow::Result<()> {
     let mm = Arc::new(
-        ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default())).await?,
+        ModelManager::new(std::sync::Arc::new(
+            mouchak_mail_common::config::AppConfig::default(),
+        ))
+        .await?,
     );
     let ctx = mouchak_mail_core::ctx::Ctx::root_ctx();
 
@@ -603,7 +612,10 @@ async fn test_search_messages_product_no_matches() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_summarize_thread_product_not_found() -> anyhow::Result<()> {
     let mm = Arc::new(
-        ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default())).await?,
+        ModelManager::new(std::sync::Arc::new(
+            mouchak_mail_common::config::AppConfig::default(),
+        ))
+        .await?,
     );
     let ctx = mouchak_mail_core::ctx::Ctx::root_ctx();
 

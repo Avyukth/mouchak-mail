@@ -12,6 +12,7 @@
 
 use chrono::{Duration, Utc};
 use futures::future::join_all;
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::ModelManager;
@@ -20,7 +21,6 @@ use mouchak_mail_core::model::file_reservation::{FileReservationBmc, FileReserva
 use mouchak_mail_core::model::message::{MessageBmc, MessageForCreate};
 use mouchak_mail_core::model::project::ProjectBmc;
 use mouchak_mail_core::types::{AgentId, ProjectId};
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

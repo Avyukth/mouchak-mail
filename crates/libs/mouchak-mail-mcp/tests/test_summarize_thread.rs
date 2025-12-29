@@ -7,6 +7,7 @@
 //! - Backward compatible
 //! - Tests: test_summarize_single, test_summarize_multiple, test_partial_failure
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -15,7 +16,6 @@ use mouchak_mail_core::model::{
     message::{MessageBmc, MessageForCreate},
     project::ProjectBmc,
 };
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

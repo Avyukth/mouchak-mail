@@ -13,7 +13,10 @@ use uuid::Uuid;
 async fn test_resources_gap_features() -> anyhow::Result<()> {
     // 1. Setup Data
     let mm = Arc::new(
-        ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default())).await?,
+        ModelManager::new(std::sync::Arc::new(
+            mouchak_mail_common::config::AppConfig::default(),
+        ))
+        .await?,
     );
     let ctx = mouchak_mail_core::ctx::Ctx::root_ctx();
 

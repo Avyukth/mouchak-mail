@@ -63,7 +63,9 @@ pub fn setup_metrics() -> PrometheusHandle {
         .clone()
 }
 
-pub async fn run(config: mouchak_mail_common::config::AppConfig) -> std::result::Result<(), ServerError> {
+pub async fn run(
+    config: mouchak_mail_common::config::AppConfig,
+) -> std::result::Result<(), ServerError> {
     // Initialize tracing is handled by caller (main binary) now
 
     // Initialize metrics

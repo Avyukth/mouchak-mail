@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -11,7 +12,6 @@ use mouchak_mail_mcp::tools::contacts;
 use mouchak_mail_mcp::tools::{
     ListContactsParams, RequestContactParams, RespondContactParams, SetContactPolicyParams,
 };
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

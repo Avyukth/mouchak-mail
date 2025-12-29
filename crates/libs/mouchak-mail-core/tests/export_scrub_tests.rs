@@ -10,8 +10,10 @@ use uuid::Uuid;
 
 #[tokio::test]
 async fn test_export_scrubbing() -> mouchak_mail_core::Result<()> {
-    let mm =
-        ModelManager::new(std::sync::Arc::new(mouchak_mail_common::config::AppConfig::default())).await?;
+    let mm = ModelManager::new(std::sync::Arc::new(
+        mouchak_mail_common::config::AppConfig::default(),
+    ))
+    .await?;
     let ctx = Ctx::root_ctx();
 
     // 1. Setup

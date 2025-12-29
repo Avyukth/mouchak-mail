@@ -191,7 +191,9 @@ fn sanitize_error_message(error: &mouchak_mail_core::Error) -> String {
         mouchak_mail_core::Error::ProjectNotFound { identifier, .. } => {
             format!("Project not found: {}", identifier)
         }
-        mouchak_mail_core::Error::AgentNotFound { name, .. } => format!("Agent not found: {}", name),
+        mouchak_mail_core::Error::AgentNotFound { name, .. } => {
+            format!("Agent not found: {}", name)
+        }
         mouchak_mail_core::Error::MessageNotFound(id) => format!("Message not found: {}", id),
         mouchak_mail_core::Error::FileReservationNotFound(id) => {
             format!("File reservation not found: {}", id)
@@ -248,16 +250,15 @@ fn map_core_error_to_status(error: &mouchak_mail_core::Error) -> StatusCode {
             }
         }
 
-        mouchak_mail_core::Error::Git2(_) | mouchak_mail_core::Error::Io(_) | mouchak_mail_core::Error::LockTimeout { .. } => {
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
+        mouchak_mail_core::Error::Git2(_)
+        | mouchak_mail_core::Error::Io(_)
+        | mouchak_mail_core::Error::LockTimeout { .. } => StatusCode::INTERNAL_SERVER_ERROR,
 
         mouchak_mail_core::Error::Validation(_) => StatusCode::BAD_REQUEST,
         mouchak_mail_core::Error::Image(_) => StatusCode::BAD_REQUEST,
         mouchak_mail_core::Error::QuotaExceeded(_) => StatusCode::FORBIDDEN, // 403 Forbidden for quota issues
-        mouchak_mail_core::Error::EncryptionError(_) | mouchak_mail_core::Error::DecryptionError(_) => {
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
+        mouchak_mail_core::Error::EncryptionError(_)
+        | mouchak_mail_core::Error::DecryptionError(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
 }
 
@@ -287,15 +288,14 @@ fn map_core_error_to_code(error: &mouchak_mail_core::Error) -> ErrorCode {
             }
         }
 
-        mouchak_mail_core::Error::Git2(_) | mouchak_mail_core::Error::Io(_) | mouchak_mail_core::Error::LockTimeout { .. } => {
-            ErrorCode::InternalError
-        }
+        mouchak_mail_core::Error::Git2(_)
+        | mouchak_mail_core::Error::Io(_)
+        | mouchak_mail_core::Error::LockTimeout { .. } => ErrorCode::InternalError,
 
         mouchak_mail_core::Error::Image(_) => ErrorCode::ValidationError,
         mouchak_mail_core::Error::QuotaExceeded(_) => ErrorCode::Forbidden,
-        mouchak_mail_core::Error::EncryptionError(_) | mouchak_mail_core::Error::DecryptionError(_) => {
-            ErrorCode::InternalError
-        }
+        mouchak_mail_core::Error::EncryptionError(_)
+        | mouchak_mail_core::Error::DecryptionError(_) => ErrorCode::InternalError,
     }
 }
 

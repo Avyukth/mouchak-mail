@@ -2,6 +2,7 @@
 //!
 //! Phase 4 of tools.rs refactoring - adding tests for domain module impl functions.
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -34,7 +35,6 @@ use mouchak_mail_mcp::tools::{
     project,
     reviews,
 };
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

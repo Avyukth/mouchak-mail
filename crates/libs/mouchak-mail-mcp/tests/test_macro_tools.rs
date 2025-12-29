@@ -1,6 +1,7 @@
 //! Integration tests for workflow macro MCP tools
 //! Following extreme TDD: Tests written BEFORE implementation
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -8,7 +9,6 @@ use mouchak_mail_core::model::{
     macro_def::{MacroDefBmc, MacroDefForCreate},
     project::ProjectBmc,
 };
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 

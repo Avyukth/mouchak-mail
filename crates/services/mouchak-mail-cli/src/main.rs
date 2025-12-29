@@ -217,7 +217,8 @@ async fn handle_create_project(
     slug: &str,
     human_key: &str,
 ) -> Result<()> {
-    let id = mouchak_mail_core::model::project::ProjectBmc::create(ctx, mm, slug, human_key).await?;
+    let id =
+        mouchak_mail_core::model::project::ProjectBmc::create(ctx, mm, slug, human_key).await?;
     println!("Created project '{}' with ID {}", slug, id);
     Ok(())
 }
@@ -228,7 +229,8 @@ async fn handle_create_agent(
     project_slug: &str,
     name: String,
 ) -> Result<()> {
-    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_slug(ctx, mm, project_slug).await?;
+    let project =
+        mouchak_mail_core::model::project::ProjectBmc::get_by_slug(ctx, mm, project_slug).await?;
     let agent_c = mouchak_mail_core::model::agent::AgentForCreate {
         project_id: project.id,
         name: name.clone(),
@@ -253,14 +255,20 @@ async fn handle_send_message(
     subject: String,
     body: String,
 ) -> Result<()> {
-    let project = mouchak_mail_core::model::project::ProjectBmc::get_by_slug(ctx, mm, project_slug).await?;
-    let sender = mouchak_mail_core::model::agent::AgentBmc::get_by_name(ctx, mm, project.id, from).await?;
+    let project =
+        mouchak_mail_core::model::project::ProjectBmc::get_by_slug(ctx, mm, project_slug).await?;
+    let sender =
+        mouchak_mail_core::model::agent::AgentBmc::get_by_name(ctx, mm, project.id, from).await?;
 
     let mut recipient_ids = Vec::new();
     for recipient_name in to {
-        let recipient =
-            mouchak_mail_core::model::agent::AgentBmc::get_by_name(ctx, mm, project.id, &recipient_name)
-                .await?;
+        let recipient = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+            ctx,
+            mm,
+            project.id,
+            &recipient_name,
+        )
+        .await?;
         recipient_ids.push(recipient.id.get());
     }
 
@@ -313,7 +321,8 @@ async fn handle_projects_command(
         }
         ProjectsCommands::Status { project } => {
             let p =
-                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(ctx, mm, &project).await?;
+                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(ctx, mm, &project)
+                    .await?;
             println!("Project: {} ({})", p.human_key, p.slug);
             println!("ID: {}", p.id);
             println!("Created: {}", p.created_at);
@@ -321,9 +330,11 @@ async fn handle_projects_command(
         }
         ProjectsCommands::Adopt { from, to, dry_run } => {
             let src =
-                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(ctx, mm, &from).await?;
+                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(ctx, mm, &from)
+                    .await?;
             let dest =
-                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(ctx, mm, &to).await?;
+                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(ctx, mm, &to)
+                    .await?;
 
             println!(
                 "Adopting from '{}' ({}) -> '{}' ({})",
@@ -335,7 +346,8 @@ async fn handle_projects_command(
             if dry_run {
                 println!("Dry run: No changes made.");
             } else {
-                mouchak_mail_core::model::project::ProjectBmc::adopt(ctx, mm, src.id, dest.id).await?;
+                mouchak_mail_core::model::project::ProjectBmc::adopt(ctx, mm, src.id, dest.id)
+                    .await?;
                 println!("Adoption complete.");
             }
         }
@@ -426,7 +438,9 @@ async fn main() -> Result<()> {
             let escalation_mode = mode
                 .and_then(|m| match m.to_lowercase().as_str() {
                     "log" => Some(mouchak_mail_common::config::EscalationMode::Log),
-                    "file_reservation" => Some(mouchak_mail_common::config::EscalationMode::FileReservation),
+                    "file_reservation" => {
+                        Some(mouchak_mail_common::config::EscalationMode::FileReservation)
+                    }
                     "overseer" => Some(mouchak_mail_common::config::EscalationMode::Overseer),
                     _ => None,
                 })

@@ -246,6 +246,7 @@ async fn test_delete_nonexistent_project() {
         .await
         .expect("Failed to create test context");
 
-    let result = ProjectBmc::delete(&tc.ctx, &tc.mm, mouchak_mail_core::types::ProjectId(99999)).await;
+    let result =
+        ProjectBmc::delete(&tc.ctx, &tc.mm, mouchak_mail_core::types::ProjectId(99999)).await;
     assert!(result.is_err(), "Deleting nonexistent project should fail");
 }

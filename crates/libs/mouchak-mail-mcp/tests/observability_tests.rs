@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -11,8 +12,9 @@ use mouchak_mail_core::model::{
     tool_metric::{ToolMetricBmc, ToolMetricForCreate},
 };
 use mouchak_mail_mcp::tools::observability;
-use mouchak_mail_mcp::tools::{ListActivityParams, ListPendingReviewsParams, ListToolMetricsParams};
-use libsql::Builder;
+use mouchak_mail_mcp::tools::{
+    ListActivityParams, ListPendingReviewsParams, ListToolMetricsParams,
+};
 use std::sync::Arc;
 use tempfile::TempDir;
 

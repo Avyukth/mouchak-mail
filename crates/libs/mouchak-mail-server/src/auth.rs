@@ -441,15 +441,21 @@ pub async fn capabilities_middleware(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     for project in projects {
-        if let Ok(agent) =
-            mouchak_mail_core::model::agent::AgentBmc::get_by_name(&ctx, mm, project.id, &agent_name).await
-            && let Ok(true) = mouchak_mail_core::model::agent_capabilities::AgentCapabilityBmc::check(
-                &ctx,
-                mm,
-                agent.id.get(),
-                required_capability,
-            )
-            .await
+        if let Ok(agent) = mouchak_mail_core::model::agent::AgentBmc::get_by_name(
+            &ctx,
+            mm,
+            project.id,
+            &agent_name,
+        )
+        .await
+            && let Ok(true) =
+                mouchak_mail_core::model::agent_capabilities::AgentCapabilityBmc::check(
+                    &ctx,
+                    mm,
+                    agent.id.get(),
+                    required_capability,
+                )
+                .await
         {
             if config.log_checks {
                 info!(

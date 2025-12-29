@@ -7,6 +7,7 @@
     clippy::redundant_field_names
 )]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::{
@@ -14,7 +15,6 @@ use mouchak_mail_core::model::{
     agent::{AgentBmc, AgentForCreate},
     project::ProjectBmc,
 };
-use libsql::Builder;
 use std::sync::Arc;
 use tempfile::TempDir;
 
@@ -218,7 +218,9 @@ async fn test_quick_review_reserves_files_and_sends_message() {
     let reviewer_id = AgentBmc::create(&ctx, &mm, reviewer_c).await.unwrap();
 
     // RED: Test file reservation (non-exclusive for review)
-    use mouchak_mail_core::model::file_reservation::{FileReservationBmc, FileReservationForCreate};
+    use mouchak_mail_core::model::file_reservation::{
+        FileReservationBmc, FileReservationForCreate,
+    };
 
     let res_c = FileReservationForCreate {
         project_id: project_id,

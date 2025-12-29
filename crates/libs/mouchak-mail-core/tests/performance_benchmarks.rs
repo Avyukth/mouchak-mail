@@ -21,6 +21,7 @@
     clippy::inefficient_to_string
 )]
 
+use libsql::Builder;
 use mouchak_mail_common::config::AppConfig;
 use mouchak_mail_core::ctx::Ctx;
 use mouchak_mail_core::model::ModelManager;
@@ -28,7 +29,6 @@ use mouchak_mail_core::model::agent::{AgentBmc, AgentForCreate};
 use mouchak_mail_core::model::export::{ExportBmc, ExportFormat, ScrubMode};
 use mouchak_mail_core::model::message::{MessageBmc, MessageForCreate};
 use mouchak_mail_core::model::project::ProjectBmc;
-use libsql::Builder;
 use std::sync::Arc;
 use std::time::Instant;
 use tempfile::TempDir;
