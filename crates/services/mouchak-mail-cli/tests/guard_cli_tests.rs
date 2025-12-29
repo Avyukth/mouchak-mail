@@ -17,7 +17,7 @@ fn test_guard_status_command() {
     // To verify RED, we check for failure OR check output doesn't match.
     // Current mcp-cli has no "guard" command. It will return exit code != 0.
 
-    let mut cmd = Command::cargo_bin("mcp-cli").expect("Binary not found");
+    let mut cmd = Command::cargo_bin("mouchak-mail-cli").expect("Binary not found");
     cmd.current_dir(&temp_dir)
         .arg("guard")
         .arg("status")
