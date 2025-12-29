@@ -7,7 +7,7 @@ repository = "https://github.com/Avyukth/mouchak-mail"
 license = "MIT"
 
 [[bin]]
-name = "mcp-stdio-server"
+name = "mouchak-mail-stdio"
 path = "src/main.rs"
 
 [dependencies]
