@@ -5,6 +5,14 @@ All notable changes to Mouchak Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5](https://github.com/Avyukth/mouchak-mail/compare/v0.2.4...v0.2.5) (2025-12-29)
+
+
+### Bug Fixes
+
+* update test binary reference from mcp-cli to mouchak-mail-cli ([5657d63](https://github.com/Avyukth/mouchak-mail/commit/5657d6372a66e577befd57e80387aeb86d402248))
+* update test binary reference from mcp-cli to mouchak-mail-cli ([55f9f50](https://github.com/Avyukth/mouchak-mail/commit/55f9f50189c397dfbdfd80522175274002e4bde1))
+
 ## [0.2.4](https://github.com/Avyukth/mouchak-mail/compare/v0.2.3...v0.2.4) (2025-12-29)
 
 

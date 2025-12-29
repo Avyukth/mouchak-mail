@@ -1,6 +1,6 @@
 [package]
 name = "web-ui-leptos"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2024"
 description = "Web UI for Mouchak Mail"
 repository = "https://github.com/Avyukth/mouchak-mail"
