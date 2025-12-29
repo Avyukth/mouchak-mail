@@ -16,7 +16,7 @@ members = [
 # Root package for benchmarks
 [package]
 name = "mouchak-mail-benches"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 publish = false
 repository = "https://github.com/Avyukth/mouchak-mail"

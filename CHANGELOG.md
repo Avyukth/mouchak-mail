@@ -5,6 +5,15 @@ All notable changes to Mouchak Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4](https://github.com/Avyukth/mouchak-mail/compare/v0.2.3...v0.2.4) (2025-12-29)
+
+
+### Bug Fixes
+
+* complete Phase 2 rebranding - remove all backward compatibility ([3b02d16](https://github.com/Avyukth/mouchak-mail/commit/3b02d16b8d82b8b016a4b929f81c94b76bc5ba7c))
+* update script binary references to match renamed crates ([4331a75](https://github.com/Avyukth/mouchak-mail/commit/4331a7517f4dbc80fd85ce840dd5c5bae664bc74))
+* update URI scheme validation to use mouchak-mail ([7e93f50](https://github.com/Avyukth/mouchak-mail/commit/7e93f5098aa786b7128e3589e39e2235cabc7b7e))
+
 ## [0.2.3](https://github.com/Avyukth/mouchak-mail-rs/compare/v0.2.2...v0.2.3) (2025-12-29)
 
 

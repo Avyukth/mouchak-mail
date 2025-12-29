@@ -1,6 +1,6 @@
 [package]
 name = "mouchak-mail"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 description = "Gmail for coding agents - MCP-compliant mail server"
 repository = "https://github.com/Avyukth/mouchak-mail"
