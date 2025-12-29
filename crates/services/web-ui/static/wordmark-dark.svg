@@ -1,28 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Mouchak Logo - 9 Hexagons - Solid Gold - PERFECTLY CENTERED -->
-  <!-- Total height: 432 units (-180 to +252) -->
-  <!-- Padding: (512-432)/2 = 40 each side -->
-  <!-- Center Y: 40 + 180 = 220 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120">
+  <!-- Mouchak Wordmark - Dark Mode - CENTERED -->
   
-  <g transform="translate(256, 220)" fill="#F59E0B" stroke="#92400E" stroke-width="4">
-    <!-- Top 1 -->
+  <rect width="400" height="120" fill="#111827"/>
+  
+  <!-- Logo mark (centered vertically at y=60) -->
+  <g transform="translate(50, 55) scale(0.14)" fill="#F59E0B" stroke="#92400E" stroke-width="6">
     <polygon points="0,-180 42,-156 42,-108 0,-84 -42,-108 -42,-156"/>
-    
-    <!-- Row 2: 2 -->
     <polygon points="-60,-96 -18,-72 -18,-24 -60,0 -102,-24 -102,-72"/>
     <polygon points="60,-96 102,-72 102,-24 60,0 18,-24 18,-72"/>
-    
-    <!-- Row 3: 3 (center row) -->
     <polygon points="-120,-12 -78,12 -78,60 -120,84 -162,60 -162,12"/>
     <polygon points="0,-12 42,12 42,60 0,84 -42,60 -42,12"/>
     <polygon points="120,-12 162,12 162,60 120,84 78,60 78,12"/>
-    
-    <!-- Row 4: 2 -->
     <polygon points="-60,72 -18,96 -18,144 -60,168 -102,144 -102,96"/>
     <polygon points="60,72 102,96 102,144 60,168 18,144 18,96"/>
-    
-    <!-- Bottom 1 -->
     <polygon points="0,156 42,180 42,228 0,252 -42,228 -42,180"/>
   </g>
+  
+  <!-- Text: mouchak -->
+  <text x="105" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="600" fill="#F59E0B">mouchak</text>
+  
+  <!-- Subtext: Bengali -->
+  <text x="105" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#9CA3AF">মৌচাক</text>
 </svg>

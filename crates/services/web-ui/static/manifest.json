@@ -1,7 +1,7 @@
 {
-  "name": "Agent Mail",
-  "short_name": "AgentMail",
-  "description": "Multi-agent messaging system for AI coding assistants",
+  "name": "Mouchak Mail",
+  "short_name": "MouchakMail",
+  "description": "Gmail for your coding agents - Multi-agent messaging system",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1f2937",
