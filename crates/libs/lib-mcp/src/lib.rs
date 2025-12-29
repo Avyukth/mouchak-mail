@@ -10,6 +10,7 @@ pub use tools::{
     UnregisterMacroParams,
 };
 
+// COVERAGE: Server startup functions tested via e2e/ and mcp-stdio crate
 pub async fn run_stdio(config: AppConfig) -> Result<()> {
     // Initializing logging to stderr is crucial for MCP stdio transport
     // This might be already handled by the caller (unified binary), but stdio mode specifically

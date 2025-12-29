@@ -1,7 +1,12 @@
 //! Integration tests for product-level cross-project tools.
 //!
-//! Tests `search_messages_product` and `summarize_thread_product` tools.
+//! Tests product tools: ensure_product, link/unlink, list_products, product_inbox,
+//! search_messages_product, and summarize_thread_product.
 
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
+use lib_common::config::AppConfig;
+use lib_core::ctx::Ctx;
 use lib_core::model::{
     ModelManager,
     agent::{AgentBmc, AgentForCreate},
@@ -10,19 +15,317 @@ use lib_core::model::{
     project::ProjectBmc,
 };
 use lib_mcp::tools::{
-    AgentMailService, SearchMessagesProductParams, SummarizeThreadProductParams, ThreadIdInput,
+    AgentMailService, EnsureProductParams, LinkProjectToProductParams, ProductInboxParams,
+    SearchMessagesProductParams, SummarizeThreadProductParams, ThreadIdInput,
+    UnlinkProjectFromProductParams, products,
 };
+use libsql::Builder;
 use rmcp::handler::server::wrapper::Parameters;
 use std::sync::Arc;
+use tempfile::TempDir;
 use uuid::Uuid;
 
-/// Helper to extract text from CallToolResult content via Debug format
 fn extract_text(result: &rmcp::model::CallToolResult) -> String {
     result
         .content
         .first()
         .map(|c| format!("{:?}", c))
         .unwrap_or_default()
+}
+
+async fn create_test_mm() -> (Arc<ModelManager>, TempDir) {
+    let temp_dir = TempDir::new().expect("Failed to create temp dir");
+    let db_path = temp_dir.path().join("test_products.db");
+    let archive_root = temp_dir.path().join("archive");
+    std::fs::create_dir_all(&archive_root).unwrap();
+
+    let db = Builder::new_local(&db_path).build().await.unwrap();
+    let conn = db.connect().unwrap();
+    let _ = conn.execute("PRAGMA journal_mode=WAL;", ()).await;
+
+    let schema1 = include_str!("../../../../migrations/001_initial_schema.sql");
+    conn.execute_batch(schema1).await.unwrap();
+    let schema2 = include_str!("../../../../migrations/002_agent_capabilities.sql");
+    conn.execute_batch(schema2).await.unwrap();
+    let schema3 = include_str!("../../../../migrations/003_tool_metrics.sql");
+    conn.execute_batch(schema3).await.unwrap();
+    let schema4 = include_str!("../../../../migrations/004_attachments.sql");
+    conn.execute_batch(schema4).await.unwrap();
+
+    let app_config = Arc::new(AppConfig::default());
+    let mm = ModelManager::new_for_test(conn, archive_root, app_config);
+    (Arc::new(mm), temp_dir)
+}
+
+#[tokio::test]
+async fn test_ensure_product_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let product_uid = format!("PROD-{}", Uuid::new_v4());
+    let params = EnsureProductParams {
+        product_uid: product_uid.clone(),
+        name: "Test Product".to_string(),
+    };
+
+    let result = products::ensure_product_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Test Product"));
+    assert!(output.contains(&product_uid));
+}
+
+#[tokio::test]
+async fn test_ensure_product_impl_idempotent() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let product_uid = format!("PROD-{}", Uuid::new_v4());
+    let product_name = "Idempotent Product".to_string();
+
+    // First call - creates the product
+    let params1 = EnsureProductParams {
+        product_uid: product_uid.clone(),
+        name: product_name.clone(),
+    };
+    let result1 = products::ensure_product_impl(&ctx, &mm, params1).await;
+    assert!(result1.is_ok());
+
+    // Second call - should return existing product (idempotent)
+    let params2 = EnsureProductParams {
+        product_uid: product_uid.clone(),
+        name: product_name,
+    };
+    let result2 = products::ensure_product_impl(&ctx, &mm, params2).await;
+    assert!(result2.is_ok());
+
+    let output1 = extract_text(&result1.unwrap());
+    let output2 = extract_text(&result2.unwrap());
+    assert!(output1.contains(&product_uid));
+    assert!(output2.contains(&product_uid));
+}
+
+#[tokio::test]
+async fn test_link_project_to_product_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let product_uid = format!("PROD-{}", Uuid::new_v4());
+    ProductBmc::ensure(&ctx, &mm, &product_uid, "Link Test Product")
+        .await
+        .unwrap();
+
+    let project_slug = format!("link-proj-{}", Uuid::new_v4());
+    ProjectBmc::create(&ctx, &mm, &project_slug, "Link Test Project")
+        .await
+        .unwrap();
+
+    let params = LinkProjectToProductParams {
+        product_uid: product_uid.clone(),
+        project_slug: project_slug.clone(),
+    };
+
+    let result = products::link_project_to_product_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Linked"));
+    assert!(output.contains(&project_slug));
+    assert!(output.contains(&product_uid));
+}
+
+#[tokio::test]
+async fn test_link_project_to_product_impl_product_not_found() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let project_slug = format!("orphan-proj-{}", Uuid::new_v4());
+    ProjectBmc::create(&ctx, &mm, &project_slug, "Orphan Project")
+        .await
+        .unwrap();
+
+    let params = LinkProjectToProductParams {
+        product_uid: "NONEXISTENT-PROD".to_string(),
+        project_slug,
+    };
+
+    let result = products::link_project_to_product_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message.contains("Product not found"));
+}
+
+#[tokio::test]
+async fn test_unlink_project_from_product_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let product_uid = format!("PROD-{}", Uuid::new_v4());
+    let product = ProductBmc::ensure(&ctx, &mm, &product_uid, "Unlink Test Product")
+        .await
+        .unwrap();
+
+    let project_slug = format!("unlink-proj-{}", Uuid::new_v4());
+    let project_id = ProjectBmc::create(&ctx, &mm, &project_slug, "Unlink Test Project")
+        .await
+        .unwrap();
+
+    ProductBmc::link_project(&ctx, &mm, product.id, project_id.into())
+        .await
+        .unwrap();
+
+    let params = UnlinkProjectFromProductParams {
+        product_uid: product_uid.clone(),
+        project_slug: project_slug.clone(),
+    };
+
+    let result = products::unlink_project_from_product_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Unlinked"));
+}
+
+#[tokio::test]
+async fn test_unlink_project_from_product_impl_not_linked() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let product_uid = format!("PROD-{}", Uuid::new_v4());
+    ProductBmc::ensure(&ctx, &mm, &product_uid, "NotLinked Test Product")
+        .await
+        .unwrap();
+
+    let project_slug = format!("notlinked-proj-{}", Uuid::new_v4());
+    ProjectBmc::create(&ctx, &mm, &project_slug, "NotLinked Test Project")
+        .await
+        .unwrap();
+
+    let params = UnlinkProjectFromProductParams {
+        product_uid: product_uid.clone(),
+        project_slug: project_slug.clone(),
+    };
+
+    let result = products::unlink_project_from_product_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("was not linked"));
+}
+
+#[tokio::test]
+async fn test_list_products_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    ProductBmc::ensure(&ctx, &mm, "PROD-LIST-1", "List Product 1")
+        .await
+        .unwrap();
+    ProductBmc::ensure(&ctx, &mm, "PROD-LIST-2", "List Product 2")
+        .await
+        .unwrap();
+
+    let result = products::list_products_impl(&ctx, &mm).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Products"));
+    assert!(output.contains("PROD-LIST-1"));
+    assert!(output.contains("PROD-LIST-2"));
+}
+
+#[tokio::test]
+async fn test_list_products_impl_empty() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let result = products::list_products_impl(&ctx, &mm).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Products (0)"));
+}
+
+#[tokio::test]
+async fn test_product_inbox_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let product_uid = format!("PROD-{}", Uuid::new_v4());
+    let product = ProductBmc::ensure(&ctx, &mm, &product_uid, "Inbox Test Product")
+        .await
+        .unwrap();
+
+    let project_slug = format!("inbox-proj-{}", Uuid::new_v4());
+    let project_id = ProjectBmc::create(&ctx, &mm, &project_slug, "Inbox Test Project")
+        .await
+        .unwrap();
+
+    ProductBmc::link_project(&ctx, &mm, product.id, project_id.into())
+        .await
+        .unwrap();
+
+    let agent_id = AgentBmc::create(
+        &ctx,
+        &mm,
+        AgentForCreate {
+            project_id,
+            name: "inbox_agent".to_string(),
+            program: "test".to_string(),
+            model: "gpt-4".to_string(),
+            task_description: "test agent".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+
+    MessageBmc::create(
+        &ctx,
+        &mm,
+        MessageForCreate {
+            project_id: project_id.into(),
+            sender_id: agent_id.into(),
+            recipient_ids: vec![agent_id.into()],
+            cc_ids: None,
+            bcc_ids: None,
+            subject: "Product Inbox Test Message".to_string(),
+            body_md: "Test body".to_string(),
+            thread_id: None,
+            importance: None,
+            ack_required: false,
+        },
+    )
+    .await
+    .unwrap();
+
+    let params = ProductInboxParams {
+        product_uid,
+        limit: Some(10),
+    };
+
+    let result = products::product_inbox_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("Product Inbox"));
+    assert!(output.contains("Product Inbox Test Message"));
+}
+
+#[tokio::test]
+async fn test_product_inbox_impl_product_not_found() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = ProductInboxParams {
+        product_uid: "NONEXISTENT".to_string(),
+        limit: None,
+    };
+
+    let result = products::product_inbox_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message.contains("Product not found"));
 }
 
 #[tokio::test]

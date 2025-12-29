@@ -14,6 +14,8 @@
 //! TEST_HEADLESS=false cargo test -p e2e-tests --test web_ui
 //! ```
 
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
+
 use e2e_tests::{TestConfig, TestFixtures};
 use jugar_probar::Assertion;
 

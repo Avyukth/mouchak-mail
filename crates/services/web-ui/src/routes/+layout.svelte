@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import { browser } from '$app/environment';
 	import { ModeWatcher } from 'mode-watcher';
 	import { Toaster } from '$lib/components/ui/sonner/index.js';
 	import { AppSidebar, AppHeader } from '$lib/components/layout/index.js';
@@ -7,6 +8,8 @@
 	import TutorialModal from '$lib/components/TutorialModal.svelte';
 	import { InstallPrompt, UpdatePrompt } from '$lib/components/pwa/index.js';
 	import DemoModeBanner from '$lib/components/DemoModeBanner.svelte';
+	import { dataProvider } from '$lib/data';
+	import { allMessages, unreadCount } from '$lib/stores/unifiedInbox';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -15,8 +18,24 @@
 
 	let { children }: Props = $props();
 
-	// TODO: Fetch actual unread count from API
-	let unreadCount = $state(3);
+	// Initialize the shared store with messages from API
+	$effect(() => {
+		if (browser) {
+			initializeMessages();
+			// Refresh every 30 seconds
+			const interval = setInterval(initializeMessages, 30000);
+			return () => clearInterval(interval);
+		}
+	});
+
+	async function initializeMessages() {
+		try {
+			const response = await dataProvider.fetchUnifiedInbox(1000);
+			allMessages.set(response.messages ?? []);
+		} catch {
+			// Silently fail - keep showing current count
+		}
+	}
 </script>
 
 <ModeWatcher />
@@ -32,7 +51,7 @@
 
 	<div class="flex-1 flex overflow-hidden">
 		<!-- Sidebar (handles both mobile sheet trigger and desktop sidebar) -->
-		<AppSidebar {unreadCount} />
+		<AppSidebar unreadCount={$unreadCount} />
 
 		<!-- Main content -->
 		<div class="flex-1 flex flex-col min-w-0 overflow-hidden">

@@ -510,6 +510,42 @@ async fn test_reply_message_impl_success() {
 }
 
 #[tokio::test]
+async fn test_reply_message_impl_no_thread_id() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+    let (project_id, sender_id, receiver_id, project_slug) = setup_project_and_agents(&mm).await;
+
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![receiver_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "No Thread Message".to_string(),
+        body_md: "This message has no thread_id.".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: false,
+    };
+    let original_msg_id = MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
+
+    let params = ReplyMessageParams {
+        project_slug: project_slug.clone(),
+        sender_name: "receiver_agent".to_string(),
+        message_id: original_msg_id,
+        body_md: "Replying to message with no thread.".to_string(),
+        importance: None,
+    };
+
+    let result = messaging::reply_message_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let text = format!("{:?}", result.unwrap());
+    assert!(text.contains("Reply sent"));
+    assert!(text.contains("Re: No Thread Message"));
+}
+
+#[tokio::test]
 async fn test_reply_message_impl_already_has_re_prefix() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
@@ -752,4 +788,141 @@ async fn test_send_message_impl_multiple_recipients() {
 
     let result = messaging::send_message_impl(&ctx, &mm, params).await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_reply_message_impl_without_capability() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+    let (project_id, sender_id, receiver_id, project_slug) = setup_project_and_agents(&mm).await;
+
+    // Create an agent without send_message capability
+    let no_cap_agent_c = AgentForCreate {
+        project_id: project_id.into(),
+        name: "no_reply_cap_agent".to_string(),
+        program: "claude".to_string(),
+        model: "opus".to_string(),
+        task_description: "Agent without reply capability".to_string(),
+    };
+    AgentBmc::create(&ctx, &mm, no_cap_agent_c).await.unwrap();
+
+    // Create a message to reply to
+    let msg_c = MessageForCreate {
+        project_id,
+        sender_id,
+        recipient_ids: vec![receiver_id],
+        cc_ids: None,
+        bcc_ids: None,
+        subject: "Test Message".to_string(),
+        body_md: "Original message.".to_string(),
+        thread_id: None,
+        importance: None,
+        ack_required: false,
+    };
+    let msg_id = MessageBmc::create(&ctx, &mm, msg_c).await.unwrap();
+
+    // Try to reply without send_message capability
+    let params = ReplyMessageParams {
+        project_slug: project_slug.clone(),
+        sender_name: "no_reply_cap_agent".to_string(),
+        message_id: msg_id,
+        body_md: "Attempted reply.".to_string(),
+        importance: None,
+    };
+
+    let result = messaging::reply_message_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(
+        err.message
+            .contains("does not have 'send_message' capability")
+    );
+}
+
+#[tokio::test]
+async fn test_list_inbox_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = ListInboxParams {
+        project_slug: "nonexistent_project".to_string(),
+        agent_name: "some_agent".to_string(),
+        limit: None,
+    };
+
+    let result = messaging::list_inbox_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_search_messages_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = SearchMessagesParams {
+        project_slug: "nonexistent_project".to_string(),
+        query: "test".to_string(),
+        limit: None,
+    };
+
+    let result = messaging::search_messages_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_get_thread_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = GetThreadParams {
+        project_slug: "nonexistent_project".to_string(),
+        thread_id: "THREAD-123".to_string(),
+    };
+
+    let result = messaging::get_thread_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_list_threads_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = ListThreadsParams {
+        project_slug: "nonexistent_project".to_string(),
+        limit: None,
+    };
+
+    let result = messaging::list_threads_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_mark_message_read_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = MarkMessageReadParams {
+        project_slug: "nonexistent_project".to_string(),
+        agent_name: "some_agent".to_string(),
+        message_id: 123,
+    };
+
+    let result = messaging::mark_message_read_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_acknowledge_message_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = AcknowledgeMessageParams {
+        project_slug: "nonexistent_project".to_string(),
+        agent_name: "some_agent".to_string(),
+        message_id: 123,
+    };
+
+    let result = messaging::acknowledge_message_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
 }

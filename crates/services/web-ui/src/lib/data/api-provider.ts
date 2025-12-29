@@ -321,6 +321,25 @@ export const apiProvider: DataProvider = {
 	async listAttachments(projectSlug?: string): Promise<Attachment[]> {
 		const query = projectSlug ? `?project_slug=${encodeURIComponent(projectSlug)}` : '';
 		return request<Attachment[]>(`/attachments${query}`);
+	},
+
+	// ============================================================================
+	// Mark Message Read
+	// ============================================================================
+
+	async markMessageRead(
+		projectSlug: string,
+		agentName: string,
+		messageId: number
+	): Promise<{ marked: boolean; message_id: number }> {
+		return request<{ marked: boolean; message_id: number }>('/message/read', {
+			method: 'POST',
+			body: JSON.stringify({
+				project_slug: projectSlug,
+				agent_name: agentName,
+				message_id: messageId
+			})
+		});
 	}
 };
 

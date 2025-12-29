@@ -183,3 +183,45 @@ export function selectPreviousMessage(): void {
 	const prevIndex = Math.max(currentIndex - 1, 0);
 	selectedMessage.set(messages[prevIndex]);
 }
+
+// Derived unread count for sidebar badge
+export const unreadCount = derived(allMessages, ($messages) =>
+	$messages.filter((m) => !m.is_read).length
+);
+
+// Mark messages as read - updates local state and syncs with backend
+export async function markMessagesAsRead(ids: number[]): Promise<void> {
+	if (ids.length === 0) return;
+
+	// Get messages to mark
+	const messages = get(allMessages);
+	const messagesToMark = messages.filter((m) => ids.includes(m.id));
+
+	// Update local state immediately for responsive UI
+	allMessages.update((msgs) =>
+		msgs.map((message) =>
+			ids.includes(message.id) ? { ...message, is_read: true } : message
+		)
+	);
+
+	// Sync with backend - dynamically import to avoid circular dependency
+	// DESIGN NOTE: This unified inbox is a monitoring dashboard without user authentication.
+	// We use recipients[0] as a pragmatic actor for mark-as-read since:
+	// 1. The API requires an agent_name parameter to identify who is reading
+	// 2. Recipients are the agents who would legitimately read this message
+	// 3. For dashboard monitoring purposes, tracking "marked as read" matters more than "by whom"
+	try {
+		const { dataProvider } = await import('$lib/data');
+		await Promise.allSettled(
+			messagesToMark.map((msg) => {
+				// Use first recipient as the actor (see DESIGN NOTE above)
+				const recipients = msg.recipients ?? msg.recipient_names ?? [];
+				const agentName = recipients[0];
+				if (!agentName || !msg.project_slug) return Promise.resolve();
+				return dataProvider.markMessageRead(msg.project_slug, agentName, msg.id);
+			})
+		);
+	} catch {
+		// Backend sync failed silently - local state is already updated
+	}
+}

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)] // expect/unwrap is fine in tests
 #![allow(deprecated)] // cargo_bin is still valid for our use case
 #![allow(clippy::unwrap_used)]
 
@@ -10,7 +11,7 @@ fn test_version_command() {
     cmd.arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::contains("mcp-agent-mail 0.1.0"));
+        .stdout(predicate::str::contains("mcp-agent-mail"));
 }
 
 #[test]

@@ -414,6 +414,43 @@ async fn test_build_slot_full_lifecycle() {
 }
 
 #[tokio::test]
+async fn test_acquire_build_slot_impl_slot_conflict() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+    let (project_id, _, project_slug) = setup_project_and_agent(&mm).await;
+
+    let agent2_c = AgentForCreate {
+        project_id: project_id.into(),
+        name: "conflict_agent".to_string(),
+        program: "claude".to_string(),
+        model: "sonnet".to_string(),
+        task_description: "Conflict test agent".to_string(),
+    };
+    AgentBmc::create(&ctx, &mm, agent2_c).await.unwrap();
+
+    let params1 = AcquireBuildSlotParams {
+        project_slug: project_slug.clone(),
+        agent_name: "build_agent".to_string(),
+        slot_name: "exclusive-slot".to_string(),
+        ttl_seconds: Some(3600),
+    };
+    let result1 = builds::acquire_build_slot_impl(&ctx, &mm, params1).await;
+    assert!(result1.is_ok(), "First acquisition should succeed");
+
+    let params2 = AcquireBuildSlotParams {
+        project_slug: project_slug.clone(),
+        agent_name: "conflict_agent".to_string(),
+        slot_name: "exclusive-slot".to_string(),
+        ttl_seconds: Some(3600),
+    };
+    let result2 = builds::acquire_build_slot_impl(&ctx, &mm, params2).await;
+    assert!(
+        result2.is_err(),
+        "Second acquisition should fail - slot already held"
+    );
+}
+
+#[tokio::test]
 async fn test_acquire_build_slot_impl_with_second_agent() {
     let (mm, _temp) = create_test_mm().await;
     let ctx = Ctx::root_ctx();
