@@ -37,7 +37,7 @@ jobs:
         mkdir -p release
         cp target/release/mcp-server release/mcp-server-linux-x86_64
         cp target/release/mcp-cli release/mcp-cli-linux-x86_64
-        cp target/release/mcp-agent-mail release/mcp-agent-mail-linux-x86_64
+        cp target/release/mouchak-mail release/mouchak-mail-linux-x86_64
         cp target/release/mcp-stdio-server release/mcp-stdio-linux-x86_64
 
     - name: Upload Artifacts
@@ -63,7 +63,7 @@ jobs:
         mkdir -p release
         cp target/release/mcp-server release/mcp-server-darwin-arm64
         cp target/release/mcp-cli release/mcp-cli-darwin-arm64
-        cp target/release/mcp-agent-mail release/mcp-agent-mail-darwin-arm64
+        cp target/release/mouchak-mail release/mouchak-mail-darwin-arm64
         cp target/release/mcp-stdio-server release/mcp-stdio-darwin-arm64
 
     - name: Upload Artifacts

@@ -1,4 +1,4 @@
-# MCP Agent Mail - Makefile
+# Mouchak Mail - Makefile
 # Unified build and run commands for the Rust implementation
 
 .PHONY: all build build-release build-web build-web-leptos build-web-svelte dev run run-all clean test test-fast coverage audit quality-gate help export-static-data build-web-static deploy-github-pages full-deploy-github-pages push-github-pages
@@ -70,14 +70,14 @@ dev-web:
 	@echo "🌐 Building SvelteKit UI..."
 	cd crates/services/web-ui && bun install && bun run build
 	@echo "🚀 Starting server with embedded UI on http://localhost:8765..."
-	cargo run -p mcp-agent-mail --features with-web-ui -- serve http --port 8765
+	cargo run -p mouchak-mail --features with-web-ui -- serve http --port 8765
 
 ## Run server with Leptos UI (requires changing embedded.rs to point to web-ui-leptos/dist)
 dev-web-leptos:
 	@echo "🌐 Building Leptos UI..."
 	cd crates/services/web-ui-leptos && trunk build --release
 	@echo "🚀 Starting server with embedded UI on http://localhost:8765..."
-	cargo run -p mcp-agent-mail --features with-web-ui -- serve http --port 8765
+	cargo run -p mouchak-mail --features with-web-ui -- serve http --port 8765
 
 ## Run MCP stdio server
 dev-mcp:
@@ -116,36 +116,36 @@ build-sidecar:
 	@echo "🔧 Building SvelteKit UI..."
 	cd crates/services/web-ui && bun install && bun run build
 	@echo "🔧 Building sidecar binary with embedded UI..."
-	cargo build -p mcp-agent-mail --release --features with-web-ui
-	@echo "✅ Binary: target/release/mcp-agent-mail"
-	@ls -lh target/release/mcp-agent-mail
+	cargo build -p mouchak-mail --release --features with-web-ui
+	@echo "✅ Binary: target/release/mouchak-mail"
+	@ls -lh target/release/mouchak-mail
 
 ## Build sidecar with Leptos UI (requires changing embedded.rs)
 build-sidecar-leptos:
 	@echo "🔧 Building Leptos UI..."
 	cd crates/services/web-ui-leptos && trunk build --release
 	@echo "🔧 Building sidecar binary with embedded UI..."
-	cargo build -p mcp-agent-mail --release --features with-web-ui
-	@echo "✅ Binary: target/release/mcp-agent-mail"
-	@ls -lh target/release/mcp-agent-mail
+	cargo build -p mouchak-mail --release --features with-web-ui
+	@echo "✅ Binary: target/release/mouchak-mail"
+	@ls -lh target/release/mouchak-mail
 
 ## Build minimal sidecar binary (no UI)
 build-sidecar-minimal:
 	@echo "🔧 Building minimal sidecar binary (no UI)..."
-	cargo build -p mcp-agent-mail --release
-	@echo "✅ Minimal binary: target/release/mcp-agent-mail"
-	@ls -lh target/release/mcp-agent-mail
+	cargo build -p mouchak-mail --release
+	@echo "✅ Minimal binary: target/release/mouchak-mail"
+	@ls -lh target/release/mouchak-mail
 
 ## Build for Claude Desktop (stdio MCP server)
 build-claude-desktop: build-sidecar-minimal
 	@echo "📋 Add to claude_desktop_config.json:"
-	@echo '  "agent-mail": { "command": "$(PWD)/target/release/mcp-agent-mail", "args": ["serve", "mcp", "--transport", "stdio"] }'
+	@echo '  "mouchak-mail": { "command": "$(PWD)/target/release/mouchak-mail", "args": ["serve", "mcp", "--transport", "stdio"] }'
 
 ## Install 'am' binary to ~/.local/bin
 install-am: build-sidecar-minimal
 	@echo "📦 Installing 'am' to ~/.local/bin..."
 	@mkdir -p ~/.local/bin
-	@cp target/release/mcp-agent-mail ~/.local/bin/am
+	@cp target/release/mouchak-mail ~/.local/bin/am
 	@chmod +x ~/.local/bin/am
 	@echo "✅ Installed: ~/.local/bin/am"
 	@echo "   Make sure ~/.local/bin is in your PATH"
@@ -154,7 +154,7 @@ install-am: build-sidecar-minimal
 install-am-full: build-sidecar
 	@echo "📦 Installing 'am' (with UI) to ~/.local/bin..."
 	@mkdir -p ~/.local/bin
-	@cp target/release/mcp-agent-mail ~/.local/bin/am
+	@cp target/release/mouchak-mail ~/.local/bin/am
 	@chmod +x ~/.local/bin/am
 	@echo "✅ Installed: ~/.local/bin/am (with embedded UI)"
 	@echo "   Make sure ~/.local/bin is in your PATH"
@@ -276,7 +276,7 @@ db-info:
 export-static-data:
 	@echo "📤 Exporting data to static JSON..."
 	@mkdir -p crates/services/web-ui/static/data
-	./target/release/mcp-agent-mail share export static-data \
+	./target/release/mouchak-mail share export static-data \
 		--output crates/services/web-ui/static/data
 	@echo "✅ Data exported to crates/services/web-ui/static/data/"
 
@@ -319,7 +319,7 @@ deploy-github-pages: build-web-static
 		echo "   Usage: make deploy-github-pages GITHUB_PAGES_REPO=your-repo"; \
 		exit 1; \
 	fi
-	./target/release/mcp-agent-mail share deploy github-pages \
+	./target/release/mouchak-mail share deploy github-pages \
 		--build-dir crates/services/web-ui/build-static \
 		--repo $(GITHUB_PAGES_REPO) \
 		$(if $(GITHUB_PAGES_DOMAIN),--custom-domain $(GITHUB_PAGES_DOMAIN))
@@ -375,7 +375,7 @@ ready:
 
 ## Show help
 help:
-	@echo "MCP Agent Mail - Rust Implementation"
+	@echo "Mouchak Mail - Rust Implementation"
 	@echo ""
 	@echo "Usage: make [target]"
 	@echo ""

@@ -4,7 +4,7 @@ set -e
 # Configuration
 BINARY_PATH="./target/release/mouchak-mail"
 INSTALL_PATH="/usr/local/bin/mouchak-mail"
-USER="mcp-agent"
+USER="mouchak"
 SERVICE_NAME="mouchak-mail"
 DATA_DIR="/var/lib/mouchak-mail"
 

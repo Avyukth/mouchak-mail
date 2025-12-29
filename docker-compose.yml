@@ -1,8 +1,8 @@
 services:
-  mcp-agent-mail:
+  mouchak-mail:
     build: .
-    image: mcp-agent-mail:latest
-    container_name: mcp-agent-mail
+    image: mouchak-mail:latest
+    container_name: mouchak-mail
     ports:
       - "3000:3000"
     volumes:

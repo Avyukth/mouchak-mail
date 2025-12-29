@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 
 # Build specific package
-RUN cargo build --release -p mcp-agent-mail
+RUN cargo build --release -p mouchak-mail
 
 # Runtime Stage
 FROM debian:bookworm-slim
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary
-COPY --from=builder /app/target/release/mcp-agent-mail /usr/local/bin/mcp-agent-mail
+COPY --from=builder /app/target/release/mouchak-mail /usr/local/bin/mouchak-mail
 
 # Create data directory
 RUN mkdir -p /app/data
@@ -33,4 +33,4 @@ ENV HOST=0.0.0.0
 EXPOSE 3000
 
 # Run
-CMD ["mcp-agent-mail", "serve"]
+CMD ["mouchak-mail", "serve"]
