@@ -5,6 +5,14 @@ All notable changes to Mouchak Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6](https://github.com/Avyukth/mouchak-mail/compare/v0.2.5...v0.2.6) (2025-12-29)
+
+
+### Bug Fixes
+
+* rename mcp-stdio-server binary to mouchak-mail-stdio ([dc81a4a](https://github.com/Avyukth/mouchak-mail/commit/dc81a4afb46474588e31fe18153f33ae5f05ee7a))
+* rename mcp-stdio-server binary to mouchak-mail-stdio ([64062e5](https://github.com/Avyukth/mouchak-mail/commit/64062e5414b4ebcff40089edaf168736369e6d79))
+
 ## [0.2.5](https://github.com/Avyukth/mouchak-mail/compare/v0.2.4...v0.2.5) (2025-12-29)
 
 
