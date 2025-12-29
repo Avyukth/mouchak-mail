@@ -5,6 +5,19 @@ All notable changes to MCP Agent Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3](https://github.com/Avyukth/mcp-agent-mail-rs/compare/v0.2.2...v0.2.3) (2025-12-29)
+
+
+### Features
+
+* **web-ui:** fix unread badge on Mail nav with backend sync ([de4aebb](https://github.com/Avyukth/mcp-agent-mail-rs/commit/de4aebb473c34a12861253b3393ac089d9b5d78d))
+
+
+### Bug Fixes
+
+* **e2e:** fix guard_integration tests with proper agent registration and API response parsing ([de12bf6](https://github.com/Avyukth/mcp-agent-mail-rs/commit/de12bf63775f5141b7b0c936d45c6f30035cc9ab))
+* **web-ui:** update sidebar and layout components ([552bd31](https://github.com/Avyukth/mcp-agent-mail-rs/commit/552bd31eec4ab8a01873b86c62d344eaa03229c0))
+
 ## [0.2.2](https://github.com/Avyukth/mcp-agent-mail-rs/compare/v0.2.1...v0.2.2) (2025-12-28)
 
 
