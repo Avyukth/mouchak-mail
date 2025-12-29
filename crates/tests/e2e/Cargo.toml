@@ -25,8 +25,8 @@ uuid = { workspace = true }
 base64 = "0.22"
 
 [dev-dependencies]
-# For integration with lib-core if needed
-lib-core = { path = "../../libs/lib-core" }
+# For integration with mouchak-mail-core if needed
+mouchak-mail-core = { path = "../../libs/mouchak-mail-core" }
 assert_cmd = "2.0.16"
 predicates = "3.1.2"
 tempfile = "3.14"

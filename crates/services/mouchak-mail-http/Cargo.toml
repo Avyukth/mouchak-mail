@@ -1,0 +1,17 @@
+[package]
+name = "mouchak-mail-http"
+version = "0.2.3"
+edition = "2024"
+
+[dependencies]
+# Dependencies now handled by mouchak-mail-server
+mouchak-mail-server = { path = "../../libs/mouchak-mail-server" }
+mouchak-mail-common = { path = "../../libs/mouchak-mail-common" }
+tokio.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+
+
+
+[lints]
+workspace = true

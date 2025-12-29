@@ -1,4 +1,4 @@
-use lib_common::robot::Example;
+use mouchak_mail_common::robot::Example;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashMap;

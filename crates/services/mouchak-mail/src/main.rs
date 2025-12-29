@@ -1,6 +1,6 @@
 use clap::{Args, CommandFactory, Parser, Subcommand};
-use lib_common::config::AppConfig;
-use lib_mcp::{docs::generate_markdown_docs, run_sse, run_stdio, tools::get_tool_schemas};
+use mouchak_mail_common::config::AppConfig;
+use mouchak_mail_mcp::{docs::generate_markdown_docs, run_sse, run_stdio, tools::get_tool_schemas};
 use std::io::Write;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -612,7 +612,7 @@ async fn handle_serve_http(
     }
 
     info!("Starting HTTP Server on port {}...", config.server.port);
-    lib_server::run(config).await?;
+    mouchak_mail_server::run(config).await?;
     Ok(())
 }
 
@@ -983,7 +983,7 @@ async fn handle_service_restart(port: u16, config: AppConfig) -> anyhow::Result<
 }
 
 fn handle_share_keypair(output: Option<String>) -> anyhow::Result<()> {
-    use lib_core::model::export::{
+    use mouchak_mail_core::model::export::{
         generate_signing_keypair, signing_key_to_base64, verifying_key_to_base64,
     };
 
@@ -1012,7 +1012,7 @@ fn handle_share_keypair(output: Option<String>) -> anyhow::Result<()> {
 }
 
 fn handle_share_verify(manifest_path: &str, public_key: Option<&str>) -> anyhow::Result<()> {
-    use lib_core::model::export::ExportManifest;
+    use mouchak_mail_core::model::export::ExportManifest;
 
     let manifest_content = std::fs::read_to_string(manifest_path)?;
     let manifest: ExportManifest = serde_json::from_str(&manifest_content)?;
@@ -1055,12 +1055,12 @@ async fn handle_export_static_data(
     limit: i64,
     project_filter: Option<&str>,
 ) -> anyhow::Result<()> {
-    use lib_core::ctx::Ctx;
-    use lib_core::model::ModelManager;
-    use lib_core::model::agent::AgentBmc;
-    use lib_core::model::export::{ScrubMode, Scrubber};
-    use lib_core::model::message::MessageBmc;
-    use lib_core::model::project::ProjectBmc;
+    use mouchak_mail_core::ctx::Ctx;
+    use mouchak_mail_core::model::ModelManager;
+    use mouchak_mail_core::model::agent::AgentBmc;
+    use mouchak_mail_core::model::export::{ScrubMode, Scrubber};
+    use mouchak_mail_core::model::message::MessageBmc;
+    use mouchak_mail_core::model::project::ProjectBmc;
     use serde_json::json;
     use std::collections::HashMap;
     use std::fs;
@@ -2018,7 +2018,7 @@ fn handle_robot_help(format: &str) {
 
 #[allow(clippy::expect_used)]
 fn handle_robot_status(format: &str) -> u8 {
-    use lib_common::robot::ROBOT_HELP_SCHEMA_VERSION;
+    use mouchak_mail_common::robot::ROBOT_HELP_SCHEMA_VERSION;
     use robot_help::{CheckResult, RobotStatusOutput};
     use std::collections::HashMap;
 
@@ -2883,8 +2883,8 @@ fn read_archive_metadata(path: &std::path::Path) -> serde_json::Value {
 }
 
 async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
-    use lib_core::ctx::Ctx;
-    use lib_core::model::ModelManager;
+    use mouchak_mail_core::ctx::Ctx;
+    use mouchak_mail_core::model::ModelManager;
 
     let config = load_config();
     let mm = ModelManager::new(std::sync::Arc::new(config.clone())).await?;
@@ -2893,7 +2893,7 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
     match args.command {
         ProductsCommands::Ensure { product_uid, name } => {
             let product =
-                lib_core::model::product::ProductBmc::ensure(&ctx, &mm, &product_uid, &name)
+                mouchak_mail_core::model::product::ProductBmc::ensure(&ctx, &mm, &product_uid, &name)
                     .await?;
             println!(
                 "Ensured product: {} ({})",
@@ -2905,12 +2905,12 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
             project,
         } => {
             let product =
-                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
             let project =
-                lib_core::model::project::ProjectBmc::get_by_identifier(&ctx, &mm, &project)
+                mouchak_mail_core::model::project::ProjectBmc::get_by_identifier(&ctx, &mm, &project)
                     .await?;
 
-            lib_core::model::product::ProductBmc::link_project(
+            mouchak_mail_core::model::product::ProductBmc::link_project(
                 &ctx,
                 &mm,
                 product.id,
@@ -2924,18 +2924,18 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
         }
         ProductsCommands::Status { product_uid } => {
             let product =
-                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
             let project_ids =
-                lib_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                mouchak_mail_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
                     .await?;
 
             println!("Product: {} ({})", product.name, product.product_uid);
             println!("Linked Projects: {}", project_ids.len());
             for pid in project_ids {
-                if let Ok(proj) = lib_core::model::project::ProjectBmc::get(
+                if let Ok(proj) = mouchak_mail_core::model::project::ProjectBmc::get(
                     &ctx,
                     &mm,
-                    lib_core::ProjectId::new(pid),
+                    mouchak_mail_core::ProjectId::new(pid),
                 )
                 .await
                 {
@@ -2952,15 +2952,15 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
         } => {
             // Search logic needs to search across all linked projects
             let product =
-                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
             let project_ids =
-                lib_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                mouchak_mail_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
                     .await?;
 
             let mut all_matches = Vec::new();
             for pid in project_ids {
                 if let Ok(messages) =
-                    lib_core::model::message::MessageBmc::search(&ctx, &mm, pid, &query, limit)
+                    mouchak_mail_core::model::message::MessageBmc::search(&ctx, &mm, pid, &query, limit)
                         .await
                 {
                     all_matches.extend(messages);
@@ -2993,9 +2993,9 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
         } => {
             // Inbox logic: Get all projects, find agent ID in each, fetch inbox
             let product =
-                lib_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
+                mouchak_mail_core::model::product::ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
             let project_ids =
-                lib_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
+                mouchak_mail_core::model::product::ProductBmc::get_linked_projects(&ctx, &mm, product.id)
                     .await?;
 
             println!("Inbox for agent '{}' in product '{}':", agent, product.name);
@@ -3016,15 +3016,15 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
                 // But I'll put a placeholder implementation.
 
                 // Assuming we can fix this in next iteration or if I have AgentBmc::get_by_name_and_project
-                use lib_core::model::agent::AgentBmc;
+                use mouchak_mail_core::model::agent::AgentBmc;
                 // We need to implement get_by_name_in_project in AgentBmc or similar logic
                 // For now, let's iterate all agents in project and match name (slow but works for CLI)
                 if let Ok(agents) =
-                    AgentBmc::list_all_for_project(&ctx, &mm, lib_core::ProjectId::from(pid)).await
+                    AgentBmc::list_all_for_project(&ctx, &mm, mouchak_mail_core::ProjectId::from(pid)).await
                 {
                     if let Some(agent_obj) = agents.into_iter().find(|a| a.name == agent) {
                         if let Ok(messages) =
-                            lib_core::model::message::MessageBmc::list_inbox_for_agent(
+                            mouchak_mail_core::model::message::MessageBmc::list_inbox_for_agent(
                                 &ctx,
                                 &mm,
                                 pid,
@@ -3066,7 +3066,7 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
             per_thread_limit,
             no_llm: _,
         } => {
-            use lib_core::model::{message::MessageBmc, product::ProductBmc, project::ProjectBmc};
+            use mouchak_mail_core::model::{message::MessageBmc, product::ProductBmc, project::ProjectBmc};
 
             let product = ProductBmc::get_by_uid(&ctx, &mm, &product_uid).await?;
             let project_ids = ProductBmc::get_linked_projects(&ctx, &mm, product.id).await?;
@@ -3075,7 +3075,7 @@ async fn handle_products(args: ProductsArgs) -> anyhow::Result<()> {
             let mut project_sources = Vec::new();
 
             for pid in project_ids {
-                let project_id = lib_core::ProjectId::from(pid);
+                let project_id = mouchak_mail_core::ProjectId::from(pid);
                 let project = ProjectBmc::get(&ctx, &mm, project_id).await?;
 
                 match MessageBmc::list_by_thread(&ctx, &mm, pid, &thread_id).await {
@@ -3466,7 +3466,7 @@ mod robot_handler_tests {
     #[test]
     fn test_robot_examples_output_structure() {
         // Verify RobotExamplesOutput serializes correctly
-        use lib_common::robot::Example;
+        use mouchak_mail_common::robot::Example;
 
         let output = RobotExamplesOutput {
             schema_version: "1.0".to_string(),

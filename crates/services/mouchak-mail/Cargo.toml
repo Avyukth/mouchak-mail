@@ -10,15 +10,15 @@ categories = ["command-line-utilities", "web-programming"]
 
 [features]
 default = []
-with-web-ui = ["lib-server/with-web-ui"]
+with-web-ui = ["mouchak-mail-server/with-web-ui"]
 sentry = [] # Optional error tracking integration
 
 [dependencies]
 # Internal
-lib-core = { path = "../../libs/lib-core" }
-lib-common = { path = "../../libs/lib-common" }
-lib-server = { path = "../../libs/lib-server" }
-lib-mcp = { path = "../../libs/lib-mcp" }
+mouchak-mail-core = { path = "../../libs/mouchak-mail-core" }
+mouchak-mail-common = { path = "../../libs/mouchak-mail-common" }
+mouchak-mail-server = { path = "../../libs/mouchak-mail-server" }
+mouchak-mail-mcp = { path = "../../libs/mouchak-mail-mcp" }
 
 # CLI
 clap.workspace = true

@@ -1,15 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/libs/lib-core",
-    "crates/libs/lib-common",
-    "crates/libs/lib-server",
-    "crates/services/mcp-server",
-    "crates/services/mcp-cli",
-    "crates/services/mcp-stdio",
+    "crates/libs/mouchak-mail-core",
+    "crates/libs/mouchak-mail-common",
+    "crates/libs/mouchak-mail-server",
+    "crates/services/mouchak-mail-http",
+    "crates/services/mouchak-mail-cli",
+    "crates/services/mouchak-mail-stdio",
     "crates/services/mouchak-mail",
     "crates/services/web-ui-leptos",
-    "crates/libs/lib-mcp",
+    "crates/libs/mouchak-mail-mcp",
     "crates/tests/e2e",
 ]
 

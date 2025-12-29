@@ -1,0 +1,29 @@
+[package]
+name = "mouchak-mail-cli"
+version = "0.2.3"
+edition = "2024"
+
+[dependencies]
+# Workspace dependencies
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+serde_json.workspace = true
+
+# Archive support
+zip = "4.1.0"
+
+# Internal workspace dependencies
+mouchak-mail-core = { path = "../../libs/mouchak-mail-core" }
+mouchak-mail-common = { path = "../../libs/mouchak-mail-common" }
+
+[dev-dependencies]
+assert_cmd = "2.0.16"
+predicates = "3.1.2"
+tempfile = "3.10.1"
+
+[lints]
+workspace = true

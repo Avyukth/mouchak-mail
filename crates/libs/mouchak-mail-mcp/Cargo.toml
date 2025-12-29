@@ -1,0 +1,42 @@
+[package]
+name = "mouchak-mail-mcp"
+version = "0.2.3"
+edition = "2024"
+
+[dependencies]
+# Internal
+mouchak-mail-core = { path = "../mouchak-mail-core" }
+mouchak-mail-common = { path = "../mouchak-mail-common" }
+
+# MCP SDK
+rmcp.workspace = true
+schemars.workspace = true
+
+# Async/Web
+tokio.workspace = true
+axum.workspace = true
+tower-http.workspace = true
+tower = { version = "0.5.2", features = ["util"] }
+
+# Tracing
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Utils
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+url = "2.5.7"
+base64.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
+libsql = { version = "0.9", default-features = false }
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[lints]
+workspace = true
