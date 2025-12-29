@@ -604,7 +604,7 @@ mouchak-mail health --url http://localhost:8765
 
 #### Agent Self-Discovery (Robot Commands)
 
-**MANDATORY**: Agents MUST use these commands to learn Agent Mail capabilities before starting work.
+**MANDATORY**: Agents MUST use these commands to learn Mouchak Mail capabilities before starting work.
 
 ```bash
 # ═══════════════════════════════════════════════════════════════════
@@ -1314,7 +1314,7 @@ All agents MUST follow this workflow. No exceptions. Failure to follow causes me
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  LAYER 1: FILE RESERVATIONS (Agent Mail - logical locks)    │
+│  LAYER 1: FILE RESERVATIONS (Mouchak Mail - logical locks)  │
 │  - Reserve files BEFORE editing (exclusive for writes)      │
 │  - Prevents same-file conflicts between parallel agents     │
 │  - TTL-based expiry (default 3600s)                         │
@@ -1367,7 +1367,7 @@ git pull origin dev
 git merge main --no-edit  # Only if main has hotfixes
 git push origin dev
 
-# 2. Register with Agent Mail (MANDATORY - before any work)
+# 2. Register with Mouchak Mail (MANDATORY - before any work)
 export AGENT_ID=$(uuidgen | cut -c1-8)
 curl -X POST http://localhost:8765/api/agent/register \
   -H "Content-Type: application/json" \
@@ -1388,7 +1388,7 @@ curl -X POST http://localhost:8765/api/file_reservations/paths \
     "ttl_seconds":3600,
     "exclusive":true
   }'
-# If reservation fails (another agent has lock) → STOP, coordinate via Agent Mail
+# If reservation fails (another agent has lock) → STOP, coordinate via Mouchak Mail
 
 # 4. Create isolated worktree FROM dev
 git worktree add .sandboxes/agent-$AGENT_ID -b feature/<task-id> dev
@@ -1412,7 +1412,7 @@ curl -X POST http://localhost:8765/api/file_reservations/renew \
 git add -A
 git commit -m "feat(<scope>): <description>"
 
-# Communicate via Agent Mail (NEVER use filesystem for coordination)
+# Communicate via Mouchak Mail (NEVER use filesystem for coordination)
 curl -X POST http://localhost:8765/api/message/send \
   -H "Content-Type: application/json" \
   -d '{
@@ -1449,7 +1449,7 @@ bd sync  # Commits to beads-sync branch automatically
 git worktree remove .sandboxes/agent-$AGENT_ID
 git branch -d feature/<task-id>
 
-# 7. Notify completion via Agent Mail
+# 7. Notify completion via Mouchak Mail
 curl -X POST http://localhost:8765/api/message/send \
   -d '{"project_slug":"...","sender":"agent-'$AGENT_ID'","recipients":["coordinator"],"subject":"COMPLETED: <task-id>",...}'
 ```
@@ -1478,7 +1478,7 @@ git push origin dev
 | **Worktrees** | Eliminates stash/pop | Complex state, errors |
 | **Dev branch** | Code integration point | Feature branches conflict |
 | **Beads-sync** | Isolated beads data | Data mixed with code branches |
-| **Agent Mail** | Async coordination | Agents step on each other |
+| **Mouchak Mail** | Async coordination | Agents step on each other |
 
 #### Anti-Patterns (NEVER DO)
 
@@ -1487,7 +1487,7 @@ git push origin dev
 | `git stash` / `git stash pop` | Use worktree per agent |
 | Edit files without reservation | Reserve BEFORE editing |
 | Work directly on main/dev | Work in feature/* worktree only |
-| Skip Agent Mail registration | Always register first |
+| Skip Mouchak Mail registration | Always register first |
 | Force push to shared branches | Only merge, never force |
 | Merge beads-sync with code branches | Keep beads-sync isolated (data only) |
 
@@ -2761,7 +2761,7 @@ Key points:
 - **beads-sync** is isolated for beads data only (configured via `bd config set sync.branch beads-sync`)
 - **Worktrees** provide physical isolation (`.sandboxes/agent-<id>/`)
 - **File reservations** prevent same-file conflicts
-- **Agent Mail** is mandatory for all coordination
+- **Mouchak Mail** is mandatory for all coordination
 - **main** receives merges from dev only (releases)
 
 ### Session Protocol

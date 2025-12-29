@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Codex CLI notify handler for MCP Agent Mail
+# Codex CLI notify handler for Mouchak Mail
 #
 # This script is invoked by Codex CLI's notify mechanism when agent-turn-complete fires.
 # It checks the inbox periodically (rate-limited) and outputs reminders if there are messages.

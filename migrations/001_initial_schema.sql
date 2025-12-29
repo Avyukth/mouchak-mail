@@ -1,4 +1,4 @@
--- Add migration script to /mcp-agent-mail-rs/migrations/001_initial_schema.sql
+-- Mouchak Mail initial schema migration
 -- Create projects table
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

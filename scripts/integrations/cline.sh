@@ -178,7 +178,7 @@ print_summary() {
     echo "  3. Mouchak Mail tools will be available to Cline"
     echo "  4. Try: 'Register me as an agent and check my inbox'"
     echo ""
-    echo "What Cline can do with Agent Mail:"
+    echo "What Cline can do with Mouchak Mail:"
     echo "  • Register as an agent in your project"
     echo "  • Send messages to other agents about work"
     echo "  • Reserve files before editing"

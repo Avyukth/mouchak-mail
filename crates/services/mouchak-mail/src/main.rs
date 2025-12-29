@@ -11,7 +11,7 @@ mod robot_help;
 
 #[derive(Parser)]
 #[command(name = "mouchak-mail")]
-#[command(about = "Unified Server/CLI for Agent Mail")]
+#[command(about = "Unified Server/CLI for Mouchak Mail")]
 #[command(version)]
 struct Cli {
     #[command(subcommand)]
@@ -1458,7 +1458,7 @@ async fn check_or_create_repo(
         .json(&serde_json::json!({
             "name": repo,
             "private": private,
-            "description": "Agent Mail archive deployed via mouchak-mail",
+            "description": "Mouchak Mail archive deployed via mouchak-mail",
             "auto_init": false
         }))
         .send()
@@ -1498,7 +1498,7 @@ async fn push_bundle_to_gh_pages(
         r#"<!DOCTYPE html>
 <html>
 <head>
-    <title>Agent Mail Archive</title>
+    <title>Mouchak Mail Archive</title>
     <style>
         body {{ font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px; }}
         h1 {{ color: #333; }}
@@ -1506,7 +1506,7 @@ async fn push_bundle_to_gh_pages(
     </style>
 </head>
 <body>
-    <h1>🤖 Agent Mail Archive</h1>
+    <h1>🤖 Mouchak Mail Archive</h1>
     <p>This archive was deployed using <code>mouchak-mail share deploy github-pages</code></p>
     <p><a href="archive.zip">Download Archive (ZIP)</a></p>
     <p>Deployed: {}</p>
@@ -1684,7 +1684,7 @@ async fn create_initial_commit(token: &str, owner: &str, repo: &str) -> anyhow::
         .header("User-Agent", "mouchak-mail")
         .header("Accept", "application/vnd.github+json")
         .json(&serde_json::json!({
-            "content": "# Agent Mail Archive\n\nDeployed via mouchak-mail",
+            "content": "# Mouchak Mail Archive\n\nDeployed via mouchak-mail",
             "encoding": "utf-8"
         }))
         .send()
@@ -3147,7 +3147,7 @@ async fn handle_mail_status() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "mouchak-mail-rs".to_string());
     println!("Project: {}", project_slug);
 
-    // registration status - check if we're registered with Agent Mail
+    // registration status - check if we're registered with Mouchak Mail
     let agent_registered = std::env::var("MOUCHAK_MAIL_URL").is_ok();
     println!(
         "Agent Registration: {}",
@@ -3665,17 +3665,17 @@ mod github_pages_tests {
             r#"<!DOCTYPE html>
 <html>
 <head>
-    <title>Agent Mail Archive</title>
+    <title>Mouchak Mail Archive</title>
 </head>
 <body>
-    <h1>Agent Mail Archive</h1>
+    <h1>Mouchak Mail Archive</h1>
     <p>Deployed: {}</p>
 </body>
 </html>"#,
             timestamp
         );
 
-        assert!(index_html.contains("Agent Mail Archive"));
+        assert!(index_html.contains("Mouchak Mail Archive"));
         assert!(index_html.contains(timestamp));
         assert!(index_html.contains("<!DOCTYPE html>"));
     }

@@ -86,7 +86,7 @@ pub async fn uninstall_precommit_guard_impl(
             )]))
         } else {
             Ok(CallToolResult::success(vec![Content::text(
-                "Hook exists but is not an Agent Mail guard".to_string(),
+                "Hook exists but is not a Mouchak Mail guard".to_string(),
             )]))
         }
     } else {

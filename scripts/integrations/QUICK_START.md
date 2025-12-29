@@ -106,7 +106,7 @@ Before running any script:
 2. **Start coding** - MCP tools are now available!
 3. **Try these prompts**:
    - "Register me as an agent in this project"
-   - "Check my Agent Mail inbox"
+   - "Check my Mouchak Mail inbox"
    - "Reserve src/ for editing"
    - "Send a message to other agents about this change"
 

@@ -1,4 +1,4 @@
-# MCP Agent Mail - Justfile
+# Mouchak Mail - Justfile
 # Modern command runner (https://github.com/casey/just)
 # Install: cargo install just
 

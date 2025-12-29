@@ -183,7 +183,7 @@ print_summary() {
     echo "  3. Mouchak Mail tools will be available"
     echo "  4. Try: '@mouchak-mail register me as an agent'"
     echo ""
-    echo "Continue.dev + Agent Mail capabilities:"
+    echo "Continue.dev + Mouchak Mail capabilities:"
     echo "  • Context-aware agent registration"
     echo "  • Message-based coordination between agents"
     echo "  • File reservation to prevent conflicts"

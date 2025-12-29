@@ -1,5 +1,5 @@
 /**
- * Accessibility Audit Script for MCP Agent Mail Web UI
+ * Accessibility Audit Script for Mouchak Mail Web UI
  *
  * Uses Playwright to check WCAG 2.1 AA compliance across all pages.
  * Checks: images alt, button labels, form labels, touch targets, color contrast.
@@ -321,7 +321,7 @@ async function auditPage(page: Page, testPage: TestPage): Promise<PageReport> {
 }
 
 function formatYaml(report: AuditReport): string {
-  let yaml = `# MCP Agent Mail Accessibility Audit Report\n`;
+  let yaml = `# Mouchak Mail Accessibility Audit Report\n`;
   yaml += `timestamp: ${report.timestamp}\n`;
   yaml += `base_url: ${report.baseUrl}\n\n`;
 
@@ -359,7 +359,7 @@ async function main(): Promise<void> {
     : "console";
 
   console.log("═".repeat(60));
-  console.log("  MCP Agent Mail - Accessibility Audit (WCAG 2.1 AA)");
+  console.log("  Mouchak Mail - Accessibility Audit (WCAG 2.1 AA)");
   console.log("═".repeat(60));
   console.log(`  Base URL: ${BASE_URL}`);
   console.log(`  Pages: ${PAGES.map((p) => p.name).join(", ")}`);

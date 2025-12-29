@@ -222,7 +222,7 @@ async fn test_uninstall_precommit_guard_impl_foreign_hook() {
     assert!(result.is_ok());
 
     let text = format!("{:?}", result.unwrap());
-    assert!(text.contains("not an Agent Mail guard"));
+    assert!(text.contains("not a Mouchak Mail guard"));
 
     // Hook should not be removed
     assert!(hooks_dir.join("pre-commit").exists());

@@ -186,11 +186,11 @@ pub struct PrecommitGuardBmc;
 /// The script:
 /// 1. Reads ref tuples from stdin (local_ref local_sha remote_ref remote_sha)
 /// 2. Skips if AGENT_NAME not set or WORKTREES_ENABLED/GIT_IDENTITY_ENABLED not set
-/// 3. Attempts to call the agent-mail server's check-push endpoint
+/// 3. Attempts to call the Mouchak Mail server's check-push endpoint
 /// 4. Gracefully degrades if server is unreachable (exits 0)
 ///
 /// # Arguments
-/// * `server_url` - Base URL for the agent-mail server (e.g., "http://localhost:8080")
+/// * `server_url` - Base URL for the Mouchak Mail server (e.g., "http://localhost:8080")
 pub fn render_prepush_script(server_url: &str) -> String {
     format!(
         r#"#!/bin/sh
@@ -258,7 +258,7 @@ if command -v curl >/dev/null 2>&1; then
     # Check response (if server returned an error)
     case "$response" in
         *"error"*|*"blocked"*)
-            echo "[pre-push] Push blocked by agent-mail guard:" >&2
+            echo "[pre-push] Push blocked by Mouchak Mail guard:" >&2
             echo "$response" >&2
             # Check advisory mode
             case "${{AGENT_MAIL_GUARD_MODE:-block}}" in
@@ -546,7 +546,7 @@ RESPONSE=$(curl -s -X POST "${SERVER_URL}/api/file_reservations/list" \
 
 # Check if API call succeeded
 if [ $? -ne 0 ] || [ -z "$RESPONSE" ]; then
-    echo "Warning: Could not reach agent mail server at $SERVER_URL" >&2
+    echo "Warning: Could not reach Mouchak Mail server at $SERVER_URL" >&2
     # In warn mode, continue; in enforce mode, block on API failure
     case "$GUARD_MODE" in
         warn|advisory)

@@ -1,4 +1,4 @@
-//! MCP Resource implementations for Agent Mail
+//! MCP Resource implementations for Mouchak Mail
 
 use lib_core::{
     ctx::Ctx,

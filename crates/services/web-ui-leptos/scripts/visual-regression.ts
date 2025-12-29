@@ -1,5 +1,5 @@
 /**
- * Visual Regression Test Suite for MCP Agent Mail Web UI
+ * Visual Regression Test Suite for Mouchak Mail Web UI
  *
  * Uses Playwright via dev-browser skill pattern for screenshot comparison.
  * Captures baselines across 3 viewports x 4 pages = 12 screenshots.
@@ -221,7 +221,7 @@ async function main(): Promise<void> {
   const command = process.argv[2] || "compare";
 
   console.log("═".repeat(60));
-  console.log("  MCP Agent Mail - Visual Regression Test Suite");
+  console.log("  Mouchak Mail - Visual Regression Test Suite");
   console.log("═".repeat(60));
 
   const browser = await chromium.launch({ headless: true });

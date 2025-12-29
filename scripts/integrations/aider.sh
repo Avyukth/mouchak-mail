@@ -154,9 +154,9 @@ update_aider_config() {
 # Use the wrapper script: aider-with-mail
 # Or set environment: export MOUCHAK_MAIL_ENABLED=1
 
-# Add this to your prompts to use Agent Mail:
+# Add this to your prompts to use Mouchak Mail:
 # - Register as agent: "Register me as an agent named <Name> in this project"
-# - Check inbox: "Check my Agent Mail inbox"
+# - Check inbox: "Check my Mouchak Mail inbox"
 # - Send message: "Send a message to agent <Name> about <topic>"
 # - Reserve files: "Reserve files in src/ for editing"
 
@@ -187,10 +187,10 @@ print_summary() {
     echo ""
     echo "Example prompts for Aider:"
     echo "  'Register me as an agent named BlueOcean in this project'"
-    echo "  'Check my Agent Mail inbox for messages'"
+    echo "  'Check my Mouchak Mail inbox for messages'"
     echo "  'Send a message to GreenForest about the refactor'"
     echo "  'Reserve src/**/*.rs for editing'"
-    echo "  'Search Agent Mail for messages about authentication'"
+    echo "  'Search Mouchak Mail for messages about authentication'"
     echo ""
     echo "Note: Aider doesn't have native MCP support yet."
     echo "The wrapper script starts the MCP server, and you can use"

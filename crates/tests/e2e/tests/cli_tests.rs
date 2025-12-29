@@ -21,7 +21,7 @@ fn test_help_command() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Unified Server/CLI for Agent Mail",
+            "Unified Server/CLI for Mouchak Mail",
         ));
 }
 

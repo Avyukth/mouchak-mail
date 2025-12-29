@@ -1,6 +1,6 @@
 //! Integration tests for lib-core
 //!
-//! These tests verify the core functionality of the Agent Mail system.
+//! These tests verify the core functionality of the Mouchak Mail system.
 
 // Tests are allowed to use unwrap()/expect() for clearer failure messages
 #![allow(

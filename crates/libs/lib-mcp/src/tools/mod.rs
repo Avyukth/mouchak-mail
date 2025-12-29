@@ -1,4 +1,4 @@
-//! MCP Tool implementations for Agent Mail
+//! MCP Tool implementations for Mouchak Mail
 //!
 //! This module defines all MCP tools that wrap the lib-core functionality.
 
@@ -331,7 +331,7 @@ fn get_all_tool_schemas() -> Vec<ToolSchema> {
         ),
     ]
 }
-/// The main MCP service for Agent Mail
+/// The main MCP service for Mouchak Mail
 // Simple macro for early return locally
 macro_rules! guard_unwrap {
     ($val:expr, $ret:expr) => {
@@ -568,7 +568,7 @@ impl ServerHandler for AgentMailService {
                 ..Default::default()
             },
             instructions: Some(
-                "Agent Mail MCP Server - Multi-agent messaging and coordination system".to_string(),
+                "Mouchak Mail MCP Server - Multi-agent messaging and coordination system".to_string(),
             ),
         }
     }

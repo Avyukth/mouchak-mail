@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Pre-commit hook for mcp-agent-mail-rs
+# Pre-commit hook for Mouchak Mail
 #
 # Runs quality gates before allowing commit:
 # 1. cargo fmt --check (prevent CI format failures)
