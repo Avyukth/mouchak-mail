@@ -5,6 +5,13 @@ All notable changes to Mouchak Mail will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.7](https://github.com/Avyukth/mouchak-mail/compare/v0.2.6...v0.2.7) (2025-12-30)
+
+
+### Features
+
+* **mcp:** add NTM API contract tools and extend param schemas ([#29](https://github.com/Avyukth/mouchak-mail/issues/29)) ([489bf59](https://github.com/Avyukth/mouchak-mail/commit/489bf592854b1d16cb906e30908e4cdbaa3d3326))
+
 ## [0.2.6](https://github.com/Avyukth/mouchak-mail/compare/v0.2.5...v0.2.6) (2025-12-29)
 
 

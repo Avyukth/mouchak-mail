@@ -1,6 +1,6 @@
 [package]
 name = "mouchak-mail-stdio"
-version = "0.2.6"
+version = "0.2.7"
 edition = "2024"
 description = "MCP stdio server for Mouchak Mail - Claude Desktop and Antigravity integration"
 repository = "https://github.com/Avyukth/mouchak-mail"
