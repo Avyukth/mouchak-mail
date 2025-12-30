@@ -14,9 +14,23 @@ use crate::embedded::Assets;
 /// Serve embedded static files with SPA routing support.
 ///
 /// For paths without file extensions (SPA routes), falls back to index.html.
+/// Returns 404 for API paths that should be handled by the backend.
 /// Returns 404 for missing files with extensions.
 pub async fn serve_embedded_file(uri: Uri) -> impl IntoResponse {
     let path = uri.path().trim_start_matches('/');
+
+    // API paths should NOT be handled by the SPA - return 404 so the error is clear
+    // These paths should be handled by explicit routes in the backend
+    if path.starts_with("api/")
+        || path.starts_with("mcp/")
+        || path == "health"
+        || path == "healthz"
+        || path == "ready"
+        || path == "metrics"
+        || path == "mcp"
+    {
+        return not_found_response();
+    }
 
     // SPA routing: paths without extensions serve index.html
     let path = if path.is_empty() || !path.contains('.') {
@@ -96,11 +110,18 @@ fn internal_server_error() -> Response {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    fn is_api_path(path: &str) -> bool {
+        path.starts_with("api/")
+            || path.starts_with("mcp/")
+            || path == "health"
+            || path == "healthz"
+            || path == "ready"
+            || path == "metrics"
+            || path == "mcp"
+    }
 
     #[test]
     fn test_spa_routing_empty_path() {
-        // Empty path should map to index.html
         let path = "";
         let result = if path.is_empty() || !path.contains('.') {
             "index.html"
@@ -112,7 +133,6 @@ mod tests {
 
     #[test]
     fn test_spa_routing_no_extension() {
-        // Paths without extensions are SPA routes
         let path = "mail/inbox";
         let result = if path.is_empty() || !path.contains('.') {
             "index.html"
@@ -124,7 +144,6 @@ mod tests {
 
     #[test]
     fn test_static_file_with_extension() {
-        // Paths with extensions are static files
         let path = "assets/app.js";
         let result = if path.is_empty() || !path.contains('.') {
             "index.html"
@@ -132,5 +151,27 @@ mod tests {
             path
         };
         assert_eq!(result, "assets/app.js");
+    }
+
+    #[test]
+    fn test_api_paths_excluded_from_spa() {
+        assert!(is_api_path("api/health"));
+        assert!(is_api_path("api/projects"));
+        assert!(is_api_path("mcp/health"));
+        assert!(is_api_path("mcp/"));
+        assert!(is_api_path("health"));
+        assert!(is_api_path("healthz"));
+        assert!(is_api_path("ready"));
+        assert!(is_api_path("metrics"));
+        assert!(is_api_path("mcp"));
+    }
+
+    #[test]
+    fn test_spa_paths_not_api() {
+        assert!(!is_api_path(""));
+        assert!(!is_api_path("mail/inbox"));
+        assert!(!is_api_path("projects"));
+        assert!(!is_api_path("agents"));
+        assert!(!is_api_path("_app/immutable/file.js"));
     }
 }

@@ -75,8 +75,8 @@ async fn test_ensure_project_creates_new() {
     let ctx = Ctx::root_ctx();
 
     let params = EnsureProjectParams {
-        slug: "test-proj".to_string(),
-        human_key: "/test/path".to_string(),
+        slug: Some("test-proj".to_string()),
+        human_key: Some("test-proj".to_string()),
     };
 
     let result = project::ensure_project_impl(&ctx, &mm, params).await;
@@ -100,8 +100,8 @@ async fn test_ensure_project_returns_existing() {
         .unwrap();
 
     let params = EnsureProjectParams {
-        slug: "existing-proj".to_string(),
-        human_key: "/existing".to_string(),
+        slug: Some("existing-proj".to_string()),
+        human_key: Some("existing-proj".to_string()),
     };
 
     let result = project::ensure_project_impl(&ctx, &mm, params).await;

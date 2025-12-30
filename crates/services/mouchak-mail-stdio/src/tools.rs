@@ -650,9 +650,35 @@ impl ServerHandler for MouchakMailService {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct EnsureProjectParams {
     /// The project slug (URL-safe identifier)
-    pub slug: String,
-    /// Human-readable project name/key
-    pub human_key: String,
+    #[serde(default)]
+    pub slug: Option<String>,
+    /// Human-readable project name/key. If not provided, derived from slug (last path component).
+    #[serde(default)]
+    pub human_key: Option<String>,
+}
+
+impl EnsureProjectParams {
+    pub fn effective_slug(&self) -> String {
+        self.slug
+            .clone()
+            .or_else(|| self.human_key.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn effective_human_key(&self) -> String {
+        self.human_key
+            .clone()
+            .or_else(|| {
+                self.slug.as_ref().map(|s| {
+                    std::path::Path::new(s)
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .unwrap_or(s)
+                        .to_string()
+                })
+            })
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -1055,9 +1081,10 @@ impl MouchakMailService {
 
         let ctx = self.ctx();
         let p = params.0;
+        let slug = p.effective_slug();
+        let human_key = p.effective_human_key();
 
-        // Check if project exists
-        match ProjectBmc::get_by_identifier(&ctx, &self.mm, &p.slug).await {
+        match ProjectBmc::get_by_identifier(&ctx, &self.mm, &slug).await {
             Ok(project) => {
                 let msg = format!(
                     "Project '{}' already exists (id: {}, human_key: {})",
@@ -1066,13 +1093,12 @@ impl MouchakMailService {
                 Ok(CallToolResult::success(vec![Content::text(msg)]))
             }
             Err(_) => {
-                // Create new project
-                let id = ProjectBmc::create(&ctx, &self.mm, &p.slug, &p.human_key).await
+                let id = ProjectBmc::create(&ctx, &self.mm, &slug, &human_key).await
                     .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
                 let msg = format!(
                     "Created project '{}' with id {} and human_key '{}'",
-                    p.slug, id, p.human_key
+                    slug, id, human_key
                 );
                 Ok(CallToolResult::success(vec![Content::text(msg)]))
             }

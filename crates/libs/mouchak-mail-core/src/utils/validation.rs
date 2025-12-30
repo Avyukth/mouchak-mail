@@ -2,7 +2,7 @@
 //!
 //! This module provides validation functions for common input types:
 //!
-//! - **Agent names**: Alphanumeric + underscore, 1-64 characters
+//! - **Agent names**: Alphanumeric + underscore + hyphen, 1-64 characters
 //! - **Project keys**: Absolute paths or human-readable keys
 //! - **File paths**: Must be relative (no leading `/`)
 //! - **TTL values**: Between 60 seconds and 7 days
@@ -15,12 +15,13 @@
 //! ```
 //! use mouchak_mail_core::utils::validation::{validate_agent_name, validate_ttl};
 //!
-//! // Valid agent name
+//! // Valid agent names (alphanumeric, underscore, hyphen)
 //! assert!(validate_agent_name("claude_1").is_ok());
+//! assert!(validate_agent_name("cc-1").is_ok());
 //!
 //! // Invalid agent name with suggestion
-//! let err = validate_agent_name("claude-1").unwrap_err();
-//! // Error contains suggestion: "claude1"
+//! let err = validate_agent_name("my agent!").unwrap_err();
+//! // Error contains suggestion: "myagent"
 //!
 //! // TTL validation
 //! assert!(validate_ttl(3600).is_ok());  // 1 hour - valid
@@ -35,9 +36,9 @@ use regex::Regex;
 use serde::Serialize;
 
 lazy_static! {
-    /// Regex pattern for valid agent names: alphanumeric + underscore, 1-64 chars.
+    /// Regex pattern for valid agent names: alphanumeric + underscore + hyphen, 1-64 chars.
     static ref AGENT_NAME_RE: Regex =
-        Regex::new(r"^[a-zA-Z0-9_]{1,64}$").expect("valid regex pattern");
+        Regex::new(r"^[a-zA-Z0-9_-]{1,64}$").expect("valid regex pattern");
     /// Regex pattern for valid human keys: alphanumeric + underscore + hyphen, 1-64 chars.
     static ref HUMAN_KEY_RE: Regex =
         Regex::new(r"^[a-zA-Z0-9_-]{1,64}$").expect("valid regex pattern");
@@ -111,7 +112,7 @@ pub enum ValidationError {
     },
 
     /// Agent name doesn't match the required pattern.
-    #[error("Agent name must match ^[a-zA-Z0-9_]{{1,64}}$, got: {provided}")]
+    #[error("Agent name must match ^[a-zA-Z0-9_-]{{1,64}}$, got: {provided}")]
     InvalidAgentName {
         /// The invalid agent name.
         provided: String,
@@ -188,11 +189,11 @@ impl ValidationError {
 /// use mouchak_mail_core::utils::validation::validate_agent_name;
 ///
 /// assert!(validate_agent_name("claude_1").is_ok());
+/// assert!(validate_agent_name("cc-1").is_ok());
 /// assert!(validate_agent_name("AGENT123").is_ok());
-/// assert!(validate_agent_name("a").is_ok());
 ///
-/// // Invalid names return suggestions
-/// let err = validate_agent_name("claude-1").unwrap_err();
+/// // Invalid names (special chars) return suggestions
+/// let err = validate_agent_name("agent@invalid").unwrap_err();
 /// ```
 pub fn validate_agent_name(name: &str) -> Result<(), ValidationError> {
     if AGENT_NAME_RE.is_match(name) {
@@ -209,7 +210,7 @@ pub fn validate_agent_name(name: &str) -> Result<(), ValidationError> {
 ///
 /// This is used to generate suggestions when validation fails.
 /// The sanitized name:
-/// - Contains only alphanumeric characters and underscores
+/// - Contains only alphanumeric characters, underscores, and hyphens
 /// - Is truncated to 64 characters
 /// - Is lowercased for consistency
 ///
@@ -226,13 +227,13 @@ pub fn validate_agent_name(name: &str) -> Result<(), ValidationError> {
 /// ```
 /// use mouchak_mail_core::utils::validation::sanitize_agent_name;
 ///
-/// assert_eq!(sanitize_agent_name("my-agent!"), "myagent");
+/// assert_eq!(sanitize_agent_name("my-agent!"), "my-agent");
 /// assert_eq!(sanitize_agent_name("Claude_1"), "claude_1");
 /// ```
 pub fn sanitize_agent_name(input: &str) -> String {
     input
         .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '_')
+        .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
         .take(64)
         .collect::<String>()
         .to_lowercase()
@@ -380,18 +381,21 @@ mod tests {
         assert!(validate_agent_name("claude_1").is_ok());
         assert!(validate_agent_name("AGENT123").is_ok());
         assert!(validate_agent_name("a").is_ok());
+        assert!(validate_agent_name("cc-1").is_ok());
+        assert!(validate_agent_name("cod-2").is_ok());
+        assert!(validate_agent_name("agent-name-with-hyphens").is_ok());
     }
 
     #[test]
     fn test_invalid_agent_names_with_suggestions() {
-        let err = validate_agent_name("claude-1").unwrap_err();
-        if let ValidationError::InvalidAgentName { suggestion, .. } = err {
-            assert_eq!(suggestion, "claude1");
-        }
-
         let err = validate_agent_name("my agent!").unwrap_err();
         if let ValidationError::InvalidAgentName { suggestion, .. } = err {
             assert_eq!(suggestion, "myagent");
+        }
+
+        let err = validate_agent_name("agent@invalid").unwrap_err();
+        if let ValidationError::InvalidAgentName { suggestion, .. } = err {
+            assert_eq!(suggestion, "agentinvalid");
         }
     }
 

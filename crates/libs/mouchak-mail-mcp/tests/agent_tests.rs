@@ -125,7 +125,7 @@ async fn test_register_agent_impl_invalid_name() {
 
     let params = RegisterAgentParams {
         project_slug,
-        name: "invalid-name-with-hyphens".to_string(),
+        name: "invalid name with spaces".to_string(),
         program: "claude_code".to_string(),
         model: "opus".to_string(),
         task_description: "Should fail".to_string(),

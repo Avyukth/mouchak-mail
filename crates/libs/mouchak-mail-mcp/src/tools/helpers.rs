@@ -59,11 +59,11 @@ pub async fn resolve_agent(
     if let Err(e) = validate_agent_name(agent_name) {
         let sanitized_name: String = agent_name
             .chars()
-            .filter(|c| c.is_alphanumeric() || *c == '_')
+            .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
             .take(64)
             .collect();
         let suggestion = if sanitized_name.is_empty() {
-            "Use alphanumeric characters and underscores only (1-64 chars)".to_string()
+            "Use alphanumeric characters, underscores, and hyphens (1-64 chars)".to_string()
         } else {
             sanitized_name
         };
@@ -110,6 +110,7 @@ pub async fn resolve_project_and_agent(
 
 /// Parse comma-separated agent names and resolve them to IDs.
 ///
+/// Supports special keyword "broadcast" to resolve to all agents in the project.
 /// Returns Vec of agent IDs or error if any agent not found.
 pub async fn resolve_agent_names(
     ctx: &Ctx,
@@ -123,8 +124,31 @@ pub async fn resolve_agent_names(
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
     {
-        let agent = resolve_agent(ctx, mm, project_id, name).await?;
-        ids.push(agent.id.get());
+        if name.eq_ignore_ascii_case("broadcast") {
+            let all_agents = AgentBmc::list_all_for_project(
+                ctx,
+                mm,
+                mouchak_mail_core::types::ProjectId::new(project_id),
+            )
+            .await
+            .map_err(|e| {
+                mcp_err!(
+                    ErrorCode::InternalError,
+                    &format!("Failed to list agents for broadcast: {e}"),
+                    { "project_id": project_id }
+                )
+            })?;
+            for agent in all_agents {
+                if !ids.contains(&agent.id.get()) {
+                    ids.push(agent.id.get());
+                }
+            }
+        } else {
+            let agent = resolve_agent(ctx, mm, project_id, name).await?;
+            if !ids.contains(&agent.id.get()) {
+                ids.push(agent.id.get());
+            }
+        }
     }
     Ok(ids)
 }

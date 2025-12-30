@@ -11,10 +11,39 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct EnsureProjectParams {
-    /// The project slug (URL-safe identifier)
-    pub slug: String,
-    /// Human-readable project name/key
-    pub human_key: String,
+    /// The project slug (URL-safe identifier). If not provided, derived from human_key.
+    #[serde(default)]
+    pub slug: Option<String>,
+    /// Human-readable project name/key. If not provided, derived from slug (last path component).
+    #[serde(default)]
+    pub human_key: Option<String>,
+}
+
+impl EnsureProjectParams {
+    /// Get the effective slug, preferring explicit slug, falling back to human_key.
+    pub fn effective_slug(&self) -> String {
+        self.slug
+            .clone()
+            .or_else(|| self.human_key.clone())
+            .unwrap_or_default()
+    }
+
+    /// Get the effective human_key, preferring explicit human_key, falling back to slug's last component.
+    pub fn effective_human_key(&self) -> String {
+        self.human_key
+            .clone()
+            .or_else(|| {
+                self.slug.as_ref().map(|s| {
+                    // Extract last path component from slug (e.g., "/Users/me/project" -> "project")
+                    std::path::Path::new(s)
+                        .file_name()
+                        .and_then(|f| f.to_str())
+                        .unwrap_or(s)
+                        .to_string()
+                })
+            })
+            .unwrap_or_default()
+    }
 }
 
 /// Parameters for list_projects tool (no parameters required)

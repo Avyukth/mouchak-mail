@@ -23,14 +23,22 @@ use crate::AppState;
 /// Create the MCP service for the /mcp route
 ///
 /// This creates a tower-compatible service that handles MCP JSON-RPC 2.0 requests
-/// over HTTP/SSE. The service is stateful (using LocalSessionManager) and creates
-/// a new MouchakMailService for each connection, sharing the ModelManager with main server.
+/// over HTTP. By default, uses stateless mode (no session handshake required) for
+/// compatibility with clients like NTM that send tools/call without initialize.
+///
+/// Set MOUCHAK_MCP_STATEFUL=true for SSE streaming (requires initialize handshake).
 fn create_mcp_service(mm: ModelManager) -> StreamableHttpService<MouchakMailService> {
     // Create session manager for stateful connections
     let session_manager = Arc::new(LocalSessionManager::default());
 
-    // Configure the HTTP server
-    let config = StreamableHttpServerConfig::default();
+    let stateful_mode = std::env::var("MOUCHAK_MCP_STATEFUL")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let config = StreamableHttpServerConfig {
+        stateful_mode,
+        ..Default::default()
+    };
 
     // Check if worktrees/build-slot tools are enabled via environment
     let worktrees_enabled = std::env::var("WORKTREES_ENABLED")

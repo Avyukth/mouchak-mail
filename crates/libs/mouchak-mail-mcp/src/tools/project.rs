@@ -19,16 +19,16 @@ pub async fn ensure_project_impl(
     mm: &Arc<ModelManager>,
     params: EnsureProjectParams,
 ) -> Result<CallToolResult, McpError> {
-    // Validate project key
-    validate_project_key(&params.slug).map_err(|e| {
+    let slug = params.effective_slug();
+
+    validate_project_key(&slug).map_err(|e| {
         McpError::invalid_params(
             format!("{}", e),
             Some(serde_json::json!({ "details": e.context() })),
         )
     })?;
 
-    // Get or create project
-    match ProjectBmc::get_by_identifier(ctx, mm, &params.slug).await {
+    match ProjectBmc::get_by_identifier(ctx, mm, &slug).await {
         Ok(project) => {
             let msg = format!(
                 "Project exists: {} (id: {}, created: {})",
@@ -37,11 +37,12 @@ pub async fn ensure_project_impl(
             Ok(CallToolResult::success(vec![Content::text(msg)]))
         }
         Err(_) => {
-            let id = ProjectBmc::create(ctx, mm, &params.slug, &params.human_key)
+            let human_key = params.effective_human_key();
+            let id = ProjectBmc::create(ctx, mm, &slug, &human_key)
                 .await
                 .map_err(|e| McpError::internal_error(e.to_string(), None))?;
 
-            let msg = format!("Created project '{}' with id {}", params.slug, id);
+            let msg = format!("Created project '{}' with id {}", slug, id);
             Ok(CallToolResult::success(vec![Content::text(msg)]))
         }
     }

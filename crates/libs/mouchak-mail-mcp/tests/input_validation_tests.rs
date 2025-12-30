@@ -185,7 +185,7 @@ async fn test_validation_error_includes_suggestion() {
     let ctx = Ctx::root_ctx();
     let (_project_id, _agent_id) = setup_test_project_and_agent(&mm).await;
 
-    let result = helpers::resolve_agent(&ctx, &mm, 1, "my-agent").await;
+    let result = helpers::resolve_agent(&ctx, &mm, 1, "my@agent").await;
 
     assert!(result.is_err());
     let err = result.unwrap_err();

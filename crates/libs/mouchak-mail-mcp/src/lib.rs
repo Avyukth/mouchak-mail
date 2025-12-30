@@ -55,8 +55,14 @@ pub async fn run_sse(config: AppConfig) -> Result<()> {
     // Create session manager for stateful connections
     let session_manager = Arc::new(LocalSessionManager::default());
 
-    // Configure the HTTP server
-    let server_config = StreamableHttpServerConfig::default();
+    let stateful_mode = std::env::var("MOUCHAK_MCP_STATEFUL")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let server_config = StreamableHttpServerConfig {
+        stateful_mode,
+        ..Default::default()
+    };
 
     // Create a service factory that creates a new MouchakMailService for each connection
     let service_factory = move || {
