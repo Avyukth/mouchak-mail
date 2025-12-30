@@ -6,9 +6,10 @@
 use axum::{
     Router,
     body::Body,
-    http::{Request, Response},
+    http::{HeaderValue, Request, Response, header::ACCEPT},
     routing::any_service,
 };
+use http_body_util::BodyExt;
 use mouchak_mail_core::ModelManager;
 use mouchak_mail_mcp::tools::MouchakMailService;
 use rmcp::transport::streamable_http_server::{
@@ -71,15 +72,49 @@ fn create_mcp_service(mm: ModelManager) -> StreamableHttpService<MouchakMailServ
 pub fn mcp_routes(mm: ModelManager) -> Router<AppState> {
     let mcp_service = create_mcp_service(mm);
 
-    // Wrap the MCP service to convert body types
-    let wrapped_service = tower::service_fn(move |req: Request<Body>| {
+    // Wrap the MCP service to convert body types, inject Accept header if missing,
+    // and strip SSE format from responses for NTM compatibility.
+    // NTM and other simple clients expect plain JSON, not SSE format.
+    let wrapped_service = tower::service_fn(move |mut req: Request<Body>| {
         let svc = mcp_service.clone();
         async move {
+            // Inject Accept header if missing (required by RMCP StreamableHttpService)
+            // NTM only sends Content-Type but not Accept header
+            if !req.headers().contains_key(ACCEPT) {
+                req.headers_mut().insert(
+                    ACCEPT,
+                    HeaderValue::from_static("application/json, text/event-stream"),
+                );
+            }
+
             // Call the MCP service
             let response = svc.oneshot(req).await?;
-            // Convert BoxBody to axum::body::Body
-            let (parts, body) = response.into_parts();
-            let body = Body::new(body);
+            let (mut parts, body) = response.into_parts();
+
+            // Collect the body and strip SSE format if present
+            // RMCP returns "data: {...}\n\n" but NTM expects plain JSON
+            let body_bytes = body
+                .collect()
+                .await
+                .map(|b| b.to_bytes())
+                .unwrap_or_default();
+            let body_str = String::from_utf8_lossy(&body_bytes);
+
+            // Strip "data: " prefix and trailing newlines if present
+            let json_str = body_str
+                .strip_prefix("data: ")
+                .unwrap_or(&body_str)
+                .trim_end();
+
+            // Update Content-Type to application/json for plain JSON responses
+            if !json_str.starts_with("data:") {
+                parts.headers.insert(
+                    axum::http::header::CONTENT_TYPE,
+                    HeaderValue::from_static("application/json"),
+                );
+            }
+
+            let body = Body::from(json_str.to_string());
             Ok::<_, std::convert::Infallible>(Response::from_parts(parts, body))
         }
     });
