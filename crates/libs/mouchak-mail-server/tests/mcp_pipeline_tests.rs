@@ -247,7 +247,9 @@ async fn test_pipeline_stage1_ensure_project() {
                 let result_str = result_text.as_str().unwrap_or("");
                 // Should contain project info
                 assert!(
-                    result_str.contains("id") || result_str.contains("slug") || result_str.contains("human_key"),
+                    result_str.contains("id")
+                        || result_str.contains("slug")
+                        || result_str.contains("human_key"),
                     "ensure_project result should contain project info"
                 );
             }
@@ -290,7 +292,11 @@ async fn test_pipeline_stage2_register_agent_hyphenated_name() {
     // First ensure project exists
     let _ = post_mcp_with_session(
         &service,
-        tools_call("ensure_project", json!({ "human_key": "/tmp/mcp-pipeline-test" }), 1),
+        tools_call(
+            "ensure_project",
+            json!({ "human_key": "/tmp/mcp-pipeline-test" }),
+            1,
+        ),
         session_id.as_deref(),
     )
     .await;
@@ -367,7 +373,11 @@ async fn test_pipeline_stage3_list_agents() {
     // Ensure project and agent exist
     let _ = post_mcp_with_session(
         &service,
-        tools_call("ensure_project", json!({ "human_key": "/tmp/mcp-pipeline-test" }), 1),
+        tools_call(
+            "ensure_project",
+            json!({ "human_key": "/tmp/mcp-pipeline-test" }),
+            1,
+        ),
         session_id.as_deref(),
     )
     .await;
@@ -412,7 +422,9 @@ async fn test_pipeline_stage3_list_agents() {
                 let result_str = result_text.as_str().unwrap_or("");
                 // Should return agents info (format: "Agents in '...' (N):")
                 assert!(
-                    result_str.contains("Agents") || result_str.contains('[') || result_str.is_empty(),
+                    result_str.contains("Agents")
+                        || result_str.contains('[')
+                        || result_str.is_empty(),
                     "list_agents should return agents info, got: {result_str}"
                 );
             }
@@ -454,7 +466,11 @@ async fn test_pipeline_stage4_fetch_inbox() {
     // Setup project and agent
     let _ = post_mcp_with_session(
         &service,
-        tools_call("ensure_project", json!({ "human_key": "/tmp/mcp-pipeline-test" }), 1),
+        tools_call(
+            "ensure_project",
+            json!({ "human_key": "/tmp/mcp-pipeline-test" }),
+            1,
+        ),
         session_id.as_deref(),
     )
     .await;
@@ -500,7 +516,9 @@ async fn test_pipeline_stage4_fetch_inbox() {
                 let result_str = result_text.as_str().unwrap_or("");
                 // Should return array (empty or with messages)
                 assert!(
-                    result_str.contains('[') || result_str.contains("messages") || result_str.contains("empty"),
+                    result_str.contains('[')
+                        || result_str.contains("messages")
+                        || result_str.contains("empty"),
                     "fetch_inbox should return messages array or empty indicator"
                 );
             }
@@ -542,7 +560,11 @@ async fn test_pipeline_stage5_list_file_reservations() {
     // Ensure project
     let _ = post_mcp_with_session(
         &service,
-        tools_call("ensure_project", json!({ "human_key": "/tmp/mcp-pipeline-test" }), 1),
+        tools_call(
+            "ensure_project",
+            json!({ "human_key": "/tmp/mcp-pipeline-test" }),
+            1,
+        ),
         session_id.as_deref(),
     )
     .await;
@@ -570,7 +592,10 @@ async fn test_pipeline_stage5_list_file_reservations() {
                 let result_str = result_text.as_str().unwrap_or("");
                 // Should return array (empty or with reservations)
                 assert!(
-                    result_str.contains('[') || result_str.contains("reservations") || result_str.contains("empty") || result_str.contains("No"),
+                    result_str.contains('[')
+                        || result_str.contains("reservations")
+                        || result_str.contains("empty")
+                        || result_str.contains("No"),
                     "list_file_reservations should return reservations array or empty indicator"
                 );
             }
@@ -612,7 +637,11 @@ async fn test_pipeline_stage6_send_message_broadcast() {
     // Setup project and multiple agents for broadcast test
     let _ = post_mcp_with_session(
         &service,
-        tools_call("ensure_project", json!({ "human_key": "/tmp/mcp-pipeline-test" }), 1),
+        tools_call(
+            "ensure_project",
+            json!({ "human_key": "/tmp/mcp-pipeline-test" }),
+            1,
+        ),
         session_id.as_deref(),
     )
     .await;
@@ -680,7 +709,9 @@ async fn test_pipeline_stage6_send_message_broadcast() {
                 // If error mentions "broadcast" not found, that's the bug we're testing against
                 // But if sender agent not found, that's a setup issue, not broadcast issue
                 if error_msg.contains("broadcast") && error_msg.contains("not found") {
-                    panic!("Broadcast keyword should not be treated as literal agent name: {error_msg}");
+                    panic!(
+                        "Broadcast keyword should not be treated as literal agent name: {error_msg}"
+                    );
                 }
                 // Other errors (like sender agent not found) are acceptable in this test context
                 println!("Note: Got error but not broadcast-related: {error_msg}");
@@ -718,7 +749,9 @@ async fn test_full_mcp_pipeline() {
 
     // If initialization fails due to resource conflict, skip rest of test
     if !status.is_success() {
-        println!("Skipping full pipeline test due to initialization failure (likely parallel test conflict)");
+        println!(
+            "Skipping full pipeline test due to initialization failure (likely parallel test conflict)"
+        );
         println!("Body: {body}");
         return;
     }
@@ -813,7 +846,11 @@ async fn test_full_mcp_pipeline() {
     println!("\n=== Stage 5: list_file_reservations ===");
     let (status, body, _) = post_mcp_with_session(
         &service,
-        tools_call("list_file_reservations", json!({ "project_key": project_key }), 5),
+        tools_call(
+            "list_file_reservations",
+            json!({ "project_key": project_key }),
+            5,
+        ),
         Some(&session_id),
     )
     .await;
