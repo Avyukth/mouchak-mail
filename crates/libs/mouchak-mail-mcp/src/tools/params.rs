@@ -63,14 +63,38 @@ pub struct RegisterAgentParams {
     #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent's unique name within the project (alias: agent_name)
-    #[serde(alias = "agent_name")]
-    pub name: String,
+    /// If not provided, a name will be auto-generated from program and model
+    #[serde(alias = "agent_name", default)]
+    pub name: Option<String>,
     /// Agent's program identifier (e.g., "claude-code", "antigravity")
     pub program: String,
     /// Model being used (e.g., "claude-3-opus", "gemini-2.0-pro")
     pub model: String,
     /// Description of the agent's task/responsibilities
-    pub task_description: String,
+    #[serde(default)]
+    pub task_description: Option<String>,
+}
+
+impl RegisterAgentParams {
+    /// Get the effective agent name, auto-generating one if not provided
+    pub fn effective_name(&self) -> String {
+        self.name.clone().filter(|s| !s.is_empty()).unwrap_or_else(|| {
+            // Generate name from program-model-timestamp
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() % 10000)
+                .unwrap_or(0);
+            format!("{}-{}-{}", self.program, self.model.replace('.', "-"), timestamp)
+        })
+    }
+
+    /// Get the effective task description
+    pub fn effective_task_description(&self) -> String {
+        self.task_description
+            .clone()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| format!("{} agent using {}", self.program, self.model))
+    }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

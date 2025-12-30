@@ -36,7 +36,11 @@ pub async fn register_agent_impl(
         )
     })?;
 
-    validate_agent_name(&params.name).map_err(|e| {
+    // Get effective name (auto-generate if not provided)
+    let agent_name = params.effective_name();
+    let task_description = params.effective_task_description();
+
+    validate_agent_name(&agent_name).map_err(|e| {
         McpError::invalid_params(
             format!("{}", e),
             Some(serde_json::json!({ "details": e.context() })),
@@ -47,7 +51,7 @@ pub async fn register_agent_impl(
     let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
 
     // Check if agent exists
-    match AgentBmc::get_by_name(ctx, mm, project.id, &params.name).await {
+    match AgentBmc::get_by_name(ctx, mm, project.id, &agent_name).await {
         Ok(agent) => {
             let msg = format!(
                 "Agent '{}' already exists (id: {}, program: {})",
@@ -58,10 +62,10 @@ pub async fn register_agent_impl(
         Err(_) => {
             let agent_c = AgentForCreate {
                 project_id: project.id,
-                name: params.name.clone(),
+                name: agent_name.clone(),
                 program: params.program,
                 model: params.model,
-                task_description: params.task_description,
+                task_description,
             };
 
             let id = AgentBmc::create(ctx, mm, agent_c)
@@ -74,11 +78,11 @@ pub async fn register_agent_impl(
 
             let mut msg = format!(
                 "Registered agent '{}' with id {} (granted default capabilities)",
-                params.name,
+                agent_name,
                 id.get()
             );
 
-            if let Some(hint) = detect_unix_username_as_agent(&params.name) {
+            if let Some(hint) = detect_unix_username_as_agent(&agent_name) {
                 msg.push_str(&format!("\n\nHint: {}", hint.suggestion));
             }
 
