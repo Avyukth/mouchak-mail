@@ -10,7 +10,8 @@ use mouchak_mail_core::model::{
 };
 use mouchak_mail_mcp::tools::contacts;
 use mouchak_mail_mcp::tools::{
-    ListContactsParams, RequestContactParams, RespondContactParams, SetContactPolicyParams,
+    ListContactsParams, RequestContactParams, RespondContactByNameParams, RespondContactParams,
+    SetContactPolicyParams,
 };
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -406,6 +407,153 @@ async fn test_set_contact_policy_impl_agent_not_found() {
     };
 
     let result = contacts::set_contact_policy_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message.contains("not found"));
+}
+
+async fn setup_single_project_with_two_agents(
+    mm: &Arc<ModelManager>,
+    suffix: &str,
+) -> (String, String, String) {
+    let ctx = Ctx::root_ctx();
+
+    let project_slug = format!("contacts-same-project-{}", suffix);
+    let project_id = ProjectBmc::create(&ctx, mm, &project_slug, "Contacts Same Project")
+        .await
+        .unwrap();
+
+    let agent1_c = AgentForCreate {
+        project_id,
+        name: format!("alice_{}", suffix),
+        program: "claude".to_string(),
+        model: "opus".to_string(),
+        task_description: "Alice agent".to_string(),
+    };
+    AgentBmc::create(&ctx, mm, agent1_c).await.unwrap();
+
+    let agent2_c = AgentForCreate {
+        project_id,
+        name: format!("bob_{}", suffix),
+        program: "claude".to_string(),
+        model: "sonnet".to_string(),
+        task_description: "Bob agent".to_string(),
+    };
+    AgentBmc::create(&ctx, mm, agent2_c).await.unwrap();
+
+    (
+        project_slug,
+        format!("alice_{}", suffix),
+        format!("bob_{}", suffix),
+    )
+}
+
+#[tokio::test]
+async fn test_respond_contact_by_name_impl_accept() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, alice, bob) =
+        setup_single_project_with_two_agents(&mm, "byname-accept").await;
+
+    let request_params = RequestContactParams {
+        from_project_slug: project_slug.clone(),
+        from_agent_name: alice.clone(),
+        to_project_slug: project_slug.clone(),
+        to_agent_name: bob.clone(),
+        reason: "Testing name-based response".to_string(),
+    };
+    contacts::request_contact_impl(&ctx, &mm, request_params)
+        .await
+        .unwrap();
+
+    let respond_params = RespondContactByNameParams {
+        project_slug: project_slug.clone(),
+        to_agent: bob.clone(),
+        from_agent: alice.clone(),
+        accept: true,
+    };
+
+    let result = contacts::respond_contact_by_name_impl(&ctx, &mm, respond_params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("accepted"));
+    assert!(output.contains("link_id"));
+}
+
+#[tokio::test]
+async fn test_respond_contact_by_name_impl_reject() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, alice, bob) =
+        setup_single_project_with_two_agents(&mm, "byname-reject").await;
+
+    let request_params = RequestContactParams {
+        from_project_slug: project_slug.clone(),
+        from_agent_name: alice.clone(),
+        to_project_slug: project_slug.clone(),
+        to_agent_name: bob.clone(),
+        reason: "Testing rejection".to_string(),
+    };
+    contacts::request_contact_impl(&ctx, &mm, request_params)
+        .await
+        .unwrap();
+
+    let respond_params = RespondContactByNameParams {
+        project_slug: project_slug.clone(),
+        to_agent: bob.clone(),
+        from_agent: alice.clone(),
+        accept: false,
+    };
+
+    let result = contacts::respond_contact_by_name_impl(&ctx, &mm, respond_params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("rejected"));
+}
+
+#[tokio::test]
+async fn test_respond_contact_by_name_impl_no_pending_request() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, alice, bob) =
+        setup_single_project_with_two_agents(&mm, "byname-nopending").await;
+
+    let respond_params = RespondContactByNameParams {
+        project_slug,
+        to_agent: bob,
+        from_agent: alice,
+        accept: true,
+    };
+
+    let result = contacts::respond_contact_by_name_impl(&ctx, &mm, respond_params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message.contains("No pending contact request"));
+}
+
+#[tokio::test]
+async fn test_respond_contact_by_name_impl_agent_not_found() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let project_slug = "byname-notfound";
+    ProjectBmc::create(&ctx, &mm, project_slug, "ByName NotFound Project")
+        .await
+        .unwrap();
+
+    let respond_params = RespondContactByNameParams {
+        project_slug: project_slug.to_string(),
+        to_agent: "nonexistent_to".to_string(),
+        from_agent: "nonexistent_from".to_string(),
+        accept: true,
+    };
+
+    let result = contacts::respond_contact_by_name_impl(&ctx, &mm, respond_params).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.message.contains("not found"));

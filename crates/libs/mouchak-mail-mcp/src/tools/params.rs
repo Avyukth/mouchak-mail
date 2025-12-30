@@ -24,6 +24,7 @@ pub struct ListProjectsParams {}
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegisterAgentParams {
     /// Project slug the agent belongs to
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent's unique name within the project (alias: agent_name)
     #[serde(alias = "agent_name")]
@@ -39,6 +40,7 @@ pub struct RegisterAgentParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SendMessageParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Sender agent name
     pub sender_name: String,
@@ -64,11 +66,18 @@ pub struct SendMessageParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListInboxParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name to list inbox for
     pub agent_name: String,
     /// Maximum number of messages to return
     pub limit: Option<i64>,
+    /// Filter to only urgent/high-priority messages
+    pub urgent_only: Option<bool>,
+    /// Filter messages since this timestamp (ISO 8601 format)
+    pub since_ts: Option<String>,
+    /// Include full message bodies in response (default: false for token efficiency)
+    pub include_bodies: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -80,12 +89,14 @@ pub struct GetMessageParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListProjectSiblingsParams {
     /// Project slug to find siblings for
+    #[serde(alias = "project_key")]
     pub project_slug: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CommitArchiveParams {
     /// Project slug to archive
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Commit message
     pub message: String,
@@ -94,14 +105,18 @@ pub struct CommitArchiveParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct WhoisParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name to look up
     pub agent_name: String,
+    /// Include recent git commits by this agent (optional)
+    pub include_recent_commits: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchMessagesParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Search query (full-text search)
     pub query: String,
@@ -112,6 +127,7 @@ pub struct SearchMessagesParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetThreadParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Thread ID
     pub thread_id: String,
@@ -120,6 +136,7 @@ pub struct GetThreadParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetReviewStateParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Thread ID (e.g., TASK-abc123)
     pub thread_id: String,
@@ -128,6 +145,7 @@ pub struct GetReviewStateParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ClaimReviewParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Message ID of the [COMPLETION] message to review
     pub message_id: i64,
@@ -138,12 +156,14 @@ pub struct ClaimReviewParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListAgentsParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct FileReservationParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name requesting reservations
     pub agent_name: String,
@@ -160,7 +180,12 @@ pub struct FileReservationParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListReservationsParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
+    /// Filter by agent name (optional)
+    pub agent_name: Option<String>,
+    /// Include reservations from all agents (default: false, respects agent_name filter)
+    pub all_agents: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -184,8 +209,35 @@ pub struct RenewFileReservationParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct ReleaseFileReservationsByAgentParams {
+    /// Project slug
+    #[serde(alias = "project_key")]
+    pub project_slug: String,
+    /// Agent name whose reservations to release
+    pub agent_name: String,
+    /// Specific file paths to release (optional - releases all if not provided)
+    pub paths: Option<Vec<String>>,
+    /// Specific reservation IDs to release (optional - alternative to paths)
+    pub file_reservation_ids: Option<Vec<i64>>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RenewFileReservationsByAgentParams {
+    /// Project slug
+    #[serde(alias = "project_key")]
+    pub project_slug: String,
+    /// Agent name whose reservations to renew
+    pub agent_name: String,
+    /// Extension time in seconds (default 3600)
+    pub extend_seconds: Option<i64>,
+    /// Specific file paths to renew (optional - renews all if not provided)
+    pub paths: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct ReplyMessageParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Sender agent name
     pub sender_name: String,
@@ -195,11 +247,20 @@ pub struct ReplyMessageParams {
     pub body_md: String,
     /// Message importance (optional)
     pub importance: Option<String>,
+    /// Override To recipients (comma-separated, optional - defaults to original sender)
+    pub to: Option<String>,
+    /// Additional CC recipients (comma-separated, optional)
+    pub cc: Option<String>,
+    /// Additional BCC recipients (comma-separated, optional)
+    pub bcc: Option<String>,
+    /// Subject prefix override (e.g., "[APPROVED]" instead of "Re:")
+    pub subject_prefix: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MarkMessageReadParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name marking as read
     pub agent_name: String,
@@ -210,6 +271,7 @@ pub struct MarkMessageReadParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AcknowledgeMessageParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name acknowledging
     pub agent_name: String,
@@ -220,15 +282,23 @@ pub struct AcknowledgeMessageParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreateAgentIdentityParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Optional hint for name generation
     #[allow(dead_code)]
     pub hint: Option<String>,
+    /// Agent program identifier (e.g., "claude-code") - if provided, auto-registers agent
+    pub program: Option<String>,
+    /// Agent model identifier (e.g., "opus-4") - if provided, auto-registers agent
+    pub model: Option<String>,
+    /// Agent task description - used with program/model for auto-registration
+    pub task_description: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct UpdateAgentProfileParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name to update
     pub agent_name: String,
@@ -243,12 +313,14 @@ pub struct UpdateAgentProfileParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetProjectInfoParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetAgentProfileParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name
     pub agent_name: String,
@@ -257,6 +329,7 @@ pub struct GetAgentProfileParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListThreadsParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Maximum threads to return
     pub limit: Option<i64>,
@@ -265,10 +338,12 @@ pub struct ListThreadsParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RequestContactParams {
     /// From project slug
+    #[serde(alias = "from_project_key")]
     pub from_project_slug: String,
     /// From agent name
     pub from_agent_name: String,
     /// To project slug
+    #[serde(alias = "to_project_key")]
     pub to_project_slug: String,
     /// To agent name
     pub to_agent_name: String,
@@ -285,8 +360,22 @@ pub struct RespondContactParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct RespondContactByNameParams {
+    /// Project slug
+    #[serde(alias = "project_key")]
+    pub project_slug: String,
+    /// Agent name responding to the contact request (the one who received the request)
+    pub to_agent: String,
+    /// Agent name who sent the contact request
+    pub from_agent: String,
+    /// Accept (true) or reject (false)
+    pub accept: bool,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListContactsParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name
     pub agent_name: String,
@@ -295,6 +384,7 @@ pub struct ListContactsParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SetContactPolicyParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name
     pub agent_name: String,
@@ -305,6 +395,7 @@ pub struct SetContactPolicyParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AcquireBuildSlotParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name
     pub agent_name: String,
@@ -331,6 +422,7 @@ pub struct ReleaseBuildSlotParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SendOverseerMessageParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name receiving the message
     pub agent_name: String,
@@ -345,12 +437,14 @@ pub struct SendOverseerMessageParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListMacrosParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct RegisterMacroParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Macro name
     pub name: String,
@@ -363,6 +457,7 @@ pub struct RegisterMacroParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct UnregisterMacroParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Macro name to remove
     pub name: String,
@@ -371,6 +466,7 @@ pub struct UnregisterMacroParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct InvokeMacroParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Macro name to invoke
     pub name: String,
@@ -384,6 +480,7 @@ pub struct ListBuiltinWorkflowsParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct QuickStandupWorkflowParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Sender agent name
     pub sender_name: String,
@@ -394,6 +491,7 @@ pub struct QuickStandupWorkflowParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct QuickHandoffWorkflowParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent handing off the task
     pub from_agent: String,
@@ -408,6 +506,7 @@ pub struct QuickHandoffWorkflowParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct QuickReviewWorkflowParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent requesting review
     pub requester: String,
@@ -580,8 +679,11 @@ impl From<ThreadIdInput> for Vec<String> {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SummarizeThreadParams {
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     pub thread_id: ThreadIdInput,
+    /// Include example messages in the summary (optional)
+    pub include_examples: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -597,6 +699,7 @@ pub struct LinkProjectToProductParams {
     /// Product UID
     pub product_uid: String,
     /// Project slug to link
+    #[serde(alias = "project_key")]
     pub project_slug: String,
 }
 
@@ -605,6 +708,7 @@ pub struct UnlinkProjectFromProductParams {
     /// Product UID
     pub product_uid: String,
     /// Project slug to unlink
+    #[serde(alias = "project_key")]
     pub project_slug: String,
 }
 
@@ -637,6 +741,7 @@ pub struct SummarizeThreadProductParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ExportMailboxParams {
     /// Project slug to export
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Export format: html, json, or markdown
     pub format: Option<String>,
@@ -648,6 +753,7 @@ pub struct ExportMailboxParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListOutboxParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name to list outbox for
     pub agent_name: String,
@@ -658,6 +764,7 @@ pub struct ListOutboxParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct FileReservationPathsParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Agent name requesting reservations
     pub agent_name: String,
@@ -674,6 +781,7 @@ pub struct FileReservationPathsParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct InstallPrecommitGuardParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Target repository path
     pub target_repo_path: String,
@@ -688,6 +796,7 @@ pub struct UninstallPrecommitGuardParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct AddAttachmentParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Message ID to attach to
     pub message_id: i64,
@@ -700,6 +809,7 @@ pub struct AddAttachmentParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetAttachmentParams {
     /// Project slug
+    #[serde(alias = "project_key")]
     pub project_slug: String,
     /// Attachment ID
     pub attachment_id: String,

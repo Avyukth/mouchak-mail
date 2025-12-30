@@ -16,7 +16,8 @@ use std::sync::Arc;
 
 use super::helpers;
 use super::{
-    ListContactsParams, RequestContactParams, RespondContactParams, SetContactPolicyParams,
+    ListContactsParams, RequestContactParams, RespondContactByNameParams, RespondContactParams,
+    SetContactPolicyParams,
 };
 
 /// Request to add another agent as a contact.
@@ -58,7 +59,6 @@ pub async fn request_contact_impl(
     Ok(CallToolResult::success(vec![Content::text(msg)]))
 }
 
-/// Accept or reject a contact request.
 pub async fn respond_contact_impl(
     ctx: &Ctx,
     mm: &Arc<ModelManager>,
@@ -75,6 +75,60 @@ pub async fn respond_contact_impl(
     };
     let msg = format!("Contact request {} {}", params.link_id, status);
     Ok(CallToolResult::success(vec![Content::text(msg)]))
+}
+
+pub async fn respond_contact_by_name_impl(
+    ctx: &Ctx,
+    mm: &Arc<ModelManager>,
+    params: RespondContactByNameParams,
+) -> Result<CallToolResult, McpError> {
+    let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
+
+    let to_agent = AgentBmc::get_by_name(ctx, mm, project.id, &params.to_agent)
+        .await
+        .map_err(|e| McpError::invalid_params(format!("To agent not found: {}", e), None))?;
+
+    let from_agent = AgentBmc::get_by_name(ctx, mm, project.id, &params.from_agent)
+        .await
+        .map_err(|e| McpError::invalid_params(format!("From agent not found: {}", e), None))?;
+
+    let pending = AgentLinkBmc::list_pending_requests(ctx, mm, project.id.get(), to_agent.id.get())
+        .await
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+    let link = pending
+        .into_iter()
+        .find(|l| l.a_agent_id == from_agent.id.get())
+        .ok_or_else(|| {
+            McpError::invalid_params(
+                format!(
+                    "No pending contact request from '{}' to '{}'",
+                    params.from_agent, params.to_agent
+                ),
+                None,
+            )
+        })?;
+
+    AgentLinkBmc::respond_contact(ctx, mm, link.id, params.accept)
+        .await
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+    let status = if params.accept {
+        "accepted"
+    } else {
+        "rejected"
+    };
+
+    let output = serde_json::json!({
+        "link_id": link.id,
+        "status": status,
+        "from_agent": params.from_agent,
+        "to_agent": params.to_agent
+    });
+
+    Ok(CallToolResult::success(vec![Content::text(
+        serde_json::to_string_pretty(&output).unwrap_or_default(),
+    )]))
 }
 
 /// List all contacts for an agent.

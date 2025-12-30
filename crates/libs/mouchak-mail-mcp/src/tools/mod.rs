@@ -188,7 +188,11 @@ fn get_all_tool_schemas() -> Vec<ToolSchema> {
         ),
         schema_from_params::<RespondContactParams>(
             "respond_contact",
-            "Accept or reject a contact request.",
+            "Accept or reject a contact request by link ID.",
+        ),
+        schema_from_params::<RespondContactByNameParams>(
+            "respond_contact_by_name",
+            "Accept or reject a contact request by agent names.",
         ),
         schema_from_params::<ListContactsParams>("list_contacts", "List agent contacts."),
         schema_from_params::<SetContactPolicyParams>(
@@ -207,11 +211,7 @@ fn get_all_tool_schemas() -> Vec<ToolSchema> {
         ),
         schema_from_params::<ReleaseReservationParams>(
             "release_reservation",
-            "Release a file reservation.",
-        ),
-        schema_from_params::<ReleaseReservationParams>(
-            "release_file_reservations",
-            "Release file reservations. (Alias for release_reservation)",
+            "Release a file reservation by ID.",
         ),
         schema_from_params::<ForceReleaseReservationParams>(
             "force_release_reservation",
@@ -219,11 +219,27 @@ fn get_all_tool_schemas() -> Vec<ToolSchema> {
         ),
         schema_from_params::<RenewFileReservationParams>(
             "renew_file_reservation",
-            "Extend a file reservation's TTL.",
+            "Extend a file reservation's TTL by ID.",
         ),
-        schema_from_params::<RenewFileReservationParams>(
+        schema_from_params::<ReleaseFileReservationsByAgentParams>(
+            "release_file_reservations_by_path",
+            "Release file reservations by path patterns for an agent.",
+        ),
+        schema_from_params::<ReleaseFileReservationsByAgentParams>(
+            "release_file_reservations",
+            "Release file reservations by path or ID. (Alias for release_file_reservations_by_path)",
+        ),
+        schema_from_params::<RenewFileReservationsByAgentParams>(
+            "renew_file_reservations_by_agent",
+            "Renew file reservations by agent name. Optionally filter by paths.",
+        ),
+        schema_from_params::<RenewFileReservationsByAgentParams>(
             "renew_file_reservations",
-            "Extend file reservations' TTL. (Alias for renew_file_reservation)",
+            "Renew file reservations by agent. (Alias for renew_file_reservations_by_agent)",
+        ),
+        schema_from_params::<ListReservationsParams>(
+            "list_file_reservations",
+            "List active file reservations. (Alias for list_reservations)",
         ),
         // Build Slots
         schema_from_params::<AcquireBuildSlotParams>(
@@ -516,8 +532,9 @@ impl MouchakMailService {
     pub fn resolve_tool_alias(tool_name: &str) -> Option<&'static str> {
         match tool_name {
             "fetch_inbox" | "check_inbox" => Some("list_inbox"),
-            "release_file_reservations" => Some("release_reservation"),
-            "renew_file_reservations" => Some("renew_file_reservation"),
+            "release_file_reservations" => Some("release_file_reservations_by_path"),
+            "renew_file_reservations" => Some("renew_file_reservations_by_agent"),
+            "list_file_reservations" => Some("list_reservations"),
             "list_project_agents" => Some("list_agents"),
             _ => None,
         }
@@ -832,6 +849,26 @@ impl MouchakMailService {
         files::renew_file_reservation_impl(&self.ctx(), &self.mm, params.0).await
     }
 
+    #[tool(
+        description = "Release file reservations by path patterns for an agent. Supports both paths and reservation IDs."
+    )]
+    async fn release_file_reservations_by_path(
+        &self,
+        params: Parameters<ReleaseFileReservationsByAgentParams>,
+    ) -> Result<CallToolResult, McpError> {
+        files::release_file_reservations_by_path_impl(&self.ctx(), &self.mm, params.0).await
+    }
+
+    #[tool(
+        description = "Renew file reservations by agent name. Optionally filter by specific paths."
+    )]
+    async fn renew_file_reservations_by_agent(
+        &self,
+        params: Parameters<RenewFileReservationsByAgentParams>,
+    ) -> Result<CallToolResult, McpError> {
+        files::renew_file_reservations_by_agent_impl(&self.ctx(), &self.mm, params.0).await
+    }
+
     /// Reply to a message
     #[tool(description = "Reply to an existing message in a thread.")]
     async fn reply_message(
@@ -913,13 +950,20 @@ impl MouchakMailService {
         contacts::request_contact_impl(&self.ctx(), &self.mm, params.0).await
     }
 
-    /// Respond to contact request
-    #[tool(description = "Accept or reject a contact request.")]
+    #[tool(description = "Accept or reject a contact request by link ID.")]
     async fn respond_contact(
         &self,
         params: Parameters<RespondContactParams>,
     ) -> Result<CallToolResult, McpError> {
         contacts::respond_contact_impl(&self.ctx(), &self.mm, params.0).await
+    }
+
+    #[tool(description = "Accept or reject a contact request by agent names.")]
+    async fn respond_contact_by_name(
+        &self,
+        params: Parameters<RespondContactByNameParams>,
+    ) -> Result<CallToolResult, McpError> {
+        contacts::respond_contact_by_name_impl(&self.ctx(), &self.mm, params.0).await
     }
 
     /// List contacts

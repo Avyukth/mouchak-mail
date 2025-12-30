@@ -249,6 +249,7 @@ async fn test_whois_agent() {
     let params = WhoisParams {
         project_slug: "whois-test".to_string(),
         agent_name: "lookup-agent".to_string(),
+        include_recent_commits: None,
     };
 
     let result = agent::whois_impl(&ctx, &mm, params).await;
@@ -385,6 +386,8 @@ async fn test_list_reservations_empty() {
 
     let params = ListReservationsParams {
         project_slug: "res-test".to_string(),
+        agent_name: None,
+        all_agents: None,
     };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;

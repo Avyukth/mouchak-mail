@@ -156,6 +156,8 @@ pub async fn run(
         .route("/metrics", get(metrics_handler))
         // Prod Hardening: Liveness/Readiness probes (k8s style)
         .route("/healthz", get(health_handler))
+        // MCP health endpoint (NTM compatibility)
+        .route("/mcp/health", get(mcp_health_handler))
         .layer(TraceLayer::new_for_http())
         // 4. Rate Limiting (Hardening 577.13)
         // Global middleware using Axum 0.8 middleware::from_fn_with_state
@@ -341,4 +343,21 @@ pub async fn ready_handler(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
     state.metrics_handle.render()
+}
+
+#[derive(serde::Serialize, ToSchema)]
+struct McpHealthResponse {
+    status: &'static str,
+}
+
+#[utoipa::path(
+    get,
+    path = "/mcp/health",
+    responses(
+        (status = 200, description = "MCP Server Health", body = McpHealthResponse)
+    )
+)]
+pub async fn mcp_health_handler() -> impl IntoResponse {
+    let response = McpHealthResponse { status: "healthy" };
+    (StatusCode::OK, axum::Json(response))
 }

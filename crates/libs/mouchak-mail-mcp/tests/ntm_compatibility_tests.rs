@@ -66,7 +66,8 @@ fn test_release_file_reservations_alias_schema_exists() {
 
     let schema = release.unwrap();
     let param_names: Vec<&str> = schema.parameters.iter().map(|p| p.name.as_str()).collect();
-    assert!(param_names.contains(&"reservation_id"));
+    assert!(param_names.contains(&"project_slug"));
+    assert!(param_names.contains(&"agent_name"));
 }
 
 #[test]
@@ -81,7 +82,8 @@ fn test_renew_file_reservations_alias_schema_exists() {
 
     let schema = renew.unwrap();
     let param_names: Vec<&str> = schema.parameters.iter().map(|p| p.name.as_str()).collect();
-    assert!(param_names.contains(&"reservation_id"));
+    assert!(param_names.contains(&"project_slug"));
+    assert!(param_names.contains(&"agent_name"));
 }
 
 #[test]

@@ -351,7 +351,11 @@ async fn test_list_reservations_impl_empty() {
     let ctx = Ctx::root_ctx();
     let (_, _, project_slug) = setup_project_and_agent_with_capability(&mm).await;
 
-    let params = ListReservationsParams { project_slug };
+    let params = ListReservationsParams {
+        project_slug,
+        agent_name: None,
+        all_agents: None,
+    };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;
     assert!(result.is_ok());
@@ -377,7 +381,11 @@ async fn test_list_reservations_impl_with_reservations() {
         .unwrap();
 
     // Now list
-    let params = ListReservationsParams { project_slug };
+    let params = ListReservationsParams {
+        project_slug,
+        agent_name: None,
+        all_agents: None,
+    };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;
     assert!(result.is_ok());

@@ -173,6 +173,7 @@ async fn test_whois_impl_success() {
     let params = WhoisParams {
         project_slug,
         agent_name: "WhoisAgent".to_string(),
+        include_recent_commits: None,
     };
 
     let result = agent::whois_impl(&ctx, &mm, params).await;
@@ -194,6 +195,7 @@ async fn test_whois_impl_not_found() {
     let params = WhoisParams {
         project_slug,
         agent_name: "NonexistentAgent".to_string(),
+        include_recent_commits: None,
     };
 
     let result = agent::whois_impl(&ctx, &mm, params).await;
@@ -370,6 +372,9 @@ async fn test_create_agent_identity_impl_success() {
     let params = CreateAgentIdentityParams {
         project_slug,
         hint: None,
+        program: None,
+        model: None,
+        task_description: None,
     };
 
     let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
@@ -390,6 +395,9 @@ async fn test_create_agent_identity_impl_with_hint() {
     let params = CreateAgentIdentityParams {
         project_slug,
         hint: Some("Blue".to_string()),
+        program: None,
+        model: None,
+        task_description: None,
     };
 
     let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
@@ -453,6 +461,9 @@ async fn test_create_agent_identity_impl_with_non_matching_hint() {
     let params = CreateAgentIdentityParams {
         project_slug,
         hint: Some("xyz123".to_string()),
+        program: None,
+        model: None,
+        task_description: None,
     };
 
     let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
@@ -485,6 +496,9 @@ async fn test_create_agent_identity_impl_avoids_existing() {
     let params = CreateAgentIdentityParams {
         project_slug,
         hint: Some("Blue".to_string()),
+        program: None,
+        model: None,
+        task_description: None,
     };
 
     let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
@@ -515,6 +529,9 @@ async fn test_create_agent_identity_impl_invalid_project() {
     let params = CreateAgentIdentityParams {
         project_slug: "nonexistent_project".to_string(),
         hint: None,
+        program: None,
+        model: None,
+        task_description: None,
     };
 
     let result = agent::create_agent_identity_impl(&ctx, &mm, params).await;
@@ -529,6 +546,7 @@ async fn test_whois_impl_invalid_project() {
     let params = WhoisParams {
         project_slug: "nonexistent_project".to_string(),
         agent_name: "SomeAgent".to_string(),
+        include_recent_commits: None,
     };
 
     let result = agent::whois_impl(&ctx, &mm, params).await;

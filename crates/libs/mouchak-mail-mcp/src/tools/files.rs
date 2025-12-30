@@ -20,7 +20,8 @@ use std::sync::Arc;
 use super::helpers;
 use super::{
     FileReservationParams, FileReservationPathsParams, ForceReleaseReservationParams,
-    ListReservationsParams, ReleaseReservationParams, RenewFileReservationParams,
+    ListReservationsParams, ReleaseFileReservationsByAgentParams, ReleaseReservationParams,
+    RenewFileReservationParams, RenewFileReservationsByAgentParams,
 };
 
 /// Reserve a file path pattern to prevent conflicts between agents.
@@ -283,4 +284,131 @@ pub async fn file_reservation_paths_impl(
     }
 
     Ok(CallToolResult::success(vec![Content::text(output)]))
+}
+
+pub async fn release_file_reservations_by_path_impl(
+    ctx: &Ctx,
+    mm: &Arc<ModelManager>,
+    params: ReleaseFileReservationsByAgentParams,
+) -> Result<CallToolResult, McpError> {
+    validate_project_key(&params.project_slug).map_err(|e| {
+        McpError::invalid_params(
+            format!("{}", e),
+            Some(serde_json::json!({ "details": e.context() })),
+        )
+    })?;
+
+    validate_agent_name(&params.agent_name).map_err(|e| {
+        McpError::invalid_params(
+            format!("{}", e),
+            Some(serde_json::json!({ "details": e.context() })),
+        )
+    })?;
+
+    let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
+
+    let agent = AgentBmc::get_by_name(ctx, mm, project.id, &params.agent_name)
+        .await
+        .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
+
+    let mut released_ids = Vec::new();
+
+    if let Some(paths) = &params.paths {
+        for path in paths {
+            if let Some(id) =
+                FileReservationBmc::release_by_path(ctx, mm, project.id.get(), agent.id.get(), path)
+                    .await
+                    .map_err(|e| McpError::internal_error(e.to_string(), None))?
+            {
+                released_ids.push(id);
+            }
+        }
+    }
+
+    if let Some(ids) = &params.file_reservation_ids {
+        for id in ids {
+            FileReservationBmc::release(ctx, mm, *id)
+                .await
+                .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+            released_ids.push(*id);
+        }
+    }
+
+    let output = serde_json::json!({
+        "released_count": released_ids.len(),
+        "released_ids": released_ids,
+        "agent_name": params.agent_name,
+        "project_slug": params.project_slug
+    });
+
+    Ok(CallToolResult::success(vec![Content::text(
+        serde_json::to_string_pretty(&output).unwrap_or_default(),
+    )]))
+}
+
+pub async fn renew_file_reservations_by_agent_impl(
+    ctx: &Ctx,
+    mm: &Arc<ModelManager>,
+    params: RenewFileReservationsByAgentParams,
+) -> Result<CallToolResult, McpError> {
+    validate_project_key(&params.project_slug).map_err(|e| {
+        McpError::invalid_params(
+            format!("{}", e),
+            Some(serde_json::json!({ "details": e.context() })),
+        )
+    })?;
+
+    validate_agent_name(&params.agent_name).map_err(|e| {
+        McpError::invalid_params(
+            format!("{}", e),
+            Some(serde_json::json!({ "details": e.context() })),
+        )
+    })?;
+
+    let project = helpers::resolve_project(ctx, mm, &params.project_slug).await?;
+
+    let agent = AgentBmc::get_by_name(ctx, mm, project.id, &params.agent_name)
+        .await
+        .map_err(|e| McpError::invalid_params(format!("Agent not found: {}", e), None))?;
+
+    let all_reservations = FileReservationBmc::list_active_for_project(ctx, mm, project.id)
+        .await
+        .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+
+    let agent_reservations: Vec<_> = all_reservations
+        .into_iter()
+        .filter(|r| r.agent_id == agent.id)
+        .collect();
+
+    let reservations_to_renew: Vec<_> = if let Some(paths) = &params.paths {
+        agent_reservations
+            .into_iter()
+            .filter(|r| paths.contains(&r.path_pattern))
+            .collect()
+    } else {
+        agent_reservations
+    };
+
+    let ttl = params.extend_seconds.unwrap_or(3600);
+    let new_expires = chrono::Utc::now().naive_utc() + chrono::Duration::seconds(ttl);
+
+    let mut renewed_ids = Vec::new();
+    for res in &reservations_to_renew {
+        FileReservationBmc::renew(ctx, mm, res.id, new_expires)
+            .await
+            .map_err(|e| McpError::internal_error(e.to_string(), None))?;
+        renewed_ids.push(res.id);
+    }
+
+    let output = serde_json::json!({
+        "renewed_count": renewed_ids.len(),
+        "renewed_ids": renewed_ids,
+        "new_expires_ts": new_expires.format("%Y-%m-%dT%H:%M:%S").to_string(),
+        "agent_name": params.agent_name,
+        "project_slug": params.project_slug
+    });
+
+    Ok(CallToolResult::success(vec![Content::text(
+        serde_json::to_string_pretty(&output).unwrap_or_default(),
+    )]))
 }

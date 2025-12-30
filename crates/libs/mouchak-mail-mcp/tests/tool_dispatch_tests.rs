@@ -145,13 +145,19 @@ mod tool_alias_resolution {
     #[test]
     fn release_file_reservations_resolves() {
         let resolved = MouchakMailService::resolve_tool_alias("release_file_reservations");
-        assert_eq!(resolved, Some("release_reservation"));
+        assert_eq!(resolved, Some("release_file_reservations_by_path"));
     }
 
     #[test]
     fn renew_file_reservations_resolves() {
         let resolved = MouchakMailService::resolve_tool_alias("renew_file_reservations");
-        assert_eq!(resolved, Some("renew_file_reservation"));
+        assert_eq!(resolved, Some("renew_file_reservations_by_agent"));
+    }
+
+    #[test]
+    fn list_file_reservations_resolves() {
+        let resolved = MouchakMailService::resolve_tool_alias("list_file_reservations");
+        assert_eq!(resolved, Some("list_reservations"));
     }
 
     #[test]

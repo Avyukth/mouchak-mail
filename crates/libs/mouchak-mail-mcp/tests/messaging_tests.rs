@@ -274,6 +274,9 @@ async fn test_list_inbox_impl_success() {
         project_slug: project_slug.clone(),
         agent_name: "receiver_agent".to_string(),
         limit: Some(10),
+        urgent_only: None,
+        since_ts: None,
+        include_bodies: None,
     };
 
     let result = messaging::list_inbox_impl(&ctx, &mm, params).await;
@@ -294,6 +297,9 @@ async fn test_list_inbox_impl_empty() {
         project_slug: project_slug.clone(),
         agent_name: "receiver_agent".to_string(),
         limit: Some(10),
+        urgent_only: None,
+        since_ts: None,
+        include_bodies: None,
     };
 
     let result = messaging::list_inbox_impl(&ctx, &mm, params).await;
@@ -313,6 +319,9 @@ async fn test_list_inbox_impl_without_capability() {
         project_slug: project_slug.clone(),
         agent_name: "sender_agent".to_string(),
         limit: None,
+        urgent_only: None,
+        since_ts: None,
+        include_bodies: None,
     };
 
     let result = messaging::list_inbox_impl(&ctx, &mm, params).await;
@@ -499,6 +508,10 @@ async fn test_reply_message_impl_success() {
         message_id: original_msg_id,
         body_md: "This is my reply.".to_string(),
         importance: Some("normal".to_string()),
+        to: None,
+        cc: None,
+        bcc: None,
+        subject_prefix: None,
     };
 
     let result = messaging::reply_message_impl(&ctx, &mm, params).await;
@@ -535,6 +548,10 @@ async fn test_reply_message_impl_no_thread_id() {
         message_id: original_msg_id,
         body_md: "Replying to message with no thread.".to_string(),
         importance: None,
+        to: None,
+        cc: None,
+        bcc: None,
+        subject_prefix: None,
     };
 
     let result = messaging::reply_message_impl(&ctx, &mm, params).await;
@@ -571,6 +588,10 @@ async fn test_reply_message_impl_already_has_re_prefix() {
         message_id: msg_id,
         body_md: "Another reply.".to_string(),
         importance: None,
+        to: None,
+        cc: None,
+        bcc: None,
+        subject_prefix: None,
     };
 
     let result = messaging::reply_message_impl(&ctx, &mm, params).await;
@@ -593,6 +614,10 @@ async fn test_reply_message_impl_message_not_found() {
         message_id: 999999,
         body_md: "Reply to nonexistent.".to_string(),
         importance: None,
+        to: None,
+        cc: None,
+        bcc: None,
+        subject_prefix: None,
     };
 
     let result = messaging::reply_message_impl(&ctx, &mm, params).await;
@@ -828,6 +853,10 @@ async fn test_reply_message_impl_without_capability() {
         message_id: msg_id,
         body_md: "Attempted reply.".to_string(),
         importance: None,
+        to: None,
+        cc: None,
+        bcc: None,
+        subject_prefix: None,
     };
 
     let result = messaging::reply_message_impl(&ctx, &mm, params).await;
@@ -848,6 +877,9 @@ async fn test_list_inbox_impl_invalid_project() {
         project_slug: "nonexistent_project".to_string(),
         agent_name: "some_agent".to_string(),
         limit: None,
+        urgent_only: None,
+        since_ts: None,
+        include_bodies: None,
     };
 
     let result = messaging::list_inbox_impl(&ctx, &mm, params).await;

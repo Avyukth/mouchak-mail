@@ -12,7 +12,8 @@ use mouchak_mail_core::model::{
 use mouchak_mail_mcp::tools::files;
 use mouchak_mail_mcp::tools::{
     FileReservationParams, FileReservationPathsParams, ForceReleaseReservationParams,
-    ListReservationsParams, ReleaseReservationParams, RenewFileReservationParams,
+    ListReservationsParams, ReleaseFileReservationsByAgentParams, ReleaseReservationParams,
+    RenewFileReservationParams, RenewFileReservationsByAgentParams,
 };
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -179,6 +180,8 @@ async fn test_list_reservations_impl_empty() {
 
     let params = ListReservationsParams {
         project_slug: project_slug.to_string(),
+        agent_name: None,
+        all_agents: None,
     };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;
@@ -208,7 +211,11 @@ async fn test_list_reservations_impl_with_reservations() {
         .await
         .unwrap();
 
-    let params = ListReservationsParams { project_slug };
+    let params = ListReservationsParams {
+        project_slug,
+        agent_name: None,
+        all_agents: None,
+    };
 
     let result = files::list_reservations_impl(&ctx, &mm, params).await;
     assert!(result.is_ok());
@@ -508,6 +515,240 @@ async fn test_file_reservation_paths_impl_invalid_agent() {
     };
 
     let result = files::file_reservation_paths_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message.contains("not found"));
+}
+
+#[tokio::test]
+async fn test_release_file_reservations_by_path_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, agent_name) = setup_project_with_agent(&mm, "release_by_path").await;
+
+    let reserve_params = FileReservationPathsParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        paths: vec!["src/main.rs".to_string(), "src/lib.rs".to_string()],
+        exclusive: true,
+        reason: Some("Testing path-based release".to_string()),
+        ttl_seconds: Some(3600),
+    };
+    files::file_reservation_paths_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
+
+    let params = ReleaseFileReservationsByAgentParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        paths: Some(vec!["src/main.rs".to_string()]),
+        file_reservation_ids: None,
+    };
+
+    let result = files::release_file_reservations_by_path_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("released_count"));
+    assert!(output.contains("1"));
+}
+
+#[tokio::test]
+async fn test_release_file_reservations_by_path_impl_multiple_paths() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, agent_name) = setup_project_with_agent(&mm, "release_multi").await;
+
+    let reserve_params = FileReservationPathsParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        paths: vec![
+            "file1.rs".to_string(),
+            "file2.rs".to_string(),
+            "file3.rs".to_string(),
+        ],
+        exclusive: true,
+        reason: None,
+        ttl_seconds: Some(3600),
+    };
+    files::file_reservation_paths_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
+
+    let params = ReleaseFileReservationsByAgentParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        paths: Some(vec![
+            "file1.rs".to_string(),
+            "file2.rs".to_string(),
+            "file3.rs".to_string(),
+        ]),
+        file_reservation_ids: None,
+    };
+
+    let result = files::release_file_reservations_by_path_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("released_count"));
+    assert!(output.contains("3"));
+}
+
+#[tokio::test]
+async fn test_release_file_reservations_by_path_impl_nonexistent_path() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, agent_name) = setup_project_with_agent(&mm, "release_none").await;
+
+    let params = ReleaseFileReservationsByAgentParams {
+        project_slug,
+        agent_name,
+        paths: Some(vec!["nonexistent.rs".to_string()]),
+        file_reservation_ids: None,
+    };
+
+    let result = files::release_file_reservations_by_path_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("released_count"));
+    assert!(output.contains("0"));
+}
+
+#[tokio::test]
+async fn test_release_file_reservations_by_path_impl_invalid_project() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let params = ReleaseFileReservationsByAgentParams {
+        project_slug: "nonexistent-project".to_string(),
+        agent_name: "agent".to_string(),
+        paths: Some(vec!["file.rs".to_string()]),
+        file_reservation_ids: None,
+    };
+
+    let result = files::release_file_reservations_by_path_impl(&ctx, &mm, params).await;
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.message.contains("not found") || err.message.contains("Project"));
+}
+
+#[tokio::test]
+async fn test_renew_file_reservations_by_agent_impl_success() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, agent_name) = setup_project_with_agent(&mm, "renew_by_agent").await;
+
+    let reserve_params = FileReservationPathsParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        paths: vec!["renew1.rs".to_string(), "renew2.rs".to_string()],
+        exclusive: true,
+        reason: Some("Testing agent-based renew".to_string()),
+        ttl_seconds: Some(1800),
+    };
+    files::file_reservation_paths_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
+
+    let params = RenewFileReservationsByAgentParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        extend_seconds: Some(7200),
+        paths: None,
+    };
+
+    let result = files::renew_file_reservations_by_agent_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("renewed_count"));
+    assert!(output.contains("2"));
+    assert!(output.contains("new_expires_ts"));
+}
+
+#[tokio::test]
+async fn test_renew_file_reservations_by_agent_impl_filtered_paths() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, agent_name) = setup_project_with_agent(&mm, "renew_filtered").await;
+
+    let reserve_params = FileReservationPathsParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        paths: vec![
+            "keep1.rs".to_string(),
+            "keep2.rs".to_string(),
+            "other.rs".to_string(),
+        ],
+        exclusive: true,
+        reason: None,
+        ttl_seconds: Some(1800),
+    };
+    files::file_reservation_paths_impl(&ctx, &mm, reserve_params)
+        .await
+        .unwrap();
+
+    let params = RenewFileReservationsByAgentParams {
+        project_slug: project_slug.clone(),
+        agent_name: agent_name.clone(),
+        extend_seconds: Some(3600),
+        paths: Some(vec!["keep1.rs".to_string(), "keep2.rs".to_string()]),
+    };
+
+    let result = files::renew_file_reservations_by_agent_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("renewed_count"));
+    assert!(output.contains("2"));
+}
+
+#[tokio::test]
+async fn test_renew_file_reservations_by_agent_impl_no_reservations() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let (project_slug, agent_name) = setup_project_with_agent(&mm, "renew_empty").await;
+
+    let params = RenewFileReservationsByAgentParams {
+        project_slug,
+        agent_name,
+        extend_seconds: Some(3600),
+        paths: None,
+    };
+
+    let result = files::renew_file_reservations_by_agent_impl(&ctx, &mm, params).await;
+    assert!(result.is_ok());
+
+    let output = extract_text(&result.unwrap());
+    assert!(output.contains("renewed_count"));
+    assert!(output.contains("0"));
+}
+
+#[tokio::test]
+async fn test_renew_file_reservations_by_agent_impl_invalid_agent() {
+    let (mm, _temp) = create_test_mm().await;
+    let ctx = Ctx::root_ctx();
+
+    let project_slug = "renew-invalid-agent";
+    ProjectBmc::create(&ctx, &mm, project_slug, "Renew Invalid Agent Project")
+        .await
+        .unwrap();
+
+    let params = RenewFileReservationsByAgentParams {
+        project_slug: project_slug.to_string(),
+        agent_name: "nonexistent_agent".to_string(),
+        extend_seconds: Some(3600),
+        paths: None,
+    };
+
+    let result = files::renew_file_reservations_by_agent_impl(&ctx, &mm, params).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(err.message.contains("not found"));
